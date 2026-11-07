@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Patagonia Browser">
+<!-- Patagonia Browser © 2026 Roma.69. Marca reservada: no incluida en la licencia MIT. Ver MARCA.md -->
 <defs><linearGradient id="pbbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb36b"/><stop offset=".65" stop-color="#ef6a3e"/><stop offset="1" stop-color="#b3364a"/></linearGradient><clipPath id="pbc"><circle cx="64" cy="64" r="60"/></clipPath></defs>
 <circle cx="64" cy="64" r="62" fill="#fff4e8"/><circle cx="64" cy="64" r="58" fill="url(#pbbg)"/>
 <g clip-path="url(#pbc)">

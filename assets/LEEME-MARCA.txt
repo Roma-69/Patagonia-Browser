@@ -1,0 +1,4 @@
+Los íconos y el fondo de esta carpeta (patagonia-mark.svg, patagonia-icon.png,
+patagonia-oficial.ico, patagonia-start-v3.svg) NO están bajo la licencia MIT.
+Son marca de Patagonia Browser. © 2026 Roma.69. Todos los derechos reservados.
+Ver MARCA.md en la raíz del repositorio.

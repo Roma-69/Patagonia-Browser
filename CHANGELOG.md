@@ -14,6 +14,7 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 - **Nuevo fondo de la página de inicio:** atardecer en la estepa con el árbol bandera, dibujado en vector (pesa unos KB en vez de los ~2 MB de la foto anterior). En el celular, versión vertical del mismo paisaje.
 - La página de inicio pasa de los tonos azules a los cálidos del atardecer (buscador, botón "Ir", accesos rápidos, barra inferior y diálogo).
 - Accesos rápidos de inicio en Windows: se reemplaza **GitHub** por **WhatsApp Web**.
+- El nombre y los íconos de Patagonia Browser quedan fuera de la licencia MIT y reservados al proyecto (ver `MARCA.md`). El código sigue siendo MIT.
 
 ## [1.0.6] - 2026-11-06
 

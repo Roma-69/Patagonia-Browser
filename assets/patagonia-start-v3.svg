@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 760" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+<!-- Patagonia Browser © 2026 Roma.69. Marca reservada: no incluida en la licencia MIT. Ver MARCA.md -->
 <defs><linearGradient id="Bsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2d5c"/><stop offset=".45" stop-color="#9c4a6e"/><stop offset=".75" stop-color="#ef7a4a"/><stop offset="1" stop-color="#ffc07a"/></linearGradient>
 <radialGradient id="Bsun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff1cf"/><stop offset=".4" stop-color="#ffd59a" stop-opacity=".9"/><stop offset="1" stop-color="#ffb36b" stop-opacity="0"/></radialGradient></defs>
 <rect width="1280" height="760" fill="url(#Bsky)"/>
