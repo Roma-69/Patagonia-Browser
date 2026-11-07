@@ -20,14 +20,14 @@ En PowerShell: `Get-FileHash .\Patagonia-Browser-Setup.exe -Algorithm SHA256`.
 
 ## Android
 
-- [Descargar Patagonia Browser para Android 1.1.0 (APK)](https://github.com/Roma-69/Patagonia-Browser/releases/download/movil-v1.1.0/Patagonia-Android-1.1.0-Publicacion.apk).
-- [Ver la publicación](https://github.com/Roma-69/Patagonia-Browser/releases/tag/movil-v1.1.0).
+- [Descargar Patagonia Browser para Android 1.1.1 (APK)](https://github.com/Roma-69/Patagonia-Browser/releases/download/movil-v1.1.1/Patagonia-Android-1.1.1-Publicacion.apk).
+- [Ver la publicación](https://github.com/Roma-69/Patagonia-Browser/releases/tag/movil-v1.1.1).
 
 Requiere Android 8 o posterior en un teléfono de 64 bits (arm64). Si ya tenés Patagonia Browser instalado, este APK lo actualiza y conserva tus favoritos. Para instalarlo, Android puede pedirte permiso para "instalar apps de esta fuente".
 
-SHA-256: `22bc9716829d06f5ec8a50cd54abd7919aff843355816e36aadaa22eff1aad28`
+SHA-256: `7184f6b9619f78e346af623b67be206009772cb03360d63bc08b537a2dc0be3c`
 
-En PowerShell: `Get-FileHash .\Patagonia-Android-1.1.0-Publicacion.apk -Algorithm SHA256`
+En PowerShell: `Get-FileHash .\Patagonia-Android-1.1.1-Publicacion.apk -Algorithm SHA256`
 
 ## Code signing policy
 
