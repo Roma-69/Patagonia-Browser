@@ -6,7 +6,7 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
-## [Sin publicar]
+## [1.0.7] y [Android 1.1.1] - 2026-11-07
 
 ### Cambiado
 

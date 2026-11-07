@@ -9,7 +9,7 @@ Guía paso a paso para generar los tres entregables desde este repositorio:
 Todos los comandos se escriben en **PowerShell**, parados en la carpeta del repositorio
 (`Patagonia-Browser-Git`), salvo que se indique otra cosa.
 
-> Versión actual: **1.0.6** en escritorio (`package.json`) y **1.0.5+8** en móvil
+> Versión actual: **1.0.7** en escritorio (`package.json`) y **1.1.1+10** en móvil
 > (`mobile/pubspec.yaml`). Si cambiás la versión, cambiala en los dos lugares.
 
 ---
@@ -109,7 +109,13 @@ publicar actualizaciones: los teléfonos tendrían que desinstalar e instalar de
 > **Nunca** crees una clave nueva, **nunca** subas `mobile\.signing\` ni `key.properties` a Git
 > y **nunca** pegues la contraseña en un chat, un issue o un commit.
 
-### Paso a paso
+### Opción fácil: doble clic
+
+Doble clic en `mobile\CREAR-APK-OFICIAL.cmd`. Te pide el alias y las dos contraseñas
+(copialas de Bitwarden; mientras escribís no se ven), arma el APK firmado con la clave original
+y borra el archivo temporal `key.properties` siempre, aunque falle.
+
+### Paso a paso (a mano)
 
 1. Abrí **Bitwarden** y buscá la entrada de la clave de Android de Patagonia
    (contraseña del almacén, contraseña de la clave y alias).
