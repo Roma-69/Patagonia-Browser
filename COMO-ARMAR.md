@@ -115,6 +115,10 @@ Doble clic en `mobile\CREAR-APK-OFICIAL.cmd`. Te pide el alias y las dos contras
 (copialas de Bitwarden; mientras escribís no se ven), arma el APK firmado con la clave original
 y borra el archivo temporal `key.properties` siempre, aunque falle.
 
+Si la clave está en otra carpeta, pasala como parámetro:
+`mobile\CREAR-APK-OFICIAL.cmd "C:\ruta\de\la\clave"`. Si junto al `.jks` están `password.txt` y
+`key-password.txt`, el script los usa sin pedirlos, y el alias lo detecta solo con `keytool`.
+
 ### Paso a paso (a mano)
 
 1. Abrí **Bitwarden** y buscá la entrada de la clave de Android de Patagonia
