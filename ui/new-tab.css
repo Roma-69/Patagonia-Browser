@@ -204,7 +204,7 @@ dialog input:focus-visible { outline: 2px solid #ffc07a; outline-offset: 2px; }
 .icono-youtube { border-radius: 13px; background: #ff1623; }
 .icono-youtube i { width: 0; height: 0; margin-left: 4px; border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 15px solid white; }
 .icono-whatsapp { background: #25d366; color: #ffffff; }
-.icono-reddit { background: #ff4f17; font-size: 20px; }
+.icono-windguru { background: #1e88d6; color: #ffffff; }
 .acceso-agregar .icono-acceso { color: #f1dccb; background: transparent; font-size: 42px; font-weight: 300; }
 
 .estado-inicio {
