@@ -6,6 +6,20 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
+## [1.0.9] - Sin publicar
+
+### Cambiado
+
+- **Motor actualizado:** Electron 45 con **Chromium 156** (antes Chromium 150). Trae muchos arreglos de seguridad y cumple el requisito de Microsoft Store de usar un Chromium como mucho 2 versiones atrás del último.
+
+### Agregado
+
+- **Versión para Microsoft Store (MSIX):** paquete con la identidad oficial de Partner Center (`Roma.69.PatagoniaBrowser`, editor `Roma.69`).
+  - Se registra como navegador desde el manifiesto (http, https, .htm, .html) y suma el alias `patagonia.exe`.
+  - En la Store, las actualizaciones las hace Windows: no corre Squirrel ni la actualización automática desde GitHub.
+  - "Crear app de esta página" usa el alias `patagonia.exe`, que no cambia entre versiones.
+  - El workflow "Windows - paquete para Microsoft Store (MSIX)" deja el `.msix` en un release borrador para subirlo a Partner Center.
+
 ## [1.0.8] - 2026-11-07
 
 ### Agregado

@@ -14,7 +14,9 @@ const {
 } = require("electron");
 
 const eventoInstalador = typeof process !== "undefined" ? (process.argv || [])[1] : undefined;
-if (typeof eventoInstalador === "string" && eventoInstalador.startsWith("--squirrel-") && process.platform === "win32") {
+// Versión de Microsoft Store (MSIX): la instala y actualiza Windows, no Squirrel.
+const esTienda = typeof process !== "undefined" && Boolean(process.windowsStore);
+if (!esTienda && typeof eventoInstalador === "string" && eventoInstalador.startsWith("--squirrel-") && process.platform === "win32") {
     // Registrar o quitar Patagonia de la lista de navegadores de Windows.
     require("./src/main/defaultBrowser").atenderEventoInstalador(
         process.argv,
@@ -22,7 +24,7 @@ if (typeof eventoInstalador === "string" && eventoInstalador.startsWith("--squir
     );
 }
 
-if (require("electron-squirrel-startup")) {
+if (!esTienda && require("electron-squirrel-startup")) {
     app.quit();
     return;
 }
@@ -120,7 +122,8 @@ const RUTA_NUEVA_PESTANA = path.join(__dirname, "ui", "new-tab.html");
 const URL_NUEVA_PESTANA = pathToFileURL(RUTA_NUEVA_PESTANA).href;
 const RUTA_ICONO = path.join(__dirname, "assets", "patagonia-oficial.ico");
 
-app.setAppUserModelId?.("com.squirrel.PatagoniaBrowser.PatagoniaBrowser");
+// En la Store, Windows usa la identidad del paquete MSIX.
+if (!esTienda) app.setAppUserModelId?.("com.squirrel.PatagoniaBrowser.PatagoniaBrowser");
 if (typeof app.userAgentFallback === "string") {
     app.userAgentFallback = require("./src/main/userAgent").limpiarUserAgent(app.userAgentFallback);
 }
@@ -947,7 +950,9 @@ ipcInterfaz.handle("crear-app-pagina", async () => {
             argumentosBase: app.isPackaged ? "" : `"${app.getAppPath()}"`,
             url,
             titulo: pestana.titulo,
-            icono
+            // En la Store los archivos de AppData quedan dentro del paquete y Windows no los ve:
+            // el acceso directo usa el ícono de Patagonia.
+            icono: esTienda ? undefined : icono
         });
         return { correcto: true, nombre };
     } catch (error) {
@@ -959,9 +964,12 @@ ipcInterfaz.handle("usar-como-predeterminado", async () => {
     try {
         if (process.platform !== "win32") throw new Error("Esta opción está disponible en Windows.");
         if (!app.isPackaged) throw new Error("Esta opción funciona en Patagonia instalado, no en modo desarrollo.");
-        await navegadorPredeterminado.ejecutarEnSegundoPlano(
-            navegadorPredeterminado.comandosRegistrar(ejecutableEstable(process.execPath))
-        );
+        // En la Store, Patagonia ya figura como navegador por su manifiesto MSIX.
+        if (!esTienda) {
+            await navegadorPredeterminado.ejecutarEnSegundoPlano(
+                navegadorPredeterminado.comandosRegistrar(ejecutableEstable(process.execPath))
+            );
+        }
         await navegadorPredeterminado.abrirConfiguracionWindows(shell);
         return { correcto: true };
     } catch (error) {
@@ -1268,7 +1276,7 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             });
             actualizador.iniciar();
         }
-        if (process.platform === "win32" && app.isPackaged) {
+        if (process.platform === "win32" && app.isPackaged && !esTienda) {
             // Mantiene el registro al día aunque cambie la carpeta de instalación.
             void navegadorPredeterminado.ejecutarEnSegundoPlano(
                 navegadorPredeterminado.comandosRegistrar(ejecutableEstable(process.execPath))

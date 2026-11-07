@@ -87,7 +87,13 @@ async function prepararIcono({ favicon, descargar, nativeImage, carpeta, url, ic
 
 // En las instalaciones de Squirrel, el ejecutable de la versión cambia con cada
 // actualización; el lanzador de la carpeta raíz es estable y reenvía los argumentos.
-function ejecutableEstable(execPath, existe = fsSync.existsSync) {
+function ejecutableEstable(execPath, existe = fsSync.existsSync, { tienda = process.windowsStore, localAppData = process.env.LOCALAPPDATA } = {}) {
+    // Versión de Microsoft Store: la carpeta cambia con cada actualización, así que los accesos
+    // directos usan el alias fijo "patagonia.exe" que declara el paquete MSIX.
+    if (tienda && localAppData) {
+        const alias = path.join(localAppData, "Microsoft", "WindowsApps", "patagonia.exe");
+        if (existe(alias)) return alias;
+    }
     const carpetaVersion = path.dirname(execPath);
     const raiz = path.dirname(carpetaVersion);
     const lanzador = path.join(raiz, path.basename(execPath));
