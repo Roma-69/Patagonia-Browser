@@ -16,6 +16,12 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 - Accesos rápidos de inicio en Windows: se reemplazan **GitHub** por **WhatsApp Web** y **Reddit** por **Windguru** (pronóstico de viento).
 - El nombre y los íconos de Patagonia Browser quedan fuera de la licencia MIT y reservados al proyecto (ver `MARCA.md`). El código sigue siendo MIT.
 
+### Corregido
+
+- **WhatsApp Web** ya no dice que el navegador es incompatible: Patagonia se presenta ante las páginas como Chrome estándar, sin la marca "Electron" (además expone menos datos del equipo).
+- Después de actualizar, Windows refresca solo la caché de íconos, así el acceso directo muestra el ícono nuevo sin tener que reiniciar.
+
+
 ## [1.0.6] - 2026-11-06
 
 ### Agregado
