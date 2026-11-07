@@ -6,6 +6,15 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
+## [Sin publicar]
+
+### Cambiado
+
+- **Nueva imagen "Árbol bandera":** ícono nuevo (el árbol de la estepa torcido por el viento, sobre un atardecer) en Windows (.exe, barra de tareas, accesos directos), Android e iPhone.
+- **Nuevo fondo de la página de inicio:** atardecer en la estepa con el árbol bandera, dibujado en vector (pesa unos KB en vez de los ~2 MB de la foto anterior). En el celular, versión vertical del mismo paisaje.
+- La página de inicio pasa de los tonos azules a los cálidos del atardecer (buscador, botón "Ir", accesos rápidos, barra inferior y diálogo).
+- Accesos rápidos de inicio en Windows: se reemplaza **GitHub** por **WhatsApp Web**.
+
 ## [1.0.6] - 2026-11-06
 
 ### Agregado
