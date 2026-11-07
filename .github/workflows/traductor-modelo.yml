@@ -1,0 +1,44 @@
+name: Traductor - bajar modelo inglés→español
+
+# Baja el modelo de traducción local de Firefox (mozilla/firefox-translations-models,
+# MPL-2.0) y lo guarda en assets/traductor/enes. Se ejecuta solo al subir este archivo
+# a la rama traductor/modelo.
+on:
+  push:
+    branches: [traductor/modelo]
+    paths: ['.github/workflows/traductor-modelo.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  bajar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Obtener el código
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Bajar el modelo en-es (base-memory)
+        env:
+          GIT_LFS_SKIP_SMUDGE: '1'
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/mozilla/firefox-translations-models /tmp/fxm
+          cd /tmp/fxm
+          git sparse-checkout set --no-cone '/models/base-memory/enes/*' '/LICENSE'
+          git lfs pull --include "models/base-memory/enes/*"
+          echo "COMMIT_MODELOS=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          ls -la models/base-memory/enes
+
+      - name: Guardar en assets/traductor/enes
+        run: |
+          mkdir -p assets/traductor/enes
+          cp /tmp/fxm/models/base-memory/enes/* assets/traductor/enes/
+          cp /tmp/fxm/LICENSE assets/traductor/LICENSE-modelos-MPL-2.0.txt
+          printf 'Modelo inglés→español de Firefox Translations (base-memory).\nOrigen: https://github.com/mozilla/firefox-translations-models (commit %s)\nLicencia: MPL-2.0 (ver LICENSE-modelos-MPL-2.0.txt)\n' "$COMMIT_MODELOS" > assets/traductor/ORIGEN.txt
+          sha256sum assets/traductor/enes/* | tee -a assets/traductor/ORIGEN.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/traductor
+          git commit -m "Traductor: modelo inglés→español de Firefox Translations"
+          git push
