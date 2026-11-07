@@ -4,7 +4,8 @@ const { incluirEnPaquete } = require("./scripts/package-files.cjs");
 module.exports = {
     outDir: "out-oficial",
     packagerConfig: {
-        asar: true,
+        // El hilo del traductor y sus modelos se abren desde fuera del .asar.
+        asar: { unpack: "{**/src/main/translator/bergamot/**,**/assets/traductor/**}" },
         executableName: "Patagonia Browser",
         icon: path.join(__dirname, "assets", "patagonia-oficial.ico"),
         download: {

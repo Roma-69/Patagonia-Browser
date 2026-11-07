@@ -45,3 +45,9 @@ Desinstalar el programa puede conservar el perfil del usuario. Para eliminarlo c
 Los reportes pueden enviarse por [GitHub Issues](https://github.com/Roma-69/Patagonia-Browser/issues). Ese espacio es público; no se deben publicar contraseñas, cookies ni historiales personales.
 
 Esta documentación describe el comportamiento del código disponible, no una auditoría independiente ni una garantía de anonimato.
+
+## Traductor de páginas
+
+La traducción de inglés a español se hace dentro de tu equipo, con el motor y el modelo de Firefox Translations que vienen con Patagonia: el texto de la página no sale de la computadora y no se necesita internet para traducir. Las opciones "Siempre traducir" y "Nunca en este sitio" se guardan solo en tu equipo.
+
+Si elegís **Usar Google (no privado)**, Patagonia abre la página a través de Google Translate: Google recibe la dirección de la página y su contenido. Esa opción se usa solo cuando la tocás.

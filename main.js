@@ -30,6 +30,7 @@ if (require("electron-squirrel-startup")) {
 const {
     ALTURA_BARRA,
     ALTURA_BUSQUEDA,
+    ALTURA_TRADUCCION,
     ANCHO_BARRA_LATERAL,
     PAGINA_INICIO
 } = require("./src/shared/constants");
@@ -53,6 +54,9 @@ const { registrarConfiguracion } = require("./src/main/settings");
 const { registrarInstanciaUnica, registrarCierre, cerrarContenido } = require("./src/main/lifecycle");
 const { registrarAperturas, PREFERENCIAS_WEB } = require("./src/main/newWindows");
 const { crearBusqueda } = require("./src/main/find");
+const { crearMotor: crearMotorTraductor, paresDisponibles } = require("./src/main/translator/motor");
+const { crearPreferencias: crearPreferenciasTraductor } = require("./src/main/translator/preferencias");
+const { crearGestorTraduccion } = require("./src/main/translator/gestor");
 const { registrarMenu } = require("./src/main/menu");
 const { registrarPermisos } = require("./src/main/permissions");
 const { crearPestanasCerradas } = require("./src/main/closedTabs");
@@ -132,6 +136,21 @@ const gestorBusqueda = crearBusqueda({
         ajustarVista();
         if (enfocar) ventanaPrincipal.webContents.focus();
         ventanaPrincipal.webContents.send("estado-busqueda", { ...estado, enfocar });
+    }
+});
+// Traductor de páginas: corre en este equipo con el motor de Firefox Translations.
+const paresTraductor = paresDisponibles();
+const motorTraductor = crearMotorTraductor();
+const preferenciasTraductor = crearPreferenciasTraductor(() => path.join(app.getPath("userData"), "traductor.json"));
+const gestorTraduccion = crearGestorTraduccion({
+    motor: motorTraductor,
+    preferencias: preferenciasTraductor,
+    pares: () => paresTraductor,
+    obtenerContenido: () => obtenerContenido(obtenerPestanaActiva()),
+    notificar: estado => {
+        if (!ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
+        ajustarVista();
+        ventanaPrincipal.webContents.send("estado-traduccion", estado);
     }
 });
 
@@ -249,7 +268,8 @@ function ajustarVista() {
     const anchoLateral = barraLateralAbierta
         ? ANCHO_BARRA_LATERAL
         : 0;
-    const alturaSuperior = ALTURA_BARRA + (gestorBusqueda.estado().abierta ? ALTURA_BUSQUEDA : 0);
+    const alturaSuperior = ALTURA_BARRA + (gestorBusqueda.estado().abierta ? ALTURA_BUSQUEDA : 0) +
+        (gestorTraduccion.visible() ? ALTURA_TRADUCCION : 0);
 
     pestanaActiva.vista.setBounds({
         x: 0,
@@ -429,7 +449,11 @@ function crearPestana(
             zoom.cambiarZoom(vista.webContents, direccion);
             if (pestana.id === idPestanaActiva) enviarZoom();
         },
-        imprimir: () => zoom.imprimir(vista.webContents)
+        imprimir: () => zoom.imprimir(vista.webContents),
+        traducir: () => {
+            if (pestana.id !== idPestanaActiva) return;
+            gestorTraduccion.abrir();
+        }
     });
     vista.webContents.on("zoom-changed", (_evento, sentido) => {
         zoom.cambiarZoom(vista.webContents, sentido === "in" ? 1 : -1);
@@ -437,6 +461,10 @@ function crearPestana(
     });
     observarVisitas(vista.webContents);
     gestorBusqueda.observar(vista.webContents);
+    vista.webContents.on("did-start-navigation", (_evento, _url, mismaPagina, principal) => {
+        if (principal && !mismaPagina) gestorTraduccion.navego(vista.webContents);
+    });
+    vista.webContents.on("did-finish-load", () => { gestorTraduccion.paginaLista(vista.webContents); });
     registrarAperturas({
         contenido: vista.webContents,
         crearVista: opciones => new WebContentsView(opciones),
@@ -445,6 +473,7 @@ function crearPestana(
     });
     vista.webContents.once("destroyed", () => {
         gestorProteccion?.olvidarPestana(idContenido);
+        gestorTraduccion.olvidar(idContenido);
         const recordar = cierresSolicitados.delete(id);
         if (!cerrandoVentana && ventanaPrincipal && !ventanaPrincipal.isDestroyed()) quitarPestana(id, recordar);
     });
@@ -576,6 +605,7 @@ function activarPestana(id) {
     idPestanaActiva = id;
     gestorPermisos?.cambiarPestana();
     gestorBusqueda.cambiarPestana();
+    gestorTraduccion.reenviar();
 
     ventanaPrincipal.contentView
         .addChildView(
@@ -699,6 +729,7 @@ function crearVentana() {
                 enviarEstadoProteccion();
                 enviarActualizacion();
                 gestorBusqueda.reenviar();
+                gestorTraduccion.reenviar();
                 return;
             }
             console.log(
@@ -944,6 +975,15 @@ ipcInterfaz.handle("reiniciar-para-actualizar", () => {
     return { correcto: true };
 });
 ipcInterfaz.on("abrir-busqueda", () => gestorBusqueda.abrir());
+ipcInterfaz.on("traduccion-traducir", () => { gestorTraduccion.traducir(); });
+ipcInterfaz.on("traduccion-original", () => { gestorTraduccion.mostrarOriginal(); });
+ipcInterfaz.on("traduccion-siempre", (_evento, activo) => { if (typeof activo === "boolean") gestorTraduccion.siempre(activo); });
+ipcInterfaz.on("traduccion-nunca", () => { gestorTraduccion.nunca(); });
+ipcInterfaz.on("traduccion-cerrar", () => gestorTraduccion.cerrar());
+ipcInterfaz.on("traduccion-google", () => {
+    const destino = gestorTraduccion.google();
+    if (destino) navegar(obtenerPestanaActiva(), destino);
+});
 ipcInterfaz.on("detener-carga", detenerCargaActiva);
 ipcInterfaz.on("buscar-en-pagina", (_evento, datos) => {
     if (!datos || typeof datos.texto !== "string" || typeof datos.adelante !== "boolean" || typeof datos.repetir !== "boolean") return;
@@ -1154,6 +1194,7 @@ process.on(
 if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) app.whenReady()
     .then(async () => {
         console.log("Electron listo.");
+        preferenciasTraductor.iniciar().catch(() => {});
         if (app.isPackaged) {
             require("./src/main/iconRefresh").refrescarIconosSiCambioVersion({
                 carpeta: app.getPath("userData"),
@@ -1247,12 +1288,13 @@ let esperandoSalida = false;
 app.on("will-quit", (evento) => {
     if (datosGuardadosAlSalir || !observarVisitas) {
         gestorProteccion?.cerrar();
+        motorTraductor.cerrar();
         return;
     }
     evento.preventDefault();
     if (esperandoSalida) return;
     esperandoSalida = true;
-    Promise.allSettled([observarVisitas.esperar(), gestorFavoritos?.esperar(), gestorSesion?.guardarAhora(), gestorConfiguracion?.esperar(), gestorProteccion?.esperar()]).finally(() => {
+    Promise.allSettled([observarVisitas.esperar(), gestorFavoritos?.esperar(), gestorSesion?.guardarAhora(), gestorConfiguracion?.esperar(), gestorProteccion?.esperar(), preferenciasTraductor.esperar()]).finally(() => {
         datosGuardadosAlSalir = true;
         app.quit();
     });

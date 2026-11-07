@@ -19,6 +19,7 @@ Para armar el instalador de Windows o los APK, seguí **[COMO-ARMAR.md](COMO-ARM
 |---|---|
 | Windows: navegación, pestañas, favoritos, historial, descargas, sesiones | ✅ Anda |
 | Windows: bloqueo de anuncios y rastreadores (motor Ghostery) | ✅ Anda |
+| Windows: traductor de páginas inglés→español, privado (motor de Firefox, en el equipo) | ✅ Anda (desde 1.0.8) |
 | Windows: instalador | ⚠️ Anda, pero **sin firma**: Windows avisa al instalarlo |
 | Android: navegación, pestañas, favoritos, historial, privacidad por sitio | ✅ Anda (pruebas automáticas y prueba en un Motorola) |
 | Android: bloqueo de anuncios en sitios comunes | ✅ Anda (uBlock Origin sobre el motor GeckoView) |
@@ -42,6 +43,7 @@ Para armar el instalador de Windows o los APK, seguí **[COMO-ARMAR.md](COMO-ARM
 - Guardado y restauración de las pestañas al iniciar.
 - Configuración de página de inicio y restauración al abrir.
 - Búsqueda dentro de la página con Ctrl+F, contador y recorrido de coincidencias.
+- Traductor de páginas inglés→español que corre en el equipo (motor Bergamot de Firefox Translations), con "Siempre traducir", "Nunca en este sitio", "Mostrar original" y la opción de usar Google para otros idiomas.
 - Menú en español y atajos para dirección, pestañas, recarga y navegación.
 - Recuperación de las últimas diez pestañas cerradas con Ctrl+Mayús+T o desde el menú Archivo.
 - Mensajes de error de carga y recuperación de pestañas bloqueadas con reintento.

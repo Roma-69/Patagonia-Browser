@@ -16,6 +16,8 @@ su propia licencia y sus avisos de copyright, que se detallan abajo.
 | [@mozilla/readability](https://github.com/mozilla/readability) | Apache-2.0 | Arc90 Inc. / Mozilla |
 | [jsdom](https://github.com/jsdom/jsdom) | MIT | Elijah Insua y colaboradores |
 | [electron-squirrel-startup](https://github.com/mongodb-js/electron-squirrel-startup) | Apache-2.0 | Lucas Hrabovsky |
+| [Bergamot translator](https://github.com/browsermt/bergamot-translator) 0.4.9 (copia en `src/main/translator/bergamot`, con cambios marcados para rutas de Windows) | MPL-2.0 | Proyecto Bergamot / Mozilla |
+| Modelo de traducción inglés→español de [Firefox Translations](https://github.com/mozilla/translations) (`assets/traductor`) | MPL-2.0 | Mozilla |
 
 ## Herramientas de desarrollo (no se distribuyen con la aplicación)
 
