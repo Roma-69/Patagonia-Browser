@@ -117,6 +117,9 @@ const URL_NUEVA_PESTANA = pathToFileURL(RUTA_NUEVA_PESTANA).href;
 const RUTA_ICONO = path.join(__dirname, "assets", "patagonia-oficial.ico");
 
 app.setAppUserModelId?.("com.squirrel.PatagoniaBrowser.PatagoniaBrowser");
+if (typeof app.userAgentFallback === "string") {
+    app.userAgentFallback = require("./src/main/userAgent").limpiarUserAgent(app.userAgentFallback);
+}
 if (typeof app.setPath === "function") {
     const perfilEstable = path.join(app.getPath("appData"), "patagonia-browser-main");
     fs.mkdirSync(perfilEstable, { recursive: true });
@@ -1151,6 +1154,12 @@ process.on(
 if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) app.whenReady()
     .then(async () => {
         console.log("Electron listo.");
+        if (app.isPackaged) {
+            require("./src/main/iconRefresh").refrescarIconosSiCambioVersion({
+                carpeta: app.getPath("userData"),
+                version: app.getVersion()
+            });
+        }
         gestorConfiguracion = registrarConfiguracion({
             ipcMain,
             archivo: path.join(app.getPath("userData"), "configuracion.json"),
