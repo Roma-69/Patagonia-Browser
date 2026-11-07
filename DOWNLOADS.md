@@ -4,17 +4,17 @@ Patagonia es un navegador de escritorio en desarrollo con navegación por pesta�
 
 ## Windows x64
 
-- [Descargar el instalador de Patagonia Browser 1.0.7](https://github.com/Roma-69/Patagonia-Browser/releases/download/v1.0.7/Patagonia-Browser-Setup.exe).
-- [Ver la publicación 1.0.7](https://github.com/Roma-69/Patagonia-Browser/releases/tag/v1.0.7).
+- [Descargar el instalador de Patagonia Browser 1.0.8](https://github.com/Roma-69/Patagonia-Browser/releases/download/v1.0.8/Patagonia-Browser-Setup.exe).
+- [Ver la publicación 1.0.8](https://github.com/Roma-69/Patagonia-Browser/releases/tag/v1.0.8).
 - [Consultar todas las versiones publicadas](https://github.com/Roma-69/Patagonia-Browser/releases).
 
-La versión 1.0.7 fue publicada el 7 de noviembre de 2026. El instalador actual está **sin firma de un proveedor reconocido** y Windows puede bloquear su ejecución.
+La versión 1.0.8 fue publicada el 7 de noviembre de 2026 e incluye el traductor de páginas privado (inglés→español). El instalador actual está **sin firma de un proveedor reconocido** y Windows puede bloquear su ejecución.
 
 **Desde la 1.0.6, Patagonia se actualiza solo.** Si tenés la 1.0.5 o anterior, instalá la última versión a mano una única vez; las siguientes llegan automáticamente.
 
-La publicación 1.0.7 incluye `Patagonia-Browser-Setup.exe` y, para la actualización automática, `RELEASES` y `PatagoniaBrowser-1.0.7-full.nupkg`. Para verificar el instalador, su huella SHA-256 es:
+La publicación 1.0.8 incluye `Patagonia-Browser-Setup.exe` y, para la actualización automática, `RELEASES` y `PatagoniaBrowser-1.0.8-full.nupkg`. Para verificar el instalador, su huella SHA-256 es:
 
-`74e778bf296f86356bb557e5f5ea32166eaad89f310444621d87b6a1179b3b54`
+`d3856598fdbf854f9c9b73ac6bfa601d93d5874a5040dea0dfe5f10894792a23`
 
 En PowerShell: `Get-FileHash .\Patagonia-Browser-Setup.exe -Algorithm SHA256`.
 
@@ -33,7 +33,7 @@ En PowerShell: `Get-FileHash .\Patagonia-Android-1.1.0-Publicacion.apk -Algorith
 
 La solicitud inicial a SignPath Foundation, enviada el 8 de septiembre de 2026, no fue aprobada por falta de suficientes señales públicas de adopción y colaboración, según el [issue #10](https://github.com/Roma-69/Patagonia-Browser/issues/10). Actualmente no existe un certificado activo ni un servicio de firma de SignPath para Patagonia Browser. No hay fechas ni aprobación futura garantizadas.
 
-El instalador de Windows 1.0.7 no está firmado por SignPath.
+El instalador de Windows 1.0.8 no está firmado por SignPath.
 
 La [Code signing policy](CODE_SIGNING.md) identifica al mantenedor, las responsabilidades de firma, el origen verificable de las compilaciones y las condiciones pendientes. La atribución del proveedor sólo correspondería si se obtuviera aprobación y el servicio estuviera activo.
 
