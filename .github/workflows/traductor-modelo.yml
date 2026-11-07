@@ -1,0 +1,44 @@
+name: Traductor - bajar modelo inglés→español
+
+# Baja el modelo de traducción local de Firefox (servicio oficial de modelos de
+# Firefox, MPL-2.0) y lo guarda en assets/traductor/enes. Se ejecuta solo al subir este archivo
+# a la rama traductor/modelo.
+on:
+  push:
+    branches: [traductor/modelo]
+    paths: ['.github/workflows/traductor-modelo.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  bajar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Obtener el código
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+
+      - name: Bajar el modelo en-es (servicio oficial de Firefox, verificado por hash)
+        run: |
+          npx --yes fxtranslate@0.5.0 models add en es --cache-dir /tmp/modelos
+          find /tmp/modelos -type f -not -name '.*' -exec ls -la {} \;
+
+      - name: Guardar en assets/traductor/enes
+        run: |
+          mkdir -p assets/traductor/enes
+          for f in $(find /tmp/modelos -type f -not -name '.*'); do gzip -9 -c "$f" > "assets/traductor/enes/$(basename "$f").gz"; done
+          printf 'Modelo inglés→español de Firefox Translations (Mozilla), bajado con fxtranslate 0.5.0 desde\nhttps://firefox.settings.services.mozilla.com (colección translations-models-v2), verificado por hash.\nLicencia: MPL-2.0 — https://www.mozilla.org/MPL/2.0/\n\nSHA-256 (archivos sin comprimir):\n' > assets/traductor/ORIGEN.txt
+          (cd /tmp/modelos && find . -type f -not -name '.*' -exec sha256sum {} \;) >> assets/traductor/ORIGEN.txt
+          cat assets/traductor/ORIGEN.txt
+          ls -la assets/traductor/enes
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/traductor
+          git commit -m "Traductor: modelo inglés→español de Firefox Translations"
+          git push

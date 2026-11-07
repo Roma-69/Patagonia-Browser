@@ -6,6 +6,19 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
+## [1.0.8] - 2026-11-07
+
+### Agregado
+
+- **Traductor de páginas privado:** cuando una página está en inglés aparece una barra arriba: **"Esta página está en inglés. Traducir al español"**. La traducción se hace **en tu equipo**, con el mismo motor de Firefox (Bergamot) y el modelo inglés→español de Mozilla: no se manda nada a internet.
+  - **Siempre traducir inglés** (traduce sola al abrir) y **Nunca en este sitio**.
+  - **Mostrar original** vuelve la página a como estaba.
+  - Traduce primero lo que estás viendo y después el resto; lo que la página carga después (al bajar o tocar botones) también se traduce.
+  - No toca código, campos de texto ni lo que la página marca como "no traducir".
+  - Clic derecho → **Traducir página al español**, por si la barra no apareció.
+  - Para otros idiomas (portugués, francés, alemán…) por ahora ofrece **Usar Google**, avisando que no es privado.
+- El navegador pesa unos 30 MB más por el motor y el modelo de traducción.
+
 ## [1.0.7] y [Android 1.1.1] - 2026-11-07
 
 ### Cambiado

@@ -1,0 +1,8 @@
+Modelo inglés→español de Firefox Translations (Mozilla), bajado con fxtranslate 0.5.0 desde
+https://firefox.settings.services.mozilla.com (colección translations-models-v2), verificado por hash.
+Licencia: MPL-2.0 — https://www.mozilla.org/MPL/2.0/
+
+SHA-256 (archivos sin comprimir):
+3b1c399511c01c84c36fae5c0524df44096288efdc8236e182b5c97d7ad2244c  ./en-es/model.enes.intgemm.alphas.bin
+5ae254fa9b15aa182e70fd2a6186b1333c63a29a48043a9224c6aa4fcac058ad  ./en-es/vocab.enes.spm
+7d51237c0a07027dcd61643cfbbb0f8c48597d19907ef53d2cae9d6bec2cf25c  ./en-es/lex.50.50.enes.s2t.bin

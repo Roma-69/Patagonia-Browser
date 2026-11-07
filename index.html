@@ -776,6 +776,17 @@ button{
     <button id="cerrarBusqueda" type="button" title="Cerrar búsqueda (Escape)" aria-label="Cerrar búsqueda">×</button>
 </section>
 
+<section id="barraTraduccion" hidden aria-label="Traducir página">
+    <span class="traduccion-icono" aria-hidden="true">文A</span>
+    <span id="textoTraduccion" role="status" aria-live="polite"></span>
+    <button id="botonTraducir" type="button" class="traduccion-principal">Traducir al español</button>
+    <button id="botonOriginal" type="button">Mostrar original</button>
+    <label id="opcionSiempre" class="traduccion-casilla"><input id="casillaSiempre" type="checkbox"> <span id="textoSiempre">Siempre traducir</span></label>
+    <button id="botonNunca" type="button">Nunca en este sitio</button>
+    <button id="botonGoogle" type="button" title="Envía la dirección de la página a Google para traducirla">Usar Google (no privado)</button>
+    <button id="cerrarTraduccion" type="button" class="traduccion-cerrar" title="Cerrar" aria-label="Cerrar barra de traducción">×</button>
+</section>
+
 <aside id="sidebar" class="sidebar">
 
     <header class="sidebar-header">
@@ -1150,10 +1161,24 @@ button{
     #barraBusqueda button { width:30px; height:30px; background:#35435b; color:#fff; border:0; border-radius:5px; cursor:pointer; }
     #barraBusqueda button:disabled { opacity:.4; cursor:default; }
     #barraBusqueda :focus-visible { outline:2px solid #8faaff; outline-offset:2px; }
-    #sidebar, #errorCarga { top:calc(108px + var(--alto-busqueda, 0px)); }
+    #sidebar, #errorCarga { top:calc(108px + var(--alto-busqueda, 0px) + var(--alto-traduccion, 0px)); }
+    #barraTraduccion { position:absolute; top:calc(108px + var(--alto-busqueda, 0px)); left:0; right:0; height:44px; display:flex;
+        align-items:center; gap:10px; padding:5px 14px; font-size:13px; color:#eef7fc; background:rgba(8, 31, 49, .98);
+        border-bottom:1px solid rgba(109, 172, 214, .25); }
+    #barraTraduccion[hidden] { display:none; }
+    #barraTraduccion [hidden] { display:none; }
+    #textoTraduccion { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .traduccion-icono { font-weight:700; color:#ffc07a; letter-spacing:-1px; }
+    #barraTraduccion button { height:30px; padding:0 12px; background:#1d3b55; color:#fff; border:0; border-radius:6px; cursor:pointer; font:inherit; white-space:nowrap; }
+    #barraTraduccion button:hover { background:#27506f; }
+    #barraTraduccion .traduccion-principal { background:linear-gradient(135deg, #ffc07a, #f08a4b); color:#2a1216; font-weight:700; }
+    #barraTraduccion .traduccion-cerrar { width:30px; padding:0; font-size:18px; background:transparent; }
+    .traduccion-casilla { display:flex; align-items:center; gap:6px; white-space:nowrap; cursor:pointer; }
+    #barraTraduccion :focus-visible { outline:2px solid #ffc07a; outline-offset:2px; }
 </style>
 <link rel="stylesheet" href="ui/browser-v2.css">
 <script src="ui/modules/find.js"></script>
+<script src="ui/modules/translate.js"></script>
 <script src="ui/modules/settings.js"></script>
 <script src="ui/modules/sessions.js"></script>
 <script src="ui/modules/downloads.js"></script>

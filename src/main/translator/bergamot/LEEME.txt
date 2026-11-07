@@ -1,0 +1,9 @@
+Motor de traducción Bergamot (el mismo de Firefox Translations), copiado del paquete
+npm @browsermt/bergamot-translator 0.4.9 (carpeta worker/).
+Origen: https://github.com/browsermt/bergamot-translator — Licencia: MPL-2.0
+(https://www.mozilla.org/MPL/2.0/).
+
+Cambios hechos por Patagonia Browser en translator-worker.js (marcados con "Patagonia:"):
+- location y fetch de archivos locales usan pathToFileURL/fileURLToPath para que
+  funcionen con rutas de Windows.
+El resto de los archivos no se modificó.
