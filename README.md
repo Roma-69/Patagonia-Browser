@@ -129,4 +129,6 @@ Ver [CONTRIBUTING.md](CONTRIBUTING.md). Las correcciones deben incluir las compr
 
 ## Licencia
 
-[MIT](LICENSE). Excepción: `mobile/vendor/flutter_inappwebview_android` es una copia modificada de un plugin de terceros y conserva su propia licencia (Apache 2.0, ver su archivo `LICENSE`).
+El código es [MIT](LICENSE). **El nombre y los íconos de Patagonia Browser no están incluidos en la licencia MIT**: son de uso exclusivo del proyecto (ver [MARCA.md](MARCA.md)).
+
+Otra excepción: `mobile/vendor/flutter_inappwebview_android` es una copia modificada de un plugin de terceros y conserva su propia licencia (Apache 2.0, ver su archivo `LICENSE`).

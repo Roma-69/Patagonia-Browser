@@ -2373,7 +2373,7 @@ class _StartPage extends StatelessWidget {
       child: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0x66000000), Color(0xB3071827)],
+            colors: [Color(0x66000000), Color(0xB32A1216)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
