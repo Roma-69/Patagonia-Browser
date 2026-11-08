@@ -67,6 +67,10 @@ class GeckoPlatformView(
     init {
         // TextureView: es el modo que anduvo bien en la prueba de fuego del Motorola.
         geckoView.setViewBackend(GeckoView.BACKEND_TEXTURE_VIEW)
+        // Lector de pantalla (TalkBack): la página tiene que poder recibir el foco de accesibilidad.
+        geckoView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        geckoView.isFocusable = true
+        geckoView.isFocusableInTouchMode = true
         channel.setMethodCallHandler(this)
 
         val runtime = GeckoEngine.runtime(context)

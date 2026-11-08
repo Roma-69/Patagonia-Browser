@@ -242,9 +242,17 @@ class GeckoBrowserView extends StatelessWidget {
   final GeckoEvents events;
   final void Function(GeckoController controller) onCreated;
 
+  /// Con TalkBack (u otro lector de pantalla) la página va como vista nativa de Android
+  /// ("hybrid composition"): así el lector recorre textos, links y botones de la página.
+  /// Sin lector se usa la composición por textura, más liviana.
+  static bool usarVistaNativa(MediaQueryData? media) => media?.accessibleNavigation ?? false;
+
   @override
   Widget build(BuildContext context) {
+    final nativa = usarVistaNativa(MediaQuery.maybeOf(context));
     return PlatformViewLink(
+      // Si se prende o apaga el lector, se vuelve a crear la vista en el modo que corresponde.
+      key: ValueKey<bool>(nativa),
       viewType: viewType,
       surfaceFactory: (context, controller) => AndroidViewSurface(
         controller: controller as AndroidViewController,
@@ -255,7 +263,10 @@ class GeckoBrowserView extends StatelessWidget {
         hitTestBehavior: PlatformViewHitTestBehavior.opaque,
       ),
       onCreatePlatformView: (params) {
-        final controller = PlatformViewsService.initSurfaceAndroidView(
+        final crear = nativa
+            ? PlatformViewsService.initExpensiveAndroidView
+            : PlatformViewsService.initSurfaceAndroidView;
+        final controller = crear(
           id: params.id,
           viewType: viewType,
           layoutDirection: TextDirection.ltr,

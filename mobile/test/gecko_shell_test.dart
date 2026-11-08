@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:patagonia_browser/main.dart';
 import 'package:patagonia_browser/src/browser_shell.dart';
+import 'package:patagonia_browser/src/gecko/gecko_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Simula las vistas nativas GeckoView (GeckoPlatformView.kt) para probar la interfaz
@@ -427,5 +428,11 @@ void main() {
     await gecko.emit(tester, id, 'download', {'status': 'done', 'name': 'boleta.pdf'});
     await tester.pump();
     expect(find.text('Descarga lista: boleta.pdf (carpeta Descargas).'), findsOneWidget);
+  });
+
+  test('con TalkBack la página usa vista nativa para que el lector la pueda recorrer', () {
+    expect(GeckoBrowserView.usarVistaNativa(const MediaQueryData(accessibleNavigation: true)), isTrue);
+    expect(GeckoBrowserView.usarVistaNativa(const MediaQueryData()), isFalse);
+    expect(GeckoBrowserView.usarVistaNativa(null), isFalse);
   });
 }
