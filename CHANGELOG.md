@@ -6,6 +6,12 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
+## [Android 1.1.2] - Sin publicar
+
+### Corregido
+
+- **TalkBack (lector de pantalla):** cuando está prendido, la página se muestra como vista nativa de Android para que el lector pueda recorrer textos, links y botones de las páginas. Sin lector se sigue usando el modo por textura, más liviano.
+
 ## [1.0.9] - Sin publicar
 
 ### Cambiado
