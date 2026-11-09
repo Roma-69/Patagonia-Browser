@@ -1010,6 +1010,38 @@ button{
             <button id="guardarSesion" class="historial-accion">Guardar ahora</button>
         </section>
 
+        <button id="abrirAudio" class="sidebar-item" aria-expanded="false" aria-controls="panelAudio">
+
+            <span class="sidebar-icono">
+                🎚
+            </span>
+
+            <span>
+                Audio Patagonia
+            </span>
+
+        </button>
+
+        <section id="panelAudio" hidden aria-label="Audio Patagonia">
+            <label class="audio-interruptor">
+                <input id="audioActivo" type="checkbox">
+                <span>Activar ecualizador</span>
+            </label>
+            <p>Ajusta cómo suena YouTube y la mayoría de las páginas. No sube la calidad del archivo que manda el sitio: cambia cómo lo escuchás.</p>
+            <label for="audioPreset">Estilo</label>
+            <select id="audioPreset"></select>
+            <div id="audioBandas" role="group" aria-label="Ecualizador de 10 bandas"></div>
+            <label for="audioVolumen">Refuerzo de volumen <output id="audioVolumenValor" for="audioVolumen">100%</output></label>
+            <input id="audioVolumen" type="range" min="100" max="200" step="5" value="100">
+            <label class="audio-interruptor">
+                <input id="audioNormalizar" type="checkbox">
+                <span>Normalizar volumen</span>
+            </label>
+            <p>Empareja lo fuerte y lo bajo, para que no te reviente el oído al cambiar de video. Para escuchar música con todo su golpe, dejalo apagado.</p>
+            <button id="audioRestablecer" class="historial-accion" type="button">Volver a plano</button>
+            <p id="estadoAudio" role="status" aria-live="polite"></p>
+        </section>
+
         <section id="panelConfiguracion" hidden aria-labelledby="tituloConfiguracion">
             <h2 id="tituloConfiguracion">Configuración</h2>
             <form id="formularioConfiguracion">
@@ -1177,6 +1209,20 @@ button{
     #barraTraduccion :focus-visible { outline:2px solid #ffc07a; outline-offset:2px; }
 </style>
 <link rel="stylesheet" href="ui/browser-v2.css">
+<style>
+    #panelAudio { padding:4px 8px 16px; }
+    #panelAudio p { color:#c4cbd8; font-size:12px; line-height:1.5; margin:8px 0; }
+    #panelAudio label { display:block; font-size:13px; margin:12px 0 6px; color:#e8ebf0; }
+    #panelAudio .audio-interruptor { display:flex; align-items:center; gap:8px; font-size:14px; }
+    #panelAudio input[type="range"] { width:100%; accent-color:#ff9d5c; }
+    #audioPreset { width:100%; padding:8px; color:#fff; background:#151a23; border:1px solid #59657c; border-radius:6px; }
+    #audioBandas { display:grid; grid-template-columns:42px 1fr 52px; align-items:center; gap:2px 8px; margin:10px 0; }
+    #audioBandas span { font-size:12px; color:#aab4c6; }
+    #audioBandas output { font-size:12px; color:#e8ebf0; text-align:right; }
+    #panelAudio.apagado #audioBandas, #panelAudio.apagado #audioVolumen { opacity:.45; }
+    #audioVolumenValor { float:right; color:#ffd2ad; }
+    #panelAudio input:focus-visible, #panelAudio select:focus-visible { outline:2px solid #8faaff; outline-offset:2px; }
+</style>
 <script src="ui/modules/find.js"></script>
 <script src="ui/modules/translate.js"></script>
 <script src="ui/modules/settings.js"></script>
@@ -1186,6 +1232,7 @@ button{
 <script src="ui/modules/bookmarks.js"></script>
 <script src="ui/modules/webApps.js"></script>
 <script src="ui/modules/zoom.js"></script>
+<script src="ui/modules/audio.js"></script>
 <script src="ui/modules/updates.js"></script>
 <script src="ui/modules/assistant.js"></script>
 <script src="renderer.js"></script>
