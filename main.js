@@ -59,6 +59,8 @@ const { crearBusqueda } = require("./src/main/find");
 const { crearMotor: crearMotorTraductor, paresDisponibles } = require("./src/main/translator/motor");
 const { crearPreferencias: crearPreferenciasTraductor } = require("./src/main/translator/preferencias");
 const { crearGestorTraduccion } = require("./src/main/translator/gestor");
+const { crearAjustesAudio, listaPresets: presetsAudio, FRECUENCIAS: FRECUENCIAS_AUDIO } = require("./src/main/audio/ajustes");
+const { crearGestorAudio } = require("./src/main/audio/gestor");
 const { registrarMenu } = require("./src/main/menu");
 const { registrarPermisos } = require("./src/main/permissions");
 const { crearPestanasCerradas } = require("./src/main/closedTabs");
@@ -155,6 +157,13 @@ const gestorTraduccion = crearGestorTraduccion({
         ajustarVista();
         ventanaPrincipal.webContents.send("estado-traduccion", estado);
     }
+});
+
+// Audio Patagonia: ecualizador, refuerzo de volumen y normalización, en este equipo.
+const ajustesAudio = crearAjustesAudio(() => path.join(app.getPath("userData"), "audio.json"));
+const gestorAudio = crearGestorAudio({
+    ajustes: ajustesAudio,
+    contenidos: () => pestanas.map(pestana => obtenerContenido(pestana)).filter(Boolean)
 });
 
 function paginaInicio() {
@@ -468,6 +477,7 @@ function crearPestana(
         if (principal && !mismaPagina) gestorTraduccion.navego(vista.webContents);
     });
     vista.webContents.on("did-finish-load", () => { gestorTraduccion.paginaLista(vista.webContents); });
+    vista.webContents.on("dom-ready", () => { gestorAudio.paginaLista(vista.webContents); });
     registrarAperturas({
         contenido: vista.webContents,
         crearVista: opciones => new WebContentsView(opciones),
@@ -799,7 +809,8 @@ function crearVentana() {
             recordarSesion();
             const resultados = await Promise.allSettled([
                 gestorSesion.guardarAhora(), gestorFavoritos.esperar(),
-                observarVisitas.esperar(), gestorConfiguracion.esperar(), gestorProteccion?.esperar()
+                observarVisitas.esperar(), gestorConfiguracion.esperar(), gestorProteccion?.esperar(),
+                ajustesAudio.esperar()
             ]);
             const fallo = resultados.find(resultado => resultado.status === "rejected");
             if (fallo) throw fallo.reason;
@@ -988,6 +999,10 @@ ipcInterfaz.on("traduccion-original", () => { gestorTraduccion.mostrarOriginal()
 ipcInterfaz.on("traduccion-siempre", (_evento, activo) => { if (typeof activo === "boolean") gestorTraduccion.siempre(activo); });
 ipcInterfaz.on("traduccion-nunca", () => { gestorTraduccion.nunca(); });
 ipcInterfaz.on("traduccion-cerrar", () => gestorTraduccion.cerrar());
+ipcInterfaz.handle("obtener-audio", () => ({
+    correcto: true, audio: gestorAudio.estado(), presets: presetsAudio(), frecuencias: [...FRECUENCIAS_AUDIO]
+}));
+ipcInterfaz.handle("guardar-audio", (_evento, datos) => ({ correcto: true, audio: gestorAudio.cambiar(datos) }));
 ipcInterfaz.on("traduccion-google", () => {
     const destino = gestorTraduccion.google();
     if (destino) navegar(obtenerPestanaActiva(), destino);
@@ -1203,6 +1218,7 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
     .then(async () => {
         console.log("Electron listo.");
         preferenciasTraductor.iniciar().catch(() => {});
+        ajustesAudio.iniciar().then(() => gestorAudio.aplicarTodas()).catch(() => {});
         if (app.isPackaged) {
             require("./src/main/iconRefresh").refrescarIconosSiCambioVersion({
                 carpeta: app.getPath("userData"),
@@ -1302,7 +1318,7 @@ app.on("will-quit", (evento) => {
     evento.preventDefault();
     if (esperandoSalida) return;
     esperandoSalida = true;
-    Promise.allSettled([observarVisitas.esperar(), gestorFavoritos?.esperar(), gestorSesion?.guardarAhora(), gestorConfiguracion?.esperar(), gestorProteccion?.esperar(), preferenciasTraductor.esperar()]).finally(() => {
+    Promise.allSettled([observarVisitas.esperar(), gestorFavoritos?.esperar(), gestorSesion?.guardarAhora(), gestorConfiguracion?.esperar(), gestorProteccion?.esperar(), preferenciasTraductor.esperar(), ajustesAudio.esperar()]).finally(() => {
         datosGuardadosAlSalir = true;
         app.quit();
     });
