@@ -1235,6 +1235,11 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             esPestanaPropia: contenido => pestanas.some(pestana => pestana.vista.webContents === contenido),
             esPestanaActiva: contenido => obtenerPestanaActiva()?.vista.webContents === contenido
         });
+        require("./src/main/googleLogin").instalarLoginGoogle({
+            app,
+            sesion: session.defaultSession,
+            userAgentNormal: () => app.userAgentFallback
+        });
         gestorProteccion = crearProteccion({
             sesion: session.defaultSession,
             directorioDatos: app.getPath("userData"),
