@@ -250,6 +250,7 @@ for (const restaurar of [true, false]) test(`main startup respects restore=${res
         if (nombre.endsWith("/sessions")) return { registrarSesiones, crearInstantanea };
         if (nombre.endsWith("/settings")) return require("../src/main/settings");
         if (nombre.endsWith("/googleLogin")) return require("../src/main/googleLogin");
+        if (nombre.endsWith("/modoChicos")) return require("../src/main/modoChicos");
         if (nombre.endsWith("/security")) return require("../src/main/security");
         if (nombre.endsWith("/shortcuts")) return require("../src/main/shortcuts");
         if (nombre.endsWith("/lifecycle")) return require("../src/main/lifecycle");
