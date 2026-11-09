@@ -98,6 +98,14 @@ try {
             @{ Archivo = "Square150x150Logo.png"; Ancho = 150; Alto = 150; Icono = 120 },
             @{ Archivo = "Square310x310Logo.png"; Ancho = 310; Alto = 310; Icono = 240 },
             @{ Archivo = "Wide310x150Logo.png"; Ancho = 310; Alto = 150; Icono = 120 }
+        ) + @(
+            # Versiones "unplated": sin ellas Windows dibuja el icono de la barra de
+            # tareas y del menú Inicio sobre un cuadrado del color de acento (azul).
+            foreach ($t in 16, 24, 32, 48, 256) {
+                foreach ($variante in "altform-unplated", "altform-lightunplated") {
+                    @{ Archivo = "Square44x44Logo.targetsize-${t}_$variante.png"; Ancho = $t; Alto = $t; Icono = $t }
+                }
+            }
         )) {
             $anchoLienzo = [int]$item.Ancho
             $altoLienzo = [int]$item.Alto
@@ -128,6 +136,18 @@ try {
     $manifest = Join-Path $stage "AppxManifest.xml"
     & node.exe (Join-Path $raiz "scripts\msix-manifest.cjs") $manifest $identidad $editor $editorVisible
     if ($LASTEXITCODE -ne 0) { throw "No se pudo generar el manifest MSIX." }
+
+    # resources.pri le dice a Windows que existen los iconos "unplated";
+    # sin este archivo los ignora y vuelve a poner el fondo azul.
+    $makePri = Join-Path (Split-Path -Parent $makeAppx) "makepri.exe"
+    if (-not (Test-Path -LiteralPath $makePri -PathType Leaf)) {
+        throw "Falta makepri.exe de Windows SDK (deberia estar al lado de makeappx.exe)."
+    }
+    $priConfig = Join-Path $raiz "dist\priconfig.xml"
+    & $makePri createconfig /cf $priConfig /dq es-AR_en-US /pv 10.0.0 /o
+    if ($LASTEXITCODE -ne 0) { throw "makepri no pudo crear la configuracion." }
+    & $makePri new /pr $stage /cf $priConfig /mn $manifest /of (Join-Path $stage "resources.pri") /o
+    if ($LASTEXITCODE -ne 0) { throw "makepri no pudo generar resources.pri." }
 
     $sufijo = if ($Test) { "TEST-UNSIGNED" } else { "STORE-UNSIGNED" }
     $nombre = "Patagonia-Browser-$($paquete.version)-Windows-x64-$sufijo.msix"
