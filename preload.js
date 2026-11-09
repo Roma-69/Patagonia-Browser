@@ -68,6 +68,12 @@ contextBridge.exposeInMainWorld("patagonia", {
     cerrarPestana: (id) =>
         ipcRenderer.send("cerrar-pestana", id),
 
+    separarPestana: (id, posicion) =>
+        ipcRenderer.send("separar-pestana", id, posicion),
+
+    menuPestana: (id) =>
+        ipcRenderer.send("menu-pestana", id),
+
     alternarBarraLateral: () =>
         ipcRenderer.send("alternar-barra-lateral"),
 

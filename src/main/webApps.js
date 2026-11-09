@@ -120,10 +120,11 @@ async function crearAccesoDirecto({ shell, escritorio, ejecutable, argumentosBas
     return { nombre, ruta };
 }
 
-function crearVentanaApp({ BrowserWindow, url, icono, preferencias, abrirEnNavegador }) {
+function crearVentanaApp({ BrowserWindow, url, icono, preferencias, abrirEnNavegador, soloMismoSitio = true, limites }) {
     const ventana = new BrowserWindow({
-        width: 1200,
-        height: 800,
+        width: limites?.width || 1200,
+        height: limites?.height || 800,
+        ...(limites && Number.isFinite(limites.x) ? { x: limites.x, y: limites.y } : {}),
         minWidth: 400,
         minHeight: 300,
         show: false,
@@ -145,6 +146,8 @@ function crearVentanaApp({ BrowserWindow, url, icono, preferencias, abrirEnNaveg
     });
     contenido.on("will-navigate", (evento, destino) => {
         if (!urlAppValida(destino)) { evento.preventDefault(); return; }
+        // Una pestaña separada navega libre, como en el navegador.
+        if (!soloMismoSitio) return;
         try {
             if (new URL(destino).origin !== origen) {
                 evento.preventDefault();

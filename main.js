@@ -632,6 +632,34 @@ function cerrarPestana(id) {
         .then(cerrada => { if (!cerrada) cierresSolicitados.delete(id); });
 }
 
+// Separa una pestaña en su propia ventana (arrastrándola fuera o con clic derecho).
+// La sesión es la misma, así que sigue logueada; la pestaña original se cierra.
+function separarPestana(id, posicion) {
+    const pestana = pestanas.find(elemento => elemento.id === id);
+    if (!pestana || cerrandoVentana || !ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
+    const url = urlAppValida(obtenerContenido(pestana)?.getURL());
+    if (!url) return;
+    const [ancho, alto] = ventanaPrincipal.getSize();
+    const limites = { width: Math.max(800, Math.round(ancho * 0.8)), height: Math.max(600, Math.round(alto * 0.8)) };
+    if (posicion && Number.isFinite(posicion.x) && Number.isFinite(posicion.y)) {
+        limites.x = Math.round(posicion.x - 120);
+        limites.y = Math.round(posicion.y - 20);
+    }
+    abrirVentanaApp(url, { soloMismoSitio: false, limites });
+    cerrarPestana(id);
+}
+
+function mostrarMenuPestana(id) {
+    const pestana = pestanas.find(elemento => elemento.id === id);
+    if (!pestana || !ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
+    const separable = Boolean(urlAppValida(obtenerContenido(pestana)?.getURL()));
+    Menu.buildFromTemplate([
+        { label: "Mover a ventana nueva", enabled: separable, click: () => separarPestana(id) },
+        { type: "separator" },
+        { label: "Cerrar pestaña", click: () => cerrarPestana(id) }
+    ]).popup({ window: ventanaPrincipal });
+}
+
 function reabrirUltimaPestana() {
     if (cerrandoVentana || !ventanaPrincipal || ventanaPrincipal.isDestroyed()) return false;
     const cerrada = pestañasCerradas.recuperar();
@@ -871,13 +899,15 @@ function abrirEnNavegador(url) {
     abrirPrincipal();
 }
 
-function abrirVentanaApp(url) {
+function abrirVentanaApp(url, { soloMismoSitio = true, limites } = {}) {
     const ventana = crearVentanaApp({
         BrowserWindow,
         url,
         icono: RUTA_ICONO,
         preferencias: PREFERENCIAS_WEB,
-        abrirEnNavegador
+        abrirEnNavegador,
+        soloMismoSitio,
+        limites
     });
     registrarMenuContextual({
         contenido: ventana.webContents,
@@ -1026,6 +1056,14 @@ ipcInterfaz.on(
         );
     }
 );
+
+ipcInterfaz.on("separar-pestana", (_evento, id, posicion) => {
+    const punto = posicion && typeof posicion === "object"
+        ? { x: Number(posicion.x), y: Number(posicion.y) }
+        : null;
+    separarPestana(Number(id), punto);
+});
+ipcInterfaz.on("menu-pestana", (_evento, id) => mostrarMenuPestana(Number(id)));
 
 ipcInterfaz.on(
     "navegar",

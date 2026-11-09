@@ -166,6 +166,23 @@ function crearElementoPestana(pestana) {
     elemento.append(seleccionar, cerrar);
     seleccionar.addEventListener("click", () => window.patagonia.activarPestana(pestana.id));
     cerrar.addEventListener("click", () => window.patagonia.cerrarPestana(pestana.id));
+    // Arrastrar la pestaña fuera de la barra la separa en una ventana nueva.
+    elemento.draggable = true;
+    elemento.addEventListener("dragstart", evento => {
+        evento.dataTransfer.effectAllowed = "move";
+        evento.dataTransfer.setData("application/x-patagonia-pestana", String(pestana.id));
+    });
+    elemento.addEventListener("dragend", evento => {
+        const barra = contenedorPestanas.getBoundingClientRect();
+        const margen = 40;
+        const fuera = evento.clientY > barra.bottom + margen || evento.clientY < barra.top - margen ||
+            evento.clientX < -margen || evento.clientX > window.innerWidth + margen;
+        if (fuera) window.patagonia.separarPestana(pestana.id, { x: evento.screenX, y: evento.screenY });
+    });
+    elemento.addEventListener("contextmenu", evento => {
+        evento.preventDefault();
+        window.patagonia.menuPestana(pestana.id);
+    });
     return { elemento, seleccionar, titulo, cerrar, icono: null, estadoIcono: "" };
 }
 
