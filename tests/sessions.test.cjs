@@ -178,7 +178,8 @@ for (const restaurar of [true, false]) test(`main startup respects restore=${res
     const Menu = { buildFromTemplate: datos => datos, setApplicationMenu() {} };
     const sesionElectron = {
         setPermissionCheckHandler(fn) { this.comprobarPermiso = fn; },
-        setPermissionRequestHandler(fn) { this.solicitarPermiso = fn; }
+        setPermissionRequestHandler(fn) { this.solicitarPermiso = fn; },
+        webRequest: { onBeforeSendHeaders(fn) { sesionElectron.ajustarCabeceras = fn; } }
     };
     const preguntasPermisos = [];
     const dialog = { showMessageBox: (_ventana, opciones) => new Promise(resolve => {
@@ -248,6 +249,8 @@ for (const restaurar of [true, false]) test(`main startup respects restore=${res
         if (nombre === "node:url") return require("node:url");
         if (nombre.endsWith("/sessions")) return { registrarSesiones, crearInstantanea };
         if (nombre.endsWith("/settings")) return require("../src/main/settings");
+        if (nombre.endsWith("/googleLogin")) return require("../src/main/googleLogin");
+        if (nombre.endsWith("/modoChicos")) return require("../src/main/modoChicos");
         if (nombre.endsWith("/security")) return require("../src/main/security");
         if (nombre.endsWith("/shortcuts")) return require("../src/main/shortcuts");
         if (nombre.endsWith("/lifecycle")) return require("../src/main/lifecycle");

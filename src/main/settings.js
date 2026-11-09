@@ -14,11 +14,12 @@ function validarConfiguracion(valor) {
     }
     // Los archivos de versiones anteriores no tienen esta opción: queda activada.
     const actualizar = typeof valor.actualizar === "boolean" ? valor.actualizar : true;
-    return { inicio: url.href, restaurar: valor.restaurar, actualizar };
+    const modoChicos = valor.modoChicos === true;
+    return { inicio: url.href, restaurar: valor.restaurar, actualizar, modoChicos };
 }
 
 function crearConfiguracion(archivo) {
-    let datos = { inicio: PAGINA_INICIO, restaurar: true, actualizar: true };
+    let datos = { inicio: PAGINA_INICIO, restaurar: true, actualizar: true, modoChicos: false };
     let errorLectura = "";
     let cola = Promise.resolve();
     const estado = () => ({ ...datos, error: errorLectura });
@@ -56,12 +57,16 @@ function crearConfiguracion(archivo) {
     return { iniciar, estado, guardar, esperar };
 }
 
-function registrarConfiguracion({ ipcMain, archivo, obtenerVentana }) {
+function registrarConfiguracion({ ipcMain, archivo, obtenerVentana, alCambiar = () => {} }) {
     const gestor = crearConfiguracion(archivo);
     const ipc = crearIPCInterfaz(ipcMain, obtenerVentana);
     ipc.handle("obtener-configuracion", async () => ({ correcto: true, configuracion: gestor.estado() }));
     ipc.handle("guardar-configuracion", async (_evento, datos) => {
-        try { return { correcto: true, configuracion: await gestor.guardar(datos) }; }
+        try {
+            const configuracion = await gestor.guardar(datos);
+            alCambiar(configuracion);
+            return { correcto: true, configuracion };
+        }
         catch (error) { return { correcto: false, error: error.message }; }
     });
     return gestor;
