@@ -42,10 +42,15 @@ function cabecerasFirefox(cabeceras, ahora) {
     return nuevas;
 }
 
-function instalarLoginGoogle({ app, sesion, userAgentNormal }) {
+// Electron permite un solo onBeforeSendHeaders por sesión: los otros ajustes
+// de cabeceras (por ejemplo el modo chicos) se pasan en "extras".
+function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
     sesion.webRequest.onBeforeSendHeaders((detalles, responder) => {
-        if (!esLoginGoogle(detalles.url)) return responder({ requestHeaders: detalles.requestHeaders });
-        responder({ requestHeaders: cabecerasFirefox(detalles.requestHeaders) });
+        let cabeceras = esLoginGoogle(detalles.url)
+            ? cabecerasFirefox(detalles.requestHeaders)
+            : detalles.requestHeaders;
+        for (const ajustar of extras) cabeceras = ajustar(detalles.url, cabeceras);
+        responder({ requestHeaders: cabeceras });
     });
 
     // Además del pedido de red, la página lee navigator.userAgent: lo cambiamos

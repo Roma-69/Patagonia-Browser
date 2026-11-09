@@ -5,12 +5,13 @@
     const inicio = document.getElementById("paginaInicio");
     const restaurar = document.getElementById("restaurarPestanas");
     const actualizar = document.getElementById("actualizarAutomatico");
+    const chicos = document.getElementById("modoChicos");
     const guardar = document.getElementById("guardarConfiguracion");
     const estado = document.getElementById("estadoConfiguracion");
     let ocupado = false;
     let bloqueada = false;
     function habilitar() {
-        for (const elemento of [inicio, restaurar, actualizar, guardar]) elemento.disabled = ocupado || bloqueada;
+        for (const elemento of [inicio, restaurar, actualizar, chicos, guardar]) elemento.disabled = ocupado || bloqueada;
     }
     async function ejecutar(accion, guardando = false) {
         if (ocupado) return;
@@ -24,8 +25,11 @@
             inicio.value = configuracion.inicio;
             restaurar.checked = configuracion.restaurar;
             actualizar.checked = configuracion.actualizar !== false;
+            chicos.checked = configuracion.modoChicos === true;
             bloqueada = Boolean(configuracion.error);
-            estado.textContent = configuracion.error || (guardando ? "Configuración guardada." : "");
+            estado.textContent = configuracion.error || (guardando === "chicos"
+                ? (configuracion.modoChicos ? "Modo chicos activado." : "Modo chicos desactivado.")
+                : guardando ? "Configuración guardada." : "");
         } catch (error) { estado.textContent = error.message || "No se pudo completar la operación."; }
         finally { ocupado = false; habilitar(); }
     }
@@ -52,8 +56,14 @@
             predeterminado.disabled = false;
         }
     });
+    const datosFormulario = () => ({ inicio: inicio.value.trim(), restaurar: restaurar.checked, actualizar: actualizar.checked, modoChicos: chicos.checked });
     formulario.addEventListener("submit", evento => {
         evento.preventDefault();
-        ejecutar(() => window.patagonia.guardarConfiguracion({ inicio: inicio.value.trim(), restaurar: restaurar.checked, actualizar: actualizar.checked }), true);
+        ejecutar(() => window.patagonia.guardarConfiguracion(datosFormulario()), true);
+    });
+    // El tilde del modo chicos se guarda y aplica al instante.
+    chicos.addEventListener("change", () => {
+        if (!formulario.reportValidity()) { chicos.checked = !chicos.checked; return; }
+        ejecutar(() => window.patagonia.guardarConfiguracion(datosFormulario()), "chicos");
     });
 })();

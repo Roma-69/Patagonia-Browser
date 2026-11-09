@@ -1209,12 +1209,15 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
                 version: app.getVersion()
             });
         }
+        const modoChicos = require("./src/main/modoChicos").crearModoChicos({ app, sesion: session.defaultSession });
         gestorConfiguracion = registrarConfiguracion({
             ipcMain,
             archivo: path.join(app.getPath("userData"), "configuracion.json"),
-            obtenerVentana: () => ventanaPrincipal
+            obtenerVentana: () => ventanaPrincipal,
+            alCambiar: configuracion => modoChicos.aplicar(configuracion.modoChicos)
         });
         await gestorConfiguracion.iniciar();
+        modoChicos.aplicar(gestorConfiguracion.estado().modoChicos);
         gestorSesion = registrarSesiones({
             ipcMain,
             archivo: path.join(app.getPath("userData"), "sesion.json"),
@@ -1238,7 +1241,8 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
         require("./src/main/googleLogin").instalarLoginGoogle({
             app,
             sesion: session.defaultSession,
-            userAgentNormal: () => app.userAgentFallback
+            userAgentNormal: () => app.userAgentFallback,
+            extras: [modoChicos.ajustarCabeceras]
         });
         gestorProteccion = crearProteccion({
             sesion: session.defaultSession,
