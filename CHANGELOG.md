@@ -6,20 +6,6 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
-## [1.0.10] - Sin publicar
-
-### Agregado
-
-- **Audio Patagonia** (barra lateral → 🎚 Audio Patagonia): ecualizador de 10 bandas para YouTube y la mayoría de las páginas.
-  - Estilos listos: **Plano, Electrónica, Más bajo, Voces y Rock**, o ajuste a mano banda por banda (±12 dB).
-  - **Refuerzo de volumen** hasta 200%, para videos grabados bajito.
-  - **Normalizar volumen**, para que no cambie de golpe entre un video y otro.
-  - Un **limitador** final evita que los graves o el refuerzo distorsionen.
-  - Los cambios se escuchan al instante y se guardan en el equipo (`audio.json`). Todo se procesa en la PC: no se manda nada a internet.
-  - Corre aislado de la página (la página no lo ve ni lo puede tocar). Si el ecualizador está apagado, no se carga nada en las páginas.
-  - No sube la calidad del archivo que manda el sitio (YouTube manda como mucho ~160 kbps): cambia cómo suena.
-  - Audios de otros sitios sin permiso (CORS) se dejan sin ecualizar, porque pasarlos por el ecualizador los dejaría mudos. Los videos dentro de otra página (iframes) por ahora tampoco se ecualizan.
-
 ## [Android 1.1.2] - Sin publicar
 
 ### Corregido
