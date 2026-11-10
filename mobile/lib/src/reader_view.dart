@@ -62,7 +62,7 @@ enum ReaderBlockKind {
   paragraph('p'),
   listItem('li'),
   quote('q'),
-  code('pre'),
+  preformatted('pre'),
   caption('cap'),
   image('img');
 
@@ -162,7 +162,7 @@ class _ReaderPageState extends State<ReaderPage> {
             style: body.copyWith(fontStyle: FontStyle.italic, color: _soft),
           ),
         );
-      case ReaderBlockKind.code:
+      case ReaderBlockKind.preformatted:
         return Container(
           width: double.infinity,
           margin: const EdgeInsets.only(bottom: 14),
