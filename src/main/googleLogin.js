@@ -45,6 +45,15 @@ function cabecerasFirefox(cabeceras, ahora) {
 // Electron permite un solo onBeforeSendHeaders por sesión: los otros ajustes
 // de cabeceras (por ejemplo el modo chicos) se pasan en "extras".
 function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
+    // Borra las huellas de Chrome que quedan en el login (ver googleLoginPreload.js).
+    if (typeof sesion.registerPreloadScript === "function") {
+        sesion.registerPreloadScript({
+            id: "patagonia-login-google",
+            type: "frame",
+            filePath: require("path").join(__dirname, "googleLoginPreload.js")
+        });
+    }
+
     sesion.webRequest.onBeforeSendHeaders((detalles, responder) => {
         let cabeceras = esLoginGoogle(detalles.url)
             ? cabecerasFirefox(detalles.requestHeaders)
@@ -52,21 +61,7 @@ function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
         for (const ajustar of extras) cabeceras = ajustar(detalles.url, cabeceras);
         responder({ requestHeaders: cabeceras });
     });
-
-    // Además del pedido de red, la página lee navigator.userAgent: lo cambiamos
-    // en la pestaña mientras esté en el login y lo devolvemos al salir.
-    app.on("web-contents-created", (_evento, contenido) => {
-        const ajustar = url => {
-            const deseado = esLoginGoogle(url) ? userAgentFirefox() : userAgentNormal();
-            if (contenido.getUserAgent() !== deseado) contenido.setUserAgent(deseado);
-        };
-        contenido.on("did-start-navigation", (_e, url, mismaPagina, principal) => {
-            if (principal && !mismaPagina) ajustar(url);
-        });
-        contenido.on("will-redirect", (_e, url, _m, principal) => {
-            if (principal !== false) ajustar(url);
-        });
-    });
+    // Lo que lee la página (navigator.userAgent, etc.) lo cambia googleLoginPreload.js.
 }
 
 module.exports = { esLoginGoogle, userAgentFirefox, versionFirefox, cabecerasFirefox, instalarLoginGoogle };
