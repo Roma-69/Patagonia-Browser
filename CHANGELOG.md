@@ -12,7 +12,25 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 - **TalkBack (lector de pantalla):** cuando está prendido, la página se muestra como vista nativa de Android para que el lector pueda recorrer textos, links y botones de las páginas. Sin lector se sigue usando el modo por textura, más liviano.
 
-## [1.0.9] - Sin publicar
+## [1.0.10] - 2026-11-09
+
+### Agregado
+
+- **Modo chicos** (Configuración → tilde): bloquea sitios para adultos y de malware con el DNS familiar de Cloudflare, fuerza la búsqueda segura en DuckDuckGo, Google, Bing y Yahoo y pone YouTube en modo restringido. Se aplica apenas lo tildás.
+- **Letra grande** (Configuración → tilde): las páginas se abren al 125 %.
+- **Modo lectura** (clic derecho → Modo lectura): la nota sola, sin publicidad ni menús, con letra cómoda y en una ventana que no ejecuta nada de la página.
+- **Separar pestañas:** arrastrá una pestaña fuera de la barra (o clic derecho → Mover a ventana nueva) y se abre en su propia ventana, con la sesión iniciada.
+
+### Corregido
+
+- **Iniciar sesión en Google:** ya no aparece "No se ha podido iniciar sesión — es posible que el navegador no sea seguro". Solo en la página de login, Patagonia se presenta como Firefox.
+- **Microsoft Store:** el ícono de la barra de tareas y del menú Inicio ya no aparece sobre un cuadrado azul.
+
+### Cambiado
+
+- Incluye todo lo de la 1.0.9: motor **Electron 45 / Chromium 156**.
+
+## [1.0.9] - 2026-11-08 (solo Microsoft Store)
 
 ### Cambiado
 

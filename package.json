@@ -1,7 +1,7 @@
 {
   "name": "patagonia-browser",
   "productName": "Patagonia Browser",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Navegador de escritorio rápido, privado y sencillo.",
   "main": "bootstrap.js",
   "scripts": {
