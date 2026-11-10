@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:patagonia_browser/main.dart';
 import 'package:patagonia_browser/src/browser_shell.dart';
 import 'package:patagonia_browser/src/gecko/gecko_view.dart';
+import 'package:patagonia_browser/src/update_check.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Simula las vistas nativas GeckoView (GeckoPlatformView.kt) para probar la interfaz
@@ -17,6 +18,8 @@ class FakeGecko {
   final permissionRequests = <List<Object?>>[];
   final disposed = <int>[];
   Map<String, Object?>? pageText;
+  String? article;
+  String? appVersion;
 
   int get lastId => views.keys.last;
   List<String> methods(int id) => (calls[id] ?? []).map((c) => c.method).toList();
@@ -40,6 +43,7 @@ class FakeGecko {
             (viewCall) async {
               calls[id]!.add(viewCall);
               if (viewCall.method == 'readPage') return pageText;
+              if (viewCall.method == 'readArticle') return article;
               return null;
             },
           );
@@ -60,6 +64,8 @@ class FakeGecko {
         engineCalls.add(call);
         if (call.method == 'ensureUBlock') return '1.75.0';
         if (call.method == 'openUBlockPanel') return true;
+        if (call.method == 'appVersion') return appVersion;
+        if (call.method == 'share') return true;
         return null;
       },
     );
@@ -95,9 +101,13 @@ void main() {
 
   setUp(() {
     BrowserShell.debugUseGecko = true;
+    BrowserShell.debugNoNetworkImages = true;
     gecko = FakeGecko();
   });
-  tearDown(() => BrowserShell.debugUseGecko = null);
+  tearDown(() {
+    BrowserShell.debugUseGecko = null;
+    BrowserShell.debugLatestRelease = null;
+  });
 
   Future<int> open(
     WidgetTester tester,
@@ -434,5 +444,270 @@ void main() {
     expect(GeckoBrowserView.usarVistaNativa(const MediaQueryData(accessibleNavigation: true)), isTrue);
     expect(GeckoBrowserView.usarVistaNativa(const MediaQueryData()), isFalse);
     expect(GeckoBrowserView.usarVistaNativa(null), isFalse);
+  });
+
+  // --- Lo que llegó de la PC en la 1.2.0 -------------------------------------
+
+  Future<void> openMenuItem(WidgetTester tester, String label) async {
+    await tester.tap(find.byTooltip('Menú'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text(label));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(label));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('ofrece traducir una página en inglés y muestra el original', (
+    tester,
+  ) async {
+    final id = await open(tester, 'https://example.com');
+    await loadPage(tester, id, 'https://example.com/', 'Example');
+    await gecko.emit(tester, id, 'translation', {
+      'docLang': 'en',
+      'userLang': 'es',
+      'supported': true,
+      'ready': false,
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Esta página está en inglés.'), findsOneWidget);
+
+    await tester.tap(find.text('Traducir'));
+    await tester.pump();
+    final call = gecko.calls[id]!.lastWhere((c) => c.method == 'translate');
+    expect(call.arguments, {'from': 'en', 'to': 'es'});
+
+    await gecko.emit(tester, id, 'translation', {
+      'docLang': 'en',
+      'supported': true,
+      'from': 'en',
+      'to': 'es',
+      'ready': true,
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Traducida del inglés.'), findsOneWidget);
+    await tester.tap(find.text('Mostrar original'));
+    await tester.pumpAndSettle();
+    expect(gecko.methods(id), contains('restoreTranslation'));
+    expect(find.text('Traducida del inglés.'), findsNothing);
+  });
+
+  testWidgets('no ofrece traducir páginas en castellano', (tester) async {
+    final id = await open(tester, 'https://example.com');
+    await loadPage(tester, id, 'https://example.com/', 'Ejemplo');
+    await gecko.emit(tester, id, 'translation', {
+      'docLang': 'es',
+      'supported': true,
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Traducir'), findsNothing);
+  });
+
+  testWidgets('con Siempre traducir, traduce sola', (tester) async {
+    final id = await open(
+      tester,
+      'https://example.com',
+      preferences: {'alwaysTranslate': true},
+    );
+    await loadPage(tester, id, 'https://example.com/', 'Exemplo');
+    await gecko.emit(tester, id, 'translation', {
+      'docLang': 'pt',
+      'supported': true,
+    });
+    await tester.pump();
+    final call = gecko.calls[id]!.lastWhere((c) => c.method == 'translate');
+    expect(call.arguments, {'from': 'pt', 'to': 'es'});
+    await tester.pump();
+    expect(find.text('Traduciendo del portugués…'), findsOneWidget);
+    // Termina de traducir: se va la ruedita.
+    await gecko.emit(tester, id, 'translation', {
+      'docLang': 'pt',
+      'supported': true,
+      'from': 'pt',
+      'to': 'es',
+      'ready': true,
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Traducida del portugués.'), findsOneWidget);
+  });
+
+  testWidgets('modo chicos y letra grande desde Configuración', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+    expect(find.text('Protección de privacidad activa'), findsOneWidget);
+
+    await openMenuItem(tester, 'Configuración');
+    await tester.tap(find.text('Modo chicos'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Letra grande'));
+    await tester.pumpAndSettle();
+
+    final kids = gecko.engineCalls.lastWhere((c) => c.method == 'setKidsMode');
+    expect(kids.arguments, isTrue);
+    final large = gecko.engineCalls.lastWhere((c) => c.method == 'setLargeText');
+    expect(large.arguments, isTrue);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getBool('kidsMode'), isTrue);
+    expect(preferences.getBool('largeText'), isTrue);
+
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
+    expect(find.text('Modo chicos activo'), findsOneWidget);
+  });
+
+  testWidgets('el modo chicos guardado se aplica al abrir Patagonia', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'kidsMode': true});
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+    final kids = gecko.engineCalls.lastWhere((c) => c.method == 'setKidsMode');
+    expect(kids.arguments, isTrue);
+    expect(find.text('Modo chicos activo'), findsOneWidget);
+  });
+
+  testWidgets('mantener apretado un enlace lo abre en otra pestaña', (
+    tester,
+  ) async {
+    final id = await open(tester, 'https://example.com');
+    await loadPage(tester, id, 'https://example.com/', 'Ejemplo');
+    await gecko.emit(tester, id, 'contextMenu', {
+      'type': 'none',
+      'link': 'https://example.com/nota',
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Copiar dirección del enlace'), findsOneWidget);
+    await tester.tap(find.text('Abrir en pestaña nueva'));
+    await tester.pumpAndSettle();
+    expect(gecko.views[gecko.lastId]!['url'], 'https://example.com/nota');
+    expect(gecko.views[gecko.lastId]!['active'], isFalse);
+    expect(find.text('Se abrió en una pestaña nueva.'), findsOneWidget);
+    // La página que se estaba leyendo sigue a la vista.
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      'https://example.com/',
+    );
+  });
+
+  testWidgets('mantener apretado una imagen permite guardarla', (tester) async {
+    final id = await open(tester, 'https://example.com');
+    await loadPage(tester, id, 'https://example.com/', 'Ejemplo');
+    await gecko.emit(tester, id, 'contextMenu', {
+      'type': 'image',
+      'src': 'https://example.com/foto.jpg',
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar imagen'));
+    await tester.pumpAndSettle();
+    final call = gecko.calls[id]!.lastWhere((c) => c.method == 'saveUrl');
+    expect(call.arguments, 'https://example.com/foto.jpg');
+  });
+
+  testWidgets('ignora enlaces raros al mantener apretado', (tester) async {
+    final id = await open(tester, 'https://example.com');
+    await gecko.emit(tester, id, 'contextMenu', {
+      'type': 'none',
+      'link': 'javascript:alert(1)',
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Abrir en pestaña nueva'), findsNothing);
+  });
+
+  testWidgets('Buscar el texto seleccionado abre DuckDuckGo', (tester) async {
+    final id = await open(tester, 'https://example.com');
+    await gecko.emit(tester, id, 'searchText', 'estepa patagónica');
+    await tester.pumpAndSettle();
+    final url = Uri.parse(gecko.views[gecko.lastId]!['url'] as String);
+    expect(url.host, 'duckduckgo.com');
+    expect(url.queryParameters['q'], 'estepa patagónica');
+  });
+
+  testWidgets('modo lectura muestra la nota sola', (tester) async {
+    final id = await open(tester, 'https://example.com');
+    await loadPage(tester, id, 'https://example.com/', 'Ejemplo');
+    gecko.article =
+        '{"title":"Viento en la meseta","site":"Diario","byline":"Ana",'
+        '"url":"https://example.com/","blocks":['
+        '{"t":"h","x":"Un día de ráfagas"},'
+        '{"t":"p","x":"El viento sopló a 90 km/h en Sarmiento."},'
+        '{"t":"img","x":"https://example.com/foto.jpg"}]}';
+    await openMenuItem(tester, 'Modo lectura');
+    expect(gecko.methods(id), contains('readArticle'));
+    expect(find.text('Viento en la meseta'), findsOneWidget);
+    expect(find.text('El viento sopló a 90 km/h en Sarmiento.'), findsOneWidget);
+    expect(find.text('Diario · Ana'), findsOneWidget);
+  });
+
+  testWidgets('modo lectura avisa si la página no tiene nota', (tester) async {
+    final id = await open(tester, 'https://example.com');
+    await loadPage(tester, id, 'https://example.com/', 'Ejemplo');
+    await openMenuItem(tester, 'Modo lectura');
+    expect(
+      find.text('Esta página no tiene una nota para mostrar en modo lectura.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('compartir la página usa la hoja de Android', (tester) async {
+    final id = await open(tester, 'https://example.com');
+    await loadPage(tester, id, 'https://example.com/', 'Ejemplo');
+    await openMenuItem(tester, 'Compartir');
+    final call = gecko.engineCalls.lastWhere((c) => c.method == 'share');
+    expect(call.arguments, {'text': 'https://example.com/', 'title': 'Ejemplo'});
+  });
+
+  testWidgets('avisa en el inicio cuando hay una versión nueva', (tester) async {
+    gecko.appVersion = '1.2.0';
+    BrowserShell.debugLatestRelease = () async =>
+        const MobileRelease(version: '1.2.1', tag: 'movil-v1.2.1');
+    SharedPreferences.setMockInitialValues({});
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Hay una versión nueva: 1.2.1. Tocá para bajarla.'),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(
+      find.text('Hay una versión nueva: 1.2.1. Tocá para bajarla.'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hay una versión nueva: 1.2.1. Tocá para bajarla.'));
+    await tester.pumpAndSettle();
+    expect(
+      gecko.views[gecko.lastId]!['url'],
+      'https://github.com/Roma-69/Patagonia-Browser/releases/tag/movil-v1.2.1',
+    );
+  });
+
+  testWidgets('no avisa si ya está actualizada', (tester) async {
+    gecko.appVersion = '1.2.0';
+    BrowserShell.debugLatestRelease = () async =>
+        const MobileRelease(version: '1.2.0', tag: 'movil-v1.2.0');
+    SharedPreferences.setMockInitialValues({});
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Hay una versión nueva'), findsNothing);
+  });
+
+  testWidgets('accesos rápidos de WhatsApp y Windguru', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('WhatsApp'));
+    await tester.pumpAndSettle();
+    expect(gecko.engineCalls.map((c) => c.method), contains('openWhatsApp'));
+    expect(
+      find.text('No encontramos WhatsApp instalado en este teléfono.'),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(find.text('Windguru'));
+    await tester.tap(find.text('Windguru'));
+    await tester.pumpAndSettle();
+    expect(gecko.views[gecko.lastId]!['url'], 'https://www.windguru.cz');
   });
 }

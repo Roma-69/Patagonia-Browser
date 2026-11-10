@@ -21,6 +21,10 @@ class GeckoEvents {
     this.onNewWindow,
     this.onPermission,
     this.onDownload,
+    this.onContextMenu,
+    this.onSearchText,
+    this.onTranslation,
+    this.onTranslationError,
   });
 
   final ValueChanged<String>? onLocation;
@@ -44,6 +48,89 @@ class GeckoEvents {
 
   /// status: 'start' | 'done' | 'error'.
   final void Function(String status, String name)? onDownload;
+
+  /// Mantener apretado un enlace o una imagen.
+  final ValueChanged<GeckoContextMenu>? onContextMenu;
+
+  /// "Buscar" en el menú del texto seleccionado.
+  final ValueChanged<String>? onSearchText;
+
+  /// Novedades del traductor (idioma detectado, página traducida, errores).
+  final ValueChanged<GeckoTranslationState>? onTranslation;
+  final ValueChanged<String>? onTranslationError;
+}
+
+/// Lo que se mantuvo apretado en la página.
+class GeckoContextMenu {
+  const GeckoContextMenu({
+    required this.type,
+    this.link,
+    this.src,
+    this.title,
+    this.alt,
+  });
+
+  /// 'image' | 'video' | 'audio' | 'none'.
+  final String type;
+  final String? link;
+  final String? src;
+  final String? title;
+  final String? alt;
+
+  bool get isImage => type == 'image' && (src?.isNotEmpty ?? false);
+  bool get hasLink => link?.isNotEmpty ?? false;
+
+  static GeckoContextMenu fromMap(Map<Object?, Object?> map) {
+    String? text(Object? value) =>
+        value is String && value.trim().isNotEmpty ? value.trim() : null;
+    return GeckoContextMenu(
+      type: text(map['type']) ?? 'none',
+      link: text(map['link']),
+      src: text(map['src']),
+      title: text(map['title']),
+      alt: text(map['alt']),
+    );
+  }
+}
+
+/// Estado del traductor de Gecko para la página abierta.
+class GeckoTranslationState {
+  const GeckoTranslationState({
+    this.docLang,
+    this.userLang,
+    this.supported = false,
+    this.from,
+    this.to,
+    this.error,
+    this.ready = false,
+  });
+
+  /// Idioma detectado de la página (ej. 'en').
+  final String? docLang;
+  final String? userLang;
+
+  /// El traductor sabe traducir desde ese idioma.
+  final bool supported;
+
+  /// Si la página está traducida (o traduciéndose): de qué idioma a cuál.
+  final String? from;
+  final String? to;
+  final String? error;
+  final bool ready;
+
+  static GeckoTranslationState fromMap(Map<Object?, Object?> map) {
+    String? text(Object? value) =>
+        value is String && value.isNotEmpty ? value : null;
+    return GeckoTranslationState(
+      docLang: text(map['docLang']),
+      userLang: text(map['userLang']),
+      supported: map['supported'] == true,
+      from: text(map['from']),
+      to: text(map['to']),
+      error: text(map['error']),
+      ready: map['ready'] == true,
+    );
+  }
 }
 
 /// Texto de la página para el asistente, leído por la extensión patagonia_lector.
@@ -109,6 +196,19 @@ class GeckoController {
       case 'download':
         final map = value is Map ? value : const {};
         events.onDownload?.call(_text(map['status']), _text(map['name']));
+      case 'contextMenu':
+        if (value is Map) {
+          events.onContextMenu?.call(GeckoContextMenu.fromMap(value));
+        }
+      case 'searchText':
+        final text = _text(value).trim();
+        if (text.isNotEmpty) events.onSearchText?.call(text);
+      case 'translation':
+        if (value is Map) {
+          events.onTranslation?.call(GeckoTranslationState.fromMap(value));
+        }
+      case 'translationError':
+        events.onTranslationError?.call(_text(value));
     }
     return null;
   }
@@ -130,6 +230,26 @@ class GeckoController {
   Future<void> exitFullScreen() => _call('exitFullScreen');
   Future<void> setDesktop(bool enabled) => _call('setDesktop', enabled);
   Future<void> setActive(bool active) => _call('setActive', active);
+  Future<void> saveUrl(String url) => _call('saveUrl', url);
+
+  /// Traduce la página de [from] a [to] en el teléfono (baja el idioma la primera vez).
+  Future<void> translate(String from, {String to = 'es'}) =>
+      _call('translate', {'from': from, 'to': to});
+  Future<void> restoreTranslation() => _call('restoreTranslation');
+
+  /// Modo lectura: la nota de la página en JSON (ver patagonia_lector/lector.js),
+  /// o null si la página no tiene una nota para leer.
+  Future<String?> readArticle() async {
+    if (_disposed) return null;
+    try {
+      final value = await _channel.invokeMethod<Object?>('readArticle');
+      return value is String && value.isNotEmpty ? value : null;
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
 
   /// null si la página no se puede leer (o no contesta a tiempo).
   Future<GeckoPageText?> readPage() async {
@@ -199,6 +319,35 @@ class GeckoEngineInfo {
       return false;
     }
   }
+
+  static Future<T?> _engine<T>(String method, [Object? arguments]) async {
+    try {
+      return await channel.invokeMethod<T>(method, arguments);
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
+  /// Modo chicos: DNS familiar, búsqueda segura y YouTube restringido.
+  static Future<void> setKidsMode(bool enabled) =>
+      _engine<void>('setKidsMode', enabled);
+
+  /// Letra grande (125 %) en todas las páginas.
+  static Future<void> setLargeText(bool enabled) =>
+      _engine<void>('setLargeText', enabled);
+
+  /// Hoja de compartir de Android. false si no se pudo abrir.
+  static Future<bool> share(String text, {String? title}) async =>
+      await _engine<bool>('share', {'text': text, 'title': title}) ?? false;
+
+  /// Abre la app de WhatsApp. false si no está instalada.
+  static Future<bool> openWhatsApp() async =>
+      await _engine<bool>('openWhatsApp') ?? false;
+
+  /// Versión instalada de Patagonia (ej. '1.2.0'), o null si no se sabe.
+  static Future<String?> appVersion() => _engine<String>('appVersion');
 
   /// Libera una sesión que se preparó pero nunca se llegó a mostrar.
   static Future<void> dropPending(int id) async {

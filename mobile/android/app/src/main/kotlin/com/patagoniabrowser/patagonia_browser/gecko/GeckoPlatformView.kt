@@ -1,6 +1,7 @@
 package com.patagoniabrowser.patagonia_browser.gecko
 
 import android.Manifest
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -8,6 +9,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.view.MenuItem
 import android.view.View
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
@@ -23,7 +25,10 @@ import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSession.PermissionDelegate
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.GeckoView
+import org.mozilla.geckoview.GeckoWebExecutor
+import org.mozilla.geckoview.TranslationsController
 import org.mozilla.geckoview.WebExtension
+import org.mozilla.geckoview.WebRequest
 import org.mozilla.geckoview.WebRequestError
 import org.mozilla.geckoview.WebResponse
 
@@ -63,6 +68,7 @@ class GeckoPlatformView(
     private var lectorPort: WebExtension.Port? = null
     private var nextReadId = 1
     private val reads = HashMap<Int, MethodChannel.Result>()
+    private val readerReads = HashSet<Int>()
 
     init {
         // TextureView: es el modo que anduvo bien en la prueba de fuego del Motorola.
@@ -116,7 +122,11 @@ class GeckoPlatformView(
     }
 
     private fun installDelegates() {
-        GeckoEngine.activity?.let { session.selectionActionDelegate = BasicSelectionActionDelegate(it) }
+        // Al seleccionar texto, además de Copiar y Seleccionar todo aparece "Buscar" (DuckDuckGo).
+        GeckoEngine.activity?.let { activity ->
+            session.selectionActionDelegate = PatagoniaSelection(activity) { text -> send("searchText", text) }
+        }
+        session.setTranslationsSessionDelegate(translationsDelegate)
         session.promptDelegate = GeckoPrompts()
 
         session.navigationDelegate = object : GeckoSession.NavigationDelegate {
@@ -192,6 +202,31 @@ class GeckoPlatformView(
             override fun onFullScreen(session: GeckoSession, fullScreen: Boolean) =
                 send("fullScreen", fullScreen)
             override fun onCloseRequest(session: GeckoSession) = send("closeRequest", null)
+
+            // Mantener apretado un enlace o una imagen: Patagonia muestra su menú.
+            override fun onContextMenu(
+                session: GeckoSession,
+                screenX: Int,
+                screenY: Int,
+                element: GeckoSession.ContentDelegate.ContextElement,
+            ) {
+                val type = when (element.type) {
+                    GeckoSession.ContentDelegate.ContextElement.TYPE_IMAGE -> "image"
+                    GeckoSession.ContentDelegate.ContextElement.TYPE_VIDEO -> "video"
+                    GeckoSession.ContentDelegate.ContextElement.TYPE_AUDIO -> "audio"
+                    else -> "none"
+                }
+                send(
+                    "contextMenu",
+                    mapOf(
+                        "type" to type,
+                        "link" to element.linkUri,
+                        "src" to element.srcUri,
+                        "title" to element.title,
+                        "alt" to element.altText,
+                    ),
+                )
+            }
             override fun onCrash(session: GeckoSession) = send("crash", null)
             override fun onKill(session: GeckoSession) = send("crash", null)
             override fun onExternalResponse(session: GeckoSession, response: WebResponse) {
@@ -299,7 +334,12 @@ class GeckoPlatformView(
             port.setDelegate(object : WebExtension.PortDelegate {
                 override fun onPortMessage(message: Any, port: WebExtension.Port) {
                     val json = message as? JSONObject ?: return
-                    val pending = reads.remove(json.optInt("id")) ?: return
+                    val id = json.optInt("id")
+                    val pending = reads.remove(id) ?: return
+                    if (readerReads.remove(id)) {
+                        pending.success(json.optString("article").ifEmpty { null })
+                        return
+                    }
                     pending.success(
                         mapOf(
                             "title" to json.optString("title"),
@@ -325,6 +365,79 @@ class GeckoPlatformView(
         main.postDelayed({ reads.remove(readId)?.success(null) }, 3000)
     }
 
+    /** Modo lectura: la extensión arma la nota con Readability y la devuelve como JSON. */
+    private fun readArticle(result: MethodChannel.Result) {
+        val port = lectorPort ?: return result.success(null)
+        val readId = nextReadId++
+        reads[readId] = result
+        readerReads.add(readId)
+        port.postMessage(JSONObject().put("type", "reader").put("id", readId))
+        main.postDelayed({
+            readerReads.remove(readId)
+            reads.remove(readId)?.success(null)
+        }, 6000)
+    }
+
+    /** Guardar imagen (o enlace): se pide con el motor y va a Descargas como cualquier descarga. */
+    private fun saveUrl(url: String) {
+        val uri = Uri.parse(url)
+        if (uri.scheme?.lowercase() !in setOf("http", "https")) {
+            send("download", mapOf("status" to "error", "name" to (uri.lastPathSegment ?: "archivo")))
+            return
+        }
+        GeckoWebExecutor(GeckoEngine.runtime(appContext)).fetch(WebRequest(url)).accept({ response ->
+            if (response == null) return@accept
+            GeckoDownloads.save(appContext, response) { status, name ->
+                main.post { send("download", mapOf("status" to status, "name" to name)) }
+            }
+        }, {
+            main.post {
+                send("download", mapOf("status" to "error", "name" to (uri.lastPathSegment ?: "archivo")))
+            }
+        })
+    }
+
+    // Traductor: el mismo de Firefox (Bergamot). Traduce en el teléfono; solo baja el idioma una vez.
+    private val translationsDelegate = object : TranslationsController.SessionTranslation.Delegate {
+        override fun onTranslationStateChange(
+            session: GeckoSession,
+            translationState: TranslationsController.SessionTranslation.TranslationState?,
+        ) {
+            val state = translationState ?: return
+            val detected = state.detectedLanguages
+            main.post {
+                send(
+                    "translation",
+                    mapOf(
+                        "docLang" to detected?.docLangTag,
+                        "userLang" to detected?.userLangTag,
+                        "supported" to (detected?.isDocLangTagSupported == true),
+                        "from" to state.requestedTranslationPair?.fromLanguage,
+                        "to" to state.requestedTranslationPair?.toLanguage,
+                        "error" to state.error,
+                        "ready" to (state.isEngineReady == true),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun translate(from: String, to: String) {
+        val translation = session.sessionTranslation ?: return send("translationError", null)
+        val options = TranslationsController.SessionTranslation.TranslationOptions.Builder()
+            .downloadModel(true)
+            .build()
+        translation.translate(from, to, options).accept({ }, {
+            main.post { send("translationError", it?.message) }
+        })
+    }
+
+    private fun restoreTranslation() {
+        session.sessionTranslation?.restoreOriginalPage()?.accept({ }, {
+            main.post { send("translationError", it?.message) }
+        })
+    }
+
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         if (closed) return result.success(null)
         when (call.method) {
@@ -338,6 +451,15 @@ class GeckoPlatformView(
                 GeckoEngine.setActive(appContext, session, call.arguments == true)
             }
             "readPage" -> return readPage(result)
+            "readArticle" -> return readArticle(result)
+            "saveUrl" -> (call.arguments as? String)?.let { saveUrl(it) }
+            "translate" -> {
+                val args = call.arguments as? Map<*, *>
+                val from = args?.get("from") as? String
+                if (from.isNullOrEmpty()) return result.success(null)
+                translate(from, (args["to"] as? String) ?: "es")
+            }
+            "restoreTranslation" -> restoreTranslation()
             "setDesktop" -> {
                 desktop = call.arguments == true
                 session.settings.userAgentMode =
@@ -360,6 +482,8 @@ class GeckoPlatformView(
         channel.setMethodCallHandler(null)
         reads.values.forEach { it.success(null) }
         reads.clear()
+        readerReads.clear()
+        session.setTranslationsSessionDelegate(null)
         main.removeCallbacksAndMessages(null)
         GeckoEngine.forget(session)
         geckoView.releaseSession()
@@ -370,4 +494,39 @@ class GeckoPlatformView(
 /** MainActivity sabe pedir permisos de Android y avisar el resultado. */
 interface AndroidPermissionRequester {
     fun requestAndroidPermissions(permissions: List<String>, done: (Boolean) -> Unit)
+}
+
+/**
+ * El menú de texto seleccionado de Gecko (Copiar, Seleccionar todo, apps de Android) más un
+ * "Buscar" que abre la búsqueda en DuckDuckGo en una pestaña nueva, como el clic derecho de la PC.
+ */
+private class PatagoniaSelection(
+    activity: Activity,
+    private val onSearch: (String) -> Unit,
+) : BasicSelectionActionDelegate(activity) {
+
+    override fun getAllActions(): Array<String> = super.getAllActions() + ACTION_SEARCH
+
+    override fun isActionAvailable(id: String): Boolean {
+        if (id != ACTION_SEARCH) return super.isActionAvailable(id)
+        return !mSelection?.text.isNullOrBlank()
+    }
+
+    override fun prepareAction(id: String, item: MenuItem) {
+        if (id != ACTION_SEARCH) return super.prepareAction(id, item)
+        item.title = "Buscar"
+    }
+
+    override fun performAction(id: String, item: MenuItem): Boolean {
+        if (id != ACTION_SEARCH) return super.performAction(id, item)
+        val text = mSelection?.text?.trim().orEmpty()
+        if (text.isEmpty()) return false
+        onSearch(text.take(500))
+        mSelection?.unselect()
+        return true
+    }
+
+    companion object {
+        const val ACTION_SEARCH = "com.patagoniabrowser.BUSCAR"
+    }
 }

@@ -12,6 +12,9 @@ import 'gecko/gecko_view.dart';
 import 'navigation_input.dart';
 import 'local_assistant.dart';
 import 'privacy_protection.dart';
+import 'reader_view.dart';
+import 'translation.dart';
+import 'update_check.dart';
 import 'web_permissions.dart';
 
 const _navy = Color(0xFF071827);
@@ -30,6 +33,14 @@ class BrowserShell extends StatefulWidget {
   /// Las pruebas pueden forzar uno u otro.
   @visibleForTesting
   static bool? debugUseGecko;
+
+  /// Las pruebas reemplazan la consulta a GitHub del aviso de versión nueva.
+  @visibleForTesting
+  static Future<MobileRelease?> Function()? debugLatestRelease;
+
+  /// Las pruebas no bajan imágenes de internet en el modo lectura.
+  @visibleForTesting
+  static bool debugNoNetworkImages = false;
 
   static bool get usesGecko =>
       debugUseGecko ??
@@ -54,6 +65,14 @@ class _BrowserShellState extends State<BrowserShell> {
   bool _immersive = false;
   final bool _gecko = BrowserShell.usesGecko;
   String _youtubeDocumentStartSource = '';
+
+  // Configuración (igual que en la PC): modo chicos, letra grande, traductor y aviso de versión.
+  bool _kidsMode = false;
+  bool _largeText = false;
+  bool _alwaysTranslate = false;
+  bool _updateNotices = true;
+  final Set<String> _neverTranslateHosts = {};
+  MobileRelease? _availableUpdate;
   Future<void> _pendingSave = Future<void>.value();
 
   bool _isLive(_BrowserTab tab) => mounted && _tabs.contains(tab);
@@ -120,6 +139,13 @@ class _BrowserShellState extends State<BrowserShell> {
         _unprotectedHosts
           ..clear()
           ..addAll(preferences.getStringList('unprotectedHosts') ?? const []);
+        _kidsMode = preferences.getBool(_kidsModeKey) ?? false;
+        _largeText = preferences.getBool(_largeTextKey) ?? false;
+        _alwaysTranslate = preferences.getBool(_alwaysTranslateKey) ?? false;
+        _updateNotices = preferences.getBool(_updateNoticesKey) ?? true;
+        _neverTranslateHosts
+          ..clear()
+          ..addAll(preferences.getStringList(_neverTranslateKey) ?? const []);
       });
       showProtectionNotice =
           _gecko &&
@@ -141,6 +167,12 @@ class _BrowserShellState extends State<BrowserShell> {
       }
     }
     if (mounted) setState(() => _preferencesReady = true);
+    if (_gecko) {
+      // El motor ya los leyó al arrancar; se repiten por las dudas.
+      GeckoEngineInfo.setKidsMode(_kidsMode);
+      GeckoEngineInfo.setLargeText(_largeText);
+      _checkForUpdate();
+    }
     if (showProtectionNotice && mounted) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _showProtectionNotice(),
@@ -149,6 +181,12 @@ class _BrowserShellState extends State<BrowserShell> {
   }
 
   static const _protectionNoticeKey = 'geckoProtectionNoticeShown';
+  static const _kidsModeKey = 'kidsMode';
+  static const _largeTextKey = 'largeText';
+  static const _alwaysTranslateKey = 'alwaysTranslate';
+  static const _updateNoticesKey = 'updateNotices';
+  static const _neverTranslateKey = 'neverTranslateHosts';
+  static const _lastUpdateCheckKey = 'lastUpdateCheck';
 
   UnmodifiableListView<UserScript>? _initialProtectionScripts(_BrowserTab tab) {
     if (defaultTargetPlatform != TargetPlatform.android ||
@@ -690,6 +728,7 @@ class _BrowserShellState extends State<BrowserShell> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final fullScreen = _gecko && _current.fullScreen;
+    final translationBar = fullScreen ? null : _buildTranslationBar();
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -711,6 +750,7 @@ class _BrowserShellState extends State<BrowserShell> {
                   color: _blue,
                   backgroundColor: _surface,
                 ),
+              ?translationBar,
               Expanded(
                 // Con clave: al entrar o salir de pantalla completa la página
                 // no se vuelve a crear (no se corta el video).
@@ -1269,6 +1309,32 @@ class _BrowserShellState extends State<BrowserShell> {
                   _setDesktopMode(enabled);
                 },
               ),
+              if (_gecko && _current.url != null) ...[
+                _MenuTile(
+                  icon: Icons.share_outlined,
+                  label: 'Compartir',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _shareCurrent();
+                  },
+                ),
+                _MenuTile(
+                  icon: Icons.chrome_reader_mode_outlined,
+                  label: 'Modo lectura',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _openReader();
+                  },
+                ),
+                _MenuTile(
+                  icon: Icons.translate,
+                  label: 'Traducir página',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _translateCurrent();
+                  },
+                ),
+              ],
               _MenuTile(
                 icon: Icons.auto_awesome,
                 label: 'Patagonia AI',
@@ -1283,6 +1349,14 @@ class _BrowserShellState extends State<BrowserShell> {
                 onTap: () {
                   Navigator.pop(sheetContext);
                   _showPrivacyCenter();
+                },
+              ),
+              _MenuTile(
+                icon: Icons.settings_outlined,
+                label: 'Configuración',
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showSettings();
                 },
               ),
               _MenuTile(
@@ -1308,6 +1382,523 @@ class _BrowserShellState extends State<BrowserShell> {
     );
   }
 
+
+  // ---------------------------------------------------------------------------
+  // Lo que se sumó desde la PC: configuración, traductor, modo lectura,
+  // menú de mantener apretado, compartir y aviso de versión nueva.
+  // ---------------------------------------------------------------------------
+
+  Future<void> _saveBool(String key, bool value) async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool(key, value);
+    } catch (_) {
+      _showMessage('No pudimos guardar los cambios en el teléfono.');
+    }
+  }
+
+  Future<void> _setKidsMode(bool enabled) async {
+    setState(() => _kidsMode = enabled);
+    await _saveBool(_kidsModeKey, enabled);
+    if (_gecko) {
+      await GeckoEngineInfo.setKidsMode(enabled);
+      // La página abierta se recarga para que valga al toque.
+      if (_current.url != null) await _current.gecko?.reload();
+    }
+    _showMessage(enabled ? 'Modo chicos activado.' : 'Modo chicos desactivado.');
+  }
+
+  Future<void> _setLargeText(bool enabled) async {
+    setState(() => _largeText = enabled);
+    await _saveBool(_largeTextKey, enabled);
+    if (_gecko) await GeckoEngineInfo.setLargeText(enabled);
+  }
+
+  Future<void> _setAlwaysTranslate(bool enabled) async {
+    setState(() => _alwaysTranslate = enabled);
+    await _saveBool(_alwaysTranslateKey, enabled);
+  }
+
+  Future<void> _setUpdateNotices(bool enabled) async {
+    setState(() {
+      _updateNotices = enabled;
+      if (!enabled) _availableUpdate = null;
+    });
+    await _saveBool(_updateNoticesKey, enabled);
+    if (enabled) await _checkForUpdate(force: true);
+  }
+
+  /// Una vez por día como mucho: si en GitHub hay una versión de celular más nueva, avisa.
+  Future<void> _checkForUpdate({bool force = false}) async {
+    if (!_gecko || !_updateNotices) return;
+    final installed = await GeckoEngineInfo.appVersion();
+    if (installed == null || !mounted) return;
+    SharedPreferences? preferences;
+    try {
+      preferences = await SharedPreferences.getInstance();
+      final last = preferences.getInt(_lastUpdateCheckKey) ?? 0;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (!force && now - last < const Duration(hours: 20).inMilliseconds) {
+        final known = preferences.getString('latestMobileVersion');
+        final tag = preferences.getString('latestMobileTag');
+        if (known != null && tag != null && UpdateCheck.isNewer(known, installed)) {
+          if (mounted) {
+            setState(() => _availableUpdate = MobileRelease(version: known, tag: tag));
+          }
+        }
+        return;
+      }
+      await preferences.setInt(_lastUpdateCheckKey, now);
+    } catch (_) {
+      // Sin preferencias igual se consulta.
+    }
+    final latest =
+        await (BrowserShell.debugLatestRelease ?? UpdateCheck.fetchLatest)();
+    if (latest == null || !mounted) return;
+    try {
+      await preferences?.setString('latestMobileVersion', latest.version);
+      await preferences?.setString('latestMobileTag', latest.tag);
+    } catch (_) {
+      // No pasa nada: mañana se vuelve a consultar.
+    }
+    if (UpdateCheck.isNewer(latest.version, installed) && mounted) {
+      setState(() => _availableUpdate = latest);
+    }
+  }
+
+  void _openUpdatePage() {
+    final update = _availableUpdate;
+    if (update == null) return;
+    _addTab(url: Uri.parse(update.pageUrl));
+    _showMessage(
+      'Bajá el archivo .apk de "Assets" y abrilo para actualizar. Tus favoritos no se pierden.',
+    );
+  }
+
+  Future<void> _copyText(String text, String message) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    _showMessage(message);
+  }
+
+  Future<void> _share(String text, {String? title}) async {
+    final shared = _gecko && await GeckoEngineInfo.share(text, title: title);
+    if (!shared) await _copyText(text, 'Dirección copiada.');
+  }
+
+  Future<void> _shareCurrent() async {
+    final url = _current.url;
+    if (!NavigationInput.isWebUri(url)) {
+      _showMessage('Abrí una página para compartirla.');
+      return;
+    }
+    await _share(url.toString(), title: _current.title);
+  }
+
+  /// Abre una pestaña nueva sin dejar la que se está leyendo.
+  void _addBackgroundTab(Uri url) {
+    final current = _current;
+    setState(() {
+      _tabs.add(_BrowserTab(id: _nextTabId++, url: url));
+      _currentIndex = _tabs.indexOf(current);
+    });
+    _syncActiveTab();
+    if (!mounted) return;
+    final tab = _tabs.last;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('Se abrió en una pestaña nueva.'),
+          action: SnackBarAction(
+            label: 'Ver',
+            onPressed: () => _selectTab(_tabs.indexOf(tab)),
+          ),
+        ),
+      );
+  }
+
+  void _searchText(String text) {
+    _addTab(url: Uri.https('duckduckgo.com', '/', {'q': text}));
+  }
+
+  void _showContextMenu(_BrowserTab tab, GeckoContextMenu menu) {
+    if (!_isLive(tab) || !identical(tab, _current)) return;
+    final link = menu.hasLink ? Uri.tryParse(menu.link!) : null;
+    final image = menu.isImage ? Uri.tryParse(menu.src!) : null;
+    final webLink = NavigationInput.isWebUri(link) ? link : null;
+    final webImage = NavigationInput.isWebUri(image) ? image : null;
+    if (webLink == null && webImage == null) return;
+    HapticFeedback.selectionClick();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _navy,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        void run(VoidCallback action) {
+          Navigator.pop(sheetContext);
+          action();
+        }
+
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 8),
+                  child: Text(
+                    (webLink ?? webImage).toString(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: _muted, fontSize: 13),
+                  ),
+                ),
+                if (webLink != null) ...[
+                  _MenuTile(
+                    icon: Icons.open_in_new,
+                    label: 'Abrir en pestaña nueva',
+                    onTap: () => run(() => _addBackgroundTab(webLink)),
+                  ),
+                  _MenuTile(
+                    icon: Icons.link,
+                    label: 'Copiar dirección del enlace',
+                    onTap: () => run(
+                      () => _copyText(webLink.toString(), 'Dirección copiada.'),
+                    ),
+                  ),
+                  _MenuTile(
+                    icon: Icons.share_outlined,
+                    label: 'Compartir enlace',
+                    onTap: () => run(() => _share(webLink.toString())),
+                  ),
+                ],
+                if (webImage != null) ...[
+                  if (webLink != null) const Divider(color: Color(0x336F8DA5)),
+                  _MenuTile(
+                    icon: Icons.image_outlined,
+                    label: 'Abrir imagen en pestaña nueva',
+                    onTap: () => run(() => _addBackgroundTab(webImage)),
+                  ),
+                  _MenuTile(
+                    icon: Icons.download_outlined,
+                    label: 'Guardar imagen',
+                    onTap: () => run(() => tab.gecko?.saveUrl(webImage.toString())),
+                  ),
+                  _MenuTile(
+                    icon: Icons.copy_outlined,
+                    label: 'Copiar dirección de la imagen',
+                    onTap: () => run(
+                      () => _copyText(webImage.toString(), 'Dirección copiada.'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openReader() async {
+    final tab = _current;
+    final gecko = tab.gecko;
+    if (!_gecko || gecko == null || !NavigationInput.isWebUri(tab.url)) {
+      _showMessage('Abrí una nota o artículo para leerlo en modo lectura.');
+      return;
+    }
+    final article = ReaderArticle.fromJson(await gecko.readArticle());
+    if (!mounted) return;
+    if (article == null) {
+      _showMessage('Esta página no tiene una nota para mostrar en modo lectura.');
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => ReaderPage(
+          article: article,
+          largeText: _largeText,
+          showImages: !BrowserShell.debugNoNetworkImages,
+        ),
+      ),
+    );
+  }
+
+  // Traductor ------------------------------------------------------------------
+
+  void _onTranslation(_BrowserTab tab, GeckoTranslationState state) {
+    if (!_isLive(tab)) return;
+    setState(() {
+      tab.translation = state;
+      if (state.from != null) tab.translating = false;
+    });
+    final bar = Translation.barFor(state);
+    final url = tab.url;
+    final host = url?.host.toLowerCase();
+    if (bar?.kind != TranslationBarKind.offer ||
+        !_alwaysTranslate ||
+        url == null ||
+        _neverTranslateHosts.contains(host) ||
+        tab.autoTranslatedUrl == url) {
+      return;
+    }
+    tab.autoTranslatedUrl = url;
+    _translate(tab, bar!.language);
+  }
+
+  Future<void> _translate(_BrowserTab tab, String from) async {
+    final gecko = tab.gecko;
+    if (gecko == null || !_isLive(tab)) return;
+    setState(() {
+      tab.translating = true;
+      tab.translationHidden = false;
+    });
+    await gecko.translate(from, to: Translation.target);
+  }
+
+  Future<void> _translateCurrent() async {
+    final tab = _current;
+    final bar = Translation.barFor(tab.translation);
+    if (!_gecko || tab.gecko == null || tab.url == null) {
+      _showMessage('Abrí una página para traducirla.');
+      return;
+    }
+    if (bar == null) {
+      _showMessage(
+        tab.translation?.docLang == null
+            ? 'Todavía no se sabe en qué idioma está la página. Esperá a que termine de cargar.'
+            : 'Esta página ya está en castellano o en un idioma que el traductor no conoce.',
+      );
+      return;
+    }
+    if (bar.kind != TranslationBarKind.offer) {
+      setState(() => tab.translationHidden = false);
+      return;
+    }
+    await _translate(tab, bar.language);
+  }
+
+  Future<void> _neverTranslateHere(_BrowserTab tab) async {
+    final host = tab.url?.host.toLowerCase();
+    if (host == null || host.isEmpty) return;
+    setState(() {
+      _neverTranslateHosts.add(host);
+      tab.translationHidden = true;
+    });
+    await _saveStrings(_neverTranslateKey, _neverTranslateHosts.toList());
+    _showMessage('Listo: en $host no se ofrece traducir.');
+  }
+
+  Widget? _buildTranslationBar() {
+    final tab = _current;
+    if (!_gecko || tab.translationHidden || tab.url == null) return null;
+    final bar = Translation.barFor(tab.translation);
+    final host = tab.url!.host.toLowerCase();
+    if (bar == null) return null;
+    if (bar.kind == TranslationBarKind.offer &&
+        !tab.translating &&
+        _neverTranslateHosts.contains(host)) {
+      return null;
+    }
+    final translating = tab.translating || bar.kind == TranslationBarKind.translating;
+    final message = translating && bar.kind == TranslationBarKind.offer
+        ? 'Traduciendo del ${Translation.languageName(bar.language)}…'
+        : bar.message;
+    return Material(
+      color: const Color(0xFF14324A),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 2, 4),
+        child: Row(
+          children: [
+            const Icon(Icons.translate, color: _blue, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13.5),
+              ),
+            ),
+            if (translating)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: _blue),
+                ),
+              )
+            else if (bar.kind == TranslationBarKind.offer) ...[
+              TextButton(
+                onPressed: () => _translate(tab, bar.language),
+                child: const Text('Traducir'),
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'Más opciones del traductor',
+                icon: const Icon(Icons.more_vert, size: 20),
+                onSelected: (value) {
+                  if (value == 'always') {
+                    _setAlwaysTranslate(true);
+                    _translate(tab, bar.language);
+                  } else if (value == 'never') {
+                    _neverTranslateHere(tab);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'always',
+                    child: Text('Siempre traducir'),
+                  ),
+                  PopupMenuItem(
+                    value: 'never',
+                    child: Text('Nunca en ${tab.url!.host}'),
+                  ),
+                ],
+              ),
+            ] else
+              TextButton(
+                onPressed: () {
+                  setState(() => tab.translationHidden = true);
+                  tab.gecko?.restoreTranslation();
+                },
+                child: const Text('Mostrar original'),
+              ),
+            IconButton(
+              tooltip: 'Cerrar barra del traductor',
+              onPressed: () => setState(() => tab.translationHidden = true),
+              icon: const Icon(Icons.close, size: 20),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStartPage() => _StartPage(
+    onNavigate: _navigate,
+    onWhatsApp: () async {
+      if (!await GeckoEngineInfo.openWhatsApp()) {
+        _showMessage('No encontramos WhatsApp instalado en este teléfono.');
+      }
+    },
+    kidsMode: _kidsMode,
+    update: _availableUpdate,
+    onUpdate: _openUpdatePage,
+  );
+
+  void _showSettings() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _navy,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          Future<void> toggle(Future<void> Function(bool) apply, bool value) async {
+            await apply(value);
+            if (sheetContext.mounted) setSheetState(() {});
+          }
+
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(8, 14, 8, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.settings_outlined, color: _blue, size: 28),
+                        SizedBox(width: 12),
+                        Text(
+                          'Configuración',
+                          style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.child_care_outlined),
+                    title: const Text('Modo chicos'),
+                    subtitle: const Text(
+                      'Bloquea sitios para adultos, fuerza la búsqueda segura y pone YouTube en modo restringido.',
+                      style: TextStyle(color: _muted),
+                    ),
+                    value: _kidsMode,
+                    activeThumbColor: _green,
+                    onChanged: _gecko ? (value) => toggle(_setKidsMode, value) : null,
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.format_size),
+                    title: const Text('Letra grande'),
+                    subtitle: const Text(
+                      'Las páginas se ven con la letra al 125 %.',
+                      style: TextStyle(color: _muted),
+                    ),
+                    value: _largeText,
+                    activeThumbColor: _blue,
+                    onChanged: _gecko ? (value) => toggle(_setLargeText, value) : null,
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.translate),
+                    title: const Text('Siempre traducir'),
+                    subtitle: const Text(
+                      'Las páginas en otro idioma se traducen solas al castellano, en el teléfono.',
+                      style: TextStyle(color: _muted),
+                    ),
+                    value: _alwaysTranslate,
+                    activeThumbColor: _blue,
+                    onChanged: _gecko
+                        ? (value) => toggle(_setAlwaysTranslate, value)
+                        : null,
+                  ),
+                  if (_neverTranslateHosts.isNotEmpty)
+                    ListTile(
+                      leading: const Icon(Icons.do_not_disturb_on_outlined),
+                      title: const Text('Sitios sin traductor'),
+                      subtitle: Text(
+                        (_neverTranslateHosts.toList()..sort()).join(', '),
+                        style: const TextStyle(color: _muted),
+                      ),
+                      trailing: TextButton(
+                        onPressed: () async {
+                          setState(() => _neverTranslateHosts.clear());
+                          setSheetState(() {});
+                          await _saveStrings(_neverTranslateKey, const []);
+                        },
+                        child: const Text('Borrar'),
+                      ),
+                    ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.system_update_outlined),
+                    title: const Text('Avisar si hay versión nueva'),
+                    subtitle: const Text(
+                      'Consulta GitHub una vez por día. No manda ningún dato tuyo.',
+                      style: TextStyle(color: _muted),
+                    ),
+                    value: _updateNotices,
+                    activeThumbColor: _blue,
+                    onChanged: _gecko
+                        ? (value) => toggle(_setUpdateNotices, value)
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Motor Gecko (Android): pestañas, permisos, uBlock Origin y licencias.
   // ---------------------------------------------------------------------------
@@ -1315,7 +1906,7 @@ class _BrowserShellState extends State<BrowserShell> {
   Widget _buildGeckoTab(_BrowserTab tab) {
     final key = ValueKey('${tab.id}:${tab.generation}');
     if (tab.url == null && tab.windowId == null) {
-      return KeyedSubtree(key: key, child: _StartPage(onNavigate: _navigate));
+      return KeyedSubtree(key: key, child: _buildStartPage());
     }
     final generation = tab.generation;
     return Stack(
@@ -1380,6 +1971,7 @@ class _BrowserShellState extends State<BrowserShell> {
           // La página de error vacía que pone Gecko no borra el aviso de Patagonia.
           if (NavigationInput.isWebUri(url)) tab.errorMessage = null;
           tab.progress = .05;
+          tab.resetTranslation();
         });
       },
       onPageStop: (success) {
@@ -1428,6 +2020,20 @@ class _BrowserShellState extends State<BrowserShell> {
       },
       onPermission: (origin, kinds) async =>
           alive() && await _askGeckoPermission(tab, origin, kinds),
+      onContextMenu: (menu) {
+        if (alive()) _showContextMenu(tab, menu);
+      },
+      onSearchText: (text) {
+        if (alive()) _searchText(text);
+      },
+      onTranslation: (state) {
+        if (alive()) _onTranslation(tab, state);
+      },
+      onTranslationError: (_) {
+        if (!alive()) return;
+        setState(() => tab.translating = false);
+        _showMessage('No se pudo traducir la página. Revisá la conexión e intentá otra vez.');
+      },
       onDownload: (status, name) {
         if (!alive()) return;
         _showMessage(switch (status) {
@@ -1729,6 +2335,30 @@ class _BrowserShellState extends State<BrowserShell> {
                     ),
                   ],
                 ),
+                const Divider(height: 32, color: Color(0x336F8DA5)),
+                const Text(
+                  'Readability ${_LicenseInfo.readabilityVersion}',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'El modo lectura usa Readability de Mozilla para separar la nota del resto de la página. '
+                  'Licencia Apache 2.0.',
+                  style: TextStyle(color: _muted, height: 1.4),
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: () => open(_LicenseInfo.apacheText),
+                      child: const Text('Ver licencia (Apache 2.0)'),
+                    ),
+                    TextButton(
+                      onPressed: () => open(_LicenseInfo.readabilitySource),
+                      child: const Text('Código fuente'),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 const Text(
                   'Patagonia no es un producto de Mozilla ni de Raymond Hill, y ellos no lo respaldan.',
@@ -1950,7 +2580,7 @@ class _TabContentState extends State<_TabContent> {
   @override
   Widget build(BuildContext context) {
     if (widget.tab.url == null && widget.tab.windowId == null) {
-      return _StartPage(onNavigate: widget.onNavigate);
+      return _StartPage(onNavigate: widget.onNavigate, onWhatsApp: null);
     }
 
     return Stack(
@@ -2356,9 +2986,21 @@ class _AssistantMessage {
 }
 
 class _StartPage extends StatelessWidget {
-  const _StartPage({required this.onNavigate});
+  const _StartPage({
+    required this.onNavigate,
+    required this.onWhatsApp,
+    this.kidsMode = false,
+    this.update,
+    this.onUpdate,
+  });
 
   final ValueChanged<String> onNavigate;
+
+  /// null: sin acceso rápido de WhatsApp (iPhone).
+  final VoidCallback? onWhatsApp;
+  final bool kidsMode;
+  final MobileRelease? update;
+  final VoidCallback? onUpdate;
 
   @override
   Widget build(BuildContext context) {
@@ -2474,8 +3116,55 @@ class _StartPage extends StatelessWidget {
                     color: const Color(0xFFEA4335),
                     onTap: () => onNavigate('https://mail.google.com'),
                   ),
+                  if (onWhatsApp != null)
+                    _QuickLink(
+                      icon: Icons.chat_outlined,
+                      label: 'WhatsApp',
+                      color: const Color(0xFF25D366),
+                      onTap: onWhatsApp!,
+                    ),
+                  _QuickLink(
+                    icon: Icons.air,
+                    label: 'Windguru',
+                    color: const Color(0xFF7FD3FF),
+                    onTap: () => onNavigate('https://www.windguru.cz'),
+                  ),
                 ],
               ),
+              if (update != null && onUpdate != null) ...[
+                const SizedBox(height: 24),
+                Material(
+                  color: const Color(0xE60A1D2E),
+                  borderRadius: BorderRadius.circular(18),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: onUpdate,
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xAA35D35B)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.system_update, color: _green),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              'Hay una versión nueva: ${update!.version}. Tocá para bajarla.',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 34),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -2487,14 +3176,20 @@ class _StartPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(22),
                   border: Border.all(color: const Color(0x5542D86B)),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.lock_outline, color: _green, size: 20),
-                    SizedBox(width: 8),
+                    Icon(
+                      kidsMode ? Icons.child_care_outlined : Icons.lock_outline,
+                      color: _green,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        'Protección de privacidad activa',
+                        kidsMode
+                            ? 'Modo chicos activo'
+                            : 'Protección de privacidad activa',
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -2625,6 +3320,18 @@ class _BrowserTab {
   int navigation = 0;
   Uri? pendingLoad;
 
+  // Traductor.
+  GeckoTranslationState? translation;
+  bool translating = false;
+  bool translationHidden = false;
+  Uri? autoTranslatedUrl;
+
+  void resetTranslation() {
+    translation = null;
+    translating = false;
+    translationHidden = false;
+  }
+
   void disposeGecko() {
     gecko?.dispose();
     gecko = null;
@@ -2632,6 +3339,7 @@ class _BrowserTab {
     canGoForward = false;
     fullScreen = false;
     pendingLoad = null;
+    resetTranslation();
   }
 
   double progress = 0;
@@ -2668,4 +3376,8 @@ class _LicenseInfo {
   static const geckoVersion = '159';
   static const geckoSource = 'https://github.com/mozilla-firefox/firefox';
   static const mplText = 'https://www.mozilla.org/MPL/2.0/';
+  static const readabilityVersion = '0.6.0';
+  static const readabilitySource =
+      'https://github.com/mozilla/readability/tree/0.6.0';
+  static const apacheText = 'https://www.apache.org/licenses/LICENSE-2.0';
 }

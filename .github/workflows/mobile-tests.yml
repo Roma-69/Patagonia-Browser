@@ -44,3 +44,44 @@ jobs:
       - name: Ejecutar pruebas Flutter
         working-directory: mobile
         run: flutter test --no-pub --timeout 1m
+
+  apk-prueba:
+    # Compila el APK de prueba ("Patagonia Pruebas", se instala aparte de la oficial) para
+    # comprobar que el código Kotlin y Gradle compilan. El APK queda como artefacto del run.
+    needs: flutter
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Obtener Flutter 3.47.7 del repositorio oficial
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: flutter/flutter
+          ref: abaf9c523780a608bd46686fd5e53740a07077f8
+          path: .flutter-sdk
+          persist-credentials: false
+      - name: Preparar Flutter y Java 17
+        run: |
+          git -C .flutter-sdk fetch --depth=1 origin refs/tags/3.47.7:refs/tags/3.47.7
+          test "$(git -C .flutter-sdk rev-parse refs/tags/3.47.7)" = "abaf9c523780a608bd46686fd5e53740a07077f8"
+          echo "$GITHUB_WORKSPACE/.flutter-sdk/bin" >> "$GITHUB_PATH"
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+      - name: Compilar APK de prueba
+        working-directory: mobile
+        env:
+          PATAGONIA_PREVIEW: '1'
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          flutter pub get --enforce-lockfile
+          flutter build apk --release --no-pub --target-platform android-arm64
+          version=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
+          mkdir -p entrega
+          cp build/app/outputs/flutter-apk/app-release.apk "entrega/Patagonia-Android-$version-Prueba.apk"
+      - name: Guardar APK de prueba
+        uses: actions/upload-artifact@v4
+        with:
+          name: patagonia-android-prueba
+          path: mobile/entrega/*.apk
+          retention-days: 14
