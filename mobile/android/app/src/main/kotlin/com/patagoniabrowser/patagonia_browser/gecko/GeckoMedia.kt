@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
 import android.graphics.drawable.Icon
 import android.media.MediaMetadata
 import android.media.session.PlaybackState
@@ -38,6 +39,12 @@ object GeckoMedia {
     var playing = false
         private set
 
+    /** Imagen de lo que suena (miniatura del video, tapa del disco). null si la página no da una. */
+    var artwork: Bitmap? = null
+        private set
+    private var artworkRequest = 0
+    private const val ARTWORK_SIZE = 512
+
     /** Hay algo sonando o en pausa que la notificación puede manejar. */
     val active: Boolean get() = media != null
 
@@ -53,6 +60,7 @@ object GeckoMedia {
                 title = meta.title?.takeIf { it.isNotBlank() } ?: pageTitle()
                 artist = meta.artist.orEmpty()
                 refresh(app)
+                loadArtwork(app, mediaSession, meta)
             }
 
             override fun onPlay(session: GeckoSession, mediaSession: MediaSession) {
@@ -60,6 +68,8 @@ object GeckoMedia {
                 if (media !== mediaSession) {
                     title = pageTitle()
                     artist = ""
+                    artwork = null
+                    artworkRequest++
                 }
                 owner = WeakReference(session)
                 media = mediaSession
@@ -78,6 +88,29 @@ object GeckoMedia {
 
             override fun onDeactivated(session: GeckoSession, mediaSession: MediaSession) =
                 release(app, mediaSession)
+        }
+    }
+
+    /** Pide la imagen a Gecko y, cuando llega, la pone en la notificación. */
+    private fun loadArtwork(context: Context, mediaSession: MediaSession, meta: MediaSession.Metadata) {
+        val request = ++artworkRequest
+        val image = meta.artwork
+        if (image == null) {
+            if (artwork != null) {
+                artwork = null
+                refresh(context)
+            }
+            return
+        }
+        try {
+            image.getBitmap(ARTWORK_SIZE).accept({ bitmap ->
+                if (request == artworkRequest && media === mediaSession && bitmap != null) {
+                    artwork = bitmap
+                    refresh(context)
+                }
+            }, { })
+        } catch (error: RuntimeException) {
+            Log.w(TAG, "No se pudo leer la imagen de lo que suena", error)
         }
     }
 
@@ -108,6 +141,8 @@ object GeckoMedia {
         media = null
         owner = WeakReference(null)
         playing = false
+        artwork = null
+        artworkRequest++
         context.stopService(Intent(context, PatagoniaMediaService::class.java))
     }
 
@@ -162,11 +197,18 @@ class PatagoniaMediaService : Service() {
     private fun show() {
         val title = GeckoMedia.title.ifBlank { "Patagonia Browser" }
         val playing = GeckoMedia.playing
+        val artwork = GeckoMedia.artwork
         session?.apply {
             setMetadata(
                 MediaMetadata.Builder()
                     .putString(MediaMetadata.METADATA_KEY_TITLE, title)
                     .putString(MediaMetadata.METADATA_KEY_ARTIST, GeckoMedia.artist)
+                    .apply {
+                        if (artwork != null) {
+                            putBitmap(MediaMetadata.METADATA_KEY_ART, artwork)
+                            putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, artwork)
+                        }
+                    }
                     .build(),
             )
             setPlaybackState(
@@ -207,6 +249,7 @@ class PatagoniaMediaService : Service() {
             .setContentTitle(title)
             .setContentText(GeckoMedia.artist.ifBlank { "Patagonia Browser" })
             .setContentIntent(open)
+            .setLargeIcon(artwork)
             .setOngoing(playing)
             .setOnlyAlertOnce(true)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
