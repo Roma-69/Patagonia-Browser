@@ -17,7 +17,7 @@ function resumir(texto, maximo = 30) {
     return limpio.length > maximo ? `${limpio.slice(0, maximo - 1)}…` : limpio;
 }
 
-function crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, zoom, imprimir, traducir }) {
+function crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, zoom, imprimir, traducir, leer }) {
     const grupos = [];
     const flags = params.editFlags || {};
     const historial = contenido.navigationHistory;
@@ -73,9 +73,11 @@ function crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, zoom
             { label: "Recargar", click: () => contenido.reload() }
         ]);
         grupos.push([{ label: "Seleccionar todo", role: "selectAll" }]);
-        if (traducir && esWeb(contenido.getURL?.())) {
-            grupos.push([{ label: "Traducir página al español", click: traducir }]);
-        }
+        const paginaWeb = esWeb(contenido.getURL?.());
+        const herramientas = [];
+        if (traducir && paginaWeb) herramientas.push({ label: "Traducir página al español", click: traducir });
+        if (leer && paginaWeb) herramientas.push({ label: "Modo lectura", click: leer });
+        if (herramientas.length) grupos.push(herramientas);
         if (zoom) {
             grupos.push([
                 { label: "Acercar", accelerator: "CmdOrCtrl+Plus", registerAccelerator: false, click: () => zoom(1) },
@@ -91,11 +93,11 @@ function crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, zoom
     return grupos.flatMap((grupo, indice) => (indice ? [{ type: "separator" }, ...grupo] : grupo));
 }
 
-function registrarMenuContextual({ contenido, Menu, clipboard, obtenerVentana, abrirEnPestana, zoom, imprimir, traducir }) {
+function registrarMenuContextual({ contenido, Menu, clipboard, obtenerVentana, abrirEnPestana, zoom, imprimir, traducir, leer }) {
     contenido.on("context-menu", (_evento, params) => {
         const ventana = obtenerVentana();
         if (!ventana || ventana.isDestroyed() || contenido.isDestroyed()) return;
-        const plantilla = crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, zoom, imprimir, traducir });
+        const plantilla = crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, zoom, imprimir, traducir, leer });
         if (plantilla.length) Menu.buildFromTemplate(plantilla).popup({ window: ventana });
     });
 }

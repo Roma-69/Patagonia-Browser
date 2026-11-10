@@ -231,6 +231,55 @@ function enviarZoom() {
     ventanaPrincipal.webContents.send("zoom-actualizado", zoom.porcentaje(factor));
 }
 
+// Letra grande: las páginas abren al 125 % (si el usuario no cambió el zoom).
+const ZOOM_LETRA_GRANDE = 1.25;
+function letraGrandeActiva() {
+    return gestorConfiguracion?.estado().letraGrande === true;
+}
+function aplicarLetraGrande(contenido) {
+    if (!contenido || contenido.isDestroyed() || typeof contenido.getZoomFactor !== "function") return;
+    if (!/^https?:/i.test(contenido.getURL?.() || "")) return;
+    const factor = contenido.getZoomFactor();
+    if (letraGrandeActiva() && Math.abs(factor - 1) < 0.001) contenido.setZoomFactor(ZOOM_LETRA_GRANDE);
+    else if (!letraGrandeActiva() && Math.abs(factor - ZOOM_LETRA_GRANDE) < 0.001) contenido.setZoomFactor(1);
+}
+function aplicarLetraGrandeATodas() {
+    for (const pestana of pestanas) aplicarLetraGrande(obtenerContenido(pestana));
+    for (const ventana of ventanasApp) if (!ventana.isDestroyed()) aplicarLetraGrande(ventana.webContents);
+    enviarZoom();
+}
+
+// Modo lectura: saca la nota de la página y la muestra limpia en otra ventana.
+async function abrirModoLectura(contenido) {
+    const lectura = require("./src/main/lectura");
+    try {
+        const datos = await obtenerHTMLPagina(contenido);
+        const dom = new JSDOM(datos.html, { url: datos.url });
+        let articulo;
+        try {
+            articulo = new Readability(dom.window.document, { maxElemsToParse: MAX_ELEMENTOS }).parse();
+        } finally { dom.window.close(); }
+        if (!articulo?.content || (articulo.textContent || "").trim().length < 200) {
+            throw new Error("Esta página no tiene una nota o artículo para leer.");
+        }
+        const titulo = articulo.title || datos.titulo || "Sin título";
+        const html = lectura.paginaLectura({
+            titulo,
+            sitio: articulo.siteName || new URL(datos.url).hostname.replace(/^www\./, ""),
+            contenido: lectura.limpiarArticulo(articulo.content, datos.url, JSDOM),
+            letraGrande: letraGrandeActiva()
+        });
+        lectura.crearVentanaLectura({ BrowserWindow, html, titulo, icono: RUTA_ICONO, abrirEnNavegador });
+    } catch (error) {
+        const ventana = ventanaPrincipal && !ventanaPrincipal.isDestroyed() ? ventanaPrincipal : undefined;
+        const opciones = {
+            type: "info", title: "Modo lectura", message: "No se pudo abrir el modo lectura.",
+            detail: error?.message || "Probá de nuevo cuando la página termine de cargar."
+        };
+        (ventana ? dialog.showMessageBox(ventana, opciones) : dialog.showMessageBox(opciones)).catch(() => {});
+    }
+}
+
 function zoomActiva(direccion) {
     zoom.cambiarZoom(obtenerContenido(obtenerPestanaActiva()), direccion);
     enviarZoom();
@@ -456,7 +505,8 @@ function crearPestana(
         traducir: () => {
             if (pestana.id !== idPestanaActiva) return;
             gestorTraduccion.abrir();
-        }
+        },
+        leer: () => abrirModoLectura(vista.webContents)
     });
     vista.webContents.on("zoom-changed", (_evento, sentido) => {
         zoom.cambiarZoom(vista.webContents, sentido === "in" ? 1 : -1);
@@ -516,6 +566,7 @@ function crearPestana(
         (_evento, nuevaURL) => {
             pestana.interna = esNuevaPestanaPatagonia(nuevaURL);
             pestana.url = pestana.interna ? "" : nuevaURL;
+            aplicarLetraGrande(vista.webContents);
 
             if (
                 pestana.id ===
@@ -916,8 +967,10 @@ function abrirVentanaApp(url, { soloMismoSitio = true, limites } = {}) {
         obtenerVentana: () => ventana,
         abrirEnPestana: abrirEnNavegador,
         zoom: direccion => zoom.cambiarZoom(ventana.webContents, direccion),
-        imprimir: () => zoom.imprimir(ventana.webContents)
+        imprimir: () => zoom.imprimir(ventana.webContents),
+        leer: () => abrirModoLectura(ventana.webContents)
     });
+    ventana.webContents.on("did-navigate", () => aplicarLetraGrande(ventana.webContents));
     ventanasApp.add(ventana);
     ventana.on("closed", () => ventanasApp.delete(ventana));
     return ventana;
@@ -1252,7 +1305,10 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             ipcMain,
             archivo: path.join(app.getPath("userData"), "configuracion.json"),
             obtenerVentana: () => ventanaPrincipal,
-            alCambiar: configuracion => modoChicos.aplicar(configuracion.modoChicos)
+            alCambiar: configuracion => {
+                modoChicos.aplicar(configuracion.modoChicos);
+                aplicarLetraGrandeATodas();
+            }
         });
         await gestorConfiguracion.iniciar();
         modoChicos.aplicar(gestorConfiguracion.estado().modoChicos);
