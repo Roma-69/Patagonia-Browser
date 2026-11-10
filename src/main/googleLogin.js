@@ -45,6 +45,15 @@ function cabecerasFirefox(cabeceras, ahora) {
 // Electron permite un solo onBeforeSendHeaders por sesión: los otros ajustes
 // de cabeceras (por ejemplo el modo chicos) se pasan en "extras".
 function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
+    // Borra las huellas de Chrome que quedan en el login (ver googleLoginPreload.js).
+    if (typeof sesion.registerPreloadScript === "function") {
+        sesion.registerPreloadScript({
+            id: "patagonia-login-google",
+            type: "frame",
+            filePath: require("path").join(__dirname, "googleLoginPreload.js")
+        });
+    }
+
     sesion.webRequest.onBeforeSendHeaders((detalles, responder) => {
         let cabeceras = esLoginGoogle(detalles.url)
             ? cabecerasFirefox(detalles.requestHeaders)
