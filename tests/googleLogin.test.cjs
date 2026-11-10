@@ -28,3 +28,15 @@ test("las cabeceras quedan como Firefox, sin client hints de Chrome", () => {
     assert.deepEqual(Object.keys(resultado).sort(), ["Accept", "User-Agent"]);
     assert.match(resultado["User-Agent"], /Firefox\/156\.0$/);
 });
+
+test("el preload calcula la misma versión de Firefox que las cabeceras", () => {
+    const preload = require("../src/main/googleLoginPreload");
+    for (const fecha of [Date.UTC(2025, 11, 10), Date.UTC(2026, 10, 10), Date.UTC(2028, 0, 1)]) {
+        assert.equal(preload.versionFirefox(fecha), versionFirefox(fecha));
+    }
+});
+
+test("el login no cambia el user agent de la pestaña (Chromium recargaría y cortaría la navegación)", () => {
+    const fuente = require("node:fs").readFileSync(require.resolve("../src/main/googleLogin"), "utf8");
+    assert.doesNotMatch(fuente, /setUserAgent\(/);
+});
