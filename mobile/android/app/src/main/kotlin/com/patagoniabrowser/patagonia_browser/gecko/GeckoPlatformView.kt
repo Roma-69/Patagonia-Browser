@@ -69,6 +69,7 @@ class GeckoPlatformView(
     private var nextReadId = 1
     private val reads = HashMap<Int, MethodChannel.Result>()
     private val readerReads = HashSet<Int>()
+    private var pageTitle = ""
 
     init {
         // TextureView: es el modo que anduvo bien en la prueba de fuego del Motorola.
@@ -127,6 +128,8 @@ class GeckoPlatformView(
             session.selectionActionDelegate = PatagoniaSelection(activity) { text -> send("searchText", text) }
         }
         session.setTranslationsSessionDelegate(translationsDelegate)
+        // Música y videos siguen sonando con Patagonia minimizado (ver GeckoMedia.kt).
+        if (!popup) session.mediaSessionDelegate = GeckoMedia.delegate(appContext) { pageTitle }
         session.promptDelegate = GeckoPrompts()
 
         session.navigationDelegate = object : GeckoSession.NavigationDelegate {
@@ -198,7 +201,10 @@ class GeckoPlatformView(
         }
 
         session.contentDelegate = object : GeckoSession.ContentDelegate {
-            override fun onTitleChange(session: GeckoSession, title: String?) = send("title", title)
+            override fun onTitleChange(session: GeckoSession, title: String?) {
+                pageTitle = title.orEmpty()
+                send("title", title)
+            }
             override fun onFullScreen(session: GeckoSession, fullScreen: Boolean) =
                 send("fullScreen", fullScreen)
             override fun onCloseRequest(session: GeckoSession) = send("closeRequest", null)
@@ -484,6 +490,8 @@ class GeckoPlatformView(
         reads.clear()
         readerReads.clear()
         session.setTranslationsSessionDelegate(null)
+        session.mediaSessionDelegate = null
+        GeckoMedia.forget(appContext, session)
         main.removeCallbacksAndMessages(null)
         GeckoEngine.forget(session)
         geckoView.releaseSession()
