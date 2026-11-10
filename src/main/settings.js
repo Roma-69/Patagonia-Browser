@@ -15,11 +15,12 @@ function validarConfiguracion(valor) {
     // Los archivos de versiones anteriores no tienen esta opción: queda activada.
     const actualizar = typeof valor.actualizar === "boolean" ? valor.actualizar : true;
     const modoChicos = valor.modoChicos === true;
-    return { inicio: url.href, restaurar: valor.restaurar, actualizar, modoChicos };
+    const letraGrande = valor.letraGrande === true;
+    return { inicio: url.href, restaurar: valor.restaurar, actualizar, modoChicos, letraGrande };
 }
 
 function crearConfiguracion(archivo) {
-    let datos = { inicio: PAGINA_INICIO, restaurar: true, actualizar: true, modoChicos: false };
+    let datos = { inicio: PAGINA_INICIO, restaurar: true, actualizar: true, modoChicos: false, letraGrande: false };
     let errorLectura = "";
     let cola = Promise.resolve();
     const estado = () => ({ ...datos, error: errorLectura });
