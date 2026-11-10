@@ -53,20 +53,49 @@ function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
         responder({ requestHeaders: cabeceras });
     });
 
-    // Además del pedido de red, la página lee navigator.userAgent: lo cambiamos
-    // en la pestaña mientras esté en el login y lo devolvemos al salir.
-    app.on("web-contents-created", (_evento, contenido) => {
-        const ajustar = url => {
-            const deseado = esLoginGoogle(url) ? userAgentFirefox() : userAgentNormal();
-            if (contenido.getUserAgent() !== deseado) contenido.setUserAgent(deseado);
-        };
-        contenido.on("did-start-navigation", (_e, url, mismaPagina, principal) => {
-            if (principal && !mismaPagina) ajustar(url);
+    // Además del pedido de red, la página lee navigator.userAgent. Ese valor se
+    // fija cuando ARRANCA la navegación: si cambiamos el user agent recién en
+    // "did-start-navigation", el login carga diciendo Chrome por dentro y Firefox
+    // en las cabeceras, y Google lo rechaza ("el navegador no es seguro").
+    // Por eso, al ENTRAR al login con el user agent equivocado, frenamos esa
+    // carga y la repetimos ya con el de Firefox. Al salir solo lo devolvemos.
+    app.on("web-contents-created", (_evento, contenido) => conectarPestana(contenido, userAgentNormal));
+}
+
+function conectarPestana(contenido, userAgentNormal) {
+    const recargarConFirefox = url => {
+        const ua = userAgentFirefox();
+        contenido.setUserAgent(ua);
+        setImmediate(() => {
+            if (!contenido.isDestroyed()) contenido.loadURL(url, { userAgent: ua }).catch(() => {});
         });
-        contenido.on("will-redirect", (_e, url, _m, principal) => {
-            if (principal !== false) ajustar(url);
-        });
+    };
+    const entraConUAViejo = url => esLoginGoogle(url) && contenido.getUserAgent() !== userAgentFirefox();
+
+    // Navegaciones que pide la página (clic en "Iniciar sesión"): se pueden frenar antes de arrancar.
+    contenido.on("will-navigate", evento => {
+        if (!entraConUAViejo(evento.url)) return;
+        evento.preventDefault();
+        recargarConFirefox(evento.url);
+    });
+    // Redirecciones (YouTube, Gmail, etc. mandan al login con un 302).
+    contenido.on("will-redirect", (evento, url, _m, principal) => {
+        if (principal === false || !entraConUAViejo(url)) return;
+        evento.preventDefault();
+        recargarConFirefox(url);
+    });
+    // Navegaciones del navegador (barra de direcciones, favoritos): no se pueden
+    // frenar antes, así que si arrancaron con el user agent viejo se repiten.
+    contenido.on("did-start-navigation", (_e, url, mismaPagina, principal) => {
+        if (!principal || mismaPagina) return;
+        if (entraConUAViejo(url)) {
+            contenido.stop();
+            recargarConFirefox(url);
+        } else if (!esLoginGoogle(url)) {
+            const normal = userAgentNormal();
+            if (contenido.getUserAgent() !== normal) contenido.setUserAgent(normal);
+        }
     });
 }
 
-module.exports = { esLoginGoogle, userAgentFirefox, versionFirefox, cabecerasFirefox, instalarLoginGoogle };
+module.exports = { conectarPestana, esLoginGoogle, userAgentFirefox, versionFirefox, cabecerasFirefox, instalarLoginGoogle };
