@@ -1,6 +1,7 @@
 package com.patagoniabrowser.patagonia_browser
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -37,6 +38,20 @@ class MainActivity : FlutterActivity(), AndroidPermissionRequester {
                     (call.arguments as? Number)?.toInt()?.let { GeckoEngine.dropPending(it) }
                     result.success(null)
                 }
+                "setKidsMode" -> {
+                    GeckoEngine.setKidsMode(this, call.arguments == true)
+                    result.success(null)
+                }
+                "setLargeText" -> {
+                    GeckoEngine.setLargeText(this, call.arguments == true)
+                    result.success(null)
+                }
+                "share" -> {
+                    val args = call.arguments as? Map<*, *>
+                    result.success(share(args?.get("text") as? String, args?.get("title") as? String))
+                }
+                "openWhatsApp" -> result.success(openWhatsApp())
+                "appVersion" -> result.success(appVersion())
                 else -> result.notImplemented()
             }
         }
@@ -62,6 +77,41 @@ class MainActivity : FlutterActivity(), AndroidPermissionRequester {
             }.distinct()
             requestAndroidPermissions(permissions) { result.success(it) }
         }
+    }
+
+    /** Compartir con la hoja de Android (WhatsApp, correo, etc.). */
+    private fun share(text: String?, title: String?): Boolean {
+        if (text.isNullOrBlank()) return false
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, text)
+        if (!title.isNullOrBlank()) send.putExtra(Intent.EXTRA_SUBJECT, title)
+        return try {
+            startActivity(Intent.createChooser(send, "Compartir"))
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        }
+    }
+
+    /** WhatsApp Web no anda en el celular: el acceso rápido abre la app de WhatsApp. */
+    private fun openWhatsApp(): Boolean {
+        for (name in listOf("com.whatsapp", "com.whatsapp.w4b")) {
+            val launch = packageManager.getLaunchIntentForPackage(name) ?: continue
+            return try {
+                startActivity(launch)
+                true
+            } catch (_: ActivityNotFoundException) {
+                false
+            }
+        }
+        return false
+    }
+
+    private fun appVersion(): String? = try {
+        packageManager.getPackageInfo(packageName, 0).versionName
+    } catch (_: PackageManager.NameNotFoundException) {
+        null
     }
 
     override fun requestAndroidPermissions(permissions: List<String>, done: (Boolean) -> Unit) {

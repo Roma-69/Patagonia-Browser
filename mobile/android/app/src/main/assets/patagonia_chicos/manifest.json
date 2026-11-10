@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "Patagonia Modo chicos",
+  "version": "1.0",
+  "description": "Modo chicos de Patagonia: búsqueda segura forzada y YouTube en modo restringido. Solo actúa cuando el modo chicos está prendido.",
+  "browser_specific_settings": {
+    "gecko": { "id": "chicos@patagoniabrowser.com" }
+  },
+  "background": {
+    "scripts": ["chicos.js"]
+  },
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "storage",
+    "nativeMessaging",
+    "geckoViewAddons",
+    "<all_urls>"
+  ]
+}

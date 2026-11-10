@@ -6,7 +6,25 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
-## [Android 1.1.2] - Sin publicar
+## [Android 1.2.0] - Sin publicar
+
+Lo que se sumó en la PC desde la 1.0.6 llega al celular.
+
+### Agregado
+
+- **Traductor de páginas:** cuando una página está en otro idioma aparece una barra arriba: **"Esta página está en inglés. Traducir"**. Usa el mismo motor de Firefox que la PC y traduce **en el teléfono**: la primera vez baja el idioma desde Mozilla (unos MB) y después no manda la página a nadie. Además del inglés sabe portugués, francés, alemán, italiano y muchos más.
+  - **Mostrar original**, **Siempre traducir** y **Nunca en este sitio**.
+  - Menú → **Traducir página**, por si la barra no apareció.
+- **Modo chicos** (Menú → Configuración → tilde): bloquea sitios para adultos y de malware con el DNS familiar de Cloudflare, fuerza la búsqueda segura en DuckDuckGo, Google, Bing y Yahoo y pone YouTube en modo restringido. La página de inicio muestra "Modo chicos activo".
+- **Letra grande** (Configuración → tilde): las páginas se ven con la letra al 125 %.
+- **Modo lectura** (Menú → Modo lectura): la nota sola, sin publicidad ni menús, con letra cómoda que se agranda o achica. La dibuja Patagonia: no se ejecuta nada de la página.
+- **Mantener apretado** un enlace: abrir en pestaña nueva (sin perder la que estás leyendo), copiar la dirección o compartirla. En una imagen: abrirla, **guardarla** en Descargas o copiar su dirección.
+- **Buscar** el texto seleccionado: aparece en el menú de Copiar y abre la búsqueda de DuckDuckGo en una pestaña nueva.
+- **Compartir** la página (Menú → Compartir) con WhatsApp, correo o la app que quieras.
+- Accesos rápidos nuevos en el inicio: **WhatsApp** (abre la app) y **Windguru**.
+- **Aviso de versión nueva:** una vez por día Patagonia mira en GitHub si salió una versión nueva del celular y la avisa en la página de inicio. Se puede apagar en Configuración.
+
+## [Android 1.1.2] - Sin publicar (incluido en la 1.2.0)
 
 ### Corregido
 

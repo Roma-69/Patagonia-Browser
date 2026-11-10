@@ -1,15 +1,15 @@
 {
   "manifest_version": 2,
   "name": "Patagonia Lector",
-  "version": "1.0",
-  "description": "Le pasa a Patagonia AI el texto de la página abierta. No envía nada fuera del teléfono.",
+  "version": "1.2",
+  "description": "Le pasa a Patagonia el texto de la página abierta (Patagonia AI y modo lectura). No envía nada fuera del teléfono.",
   "browser_specific_settings": {
     "gecko": { "id": "lector@patagoniabrowser.com" }
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["lector.js"],
+      "js": ["Readability.js", "lector.js"],
       "run_at": "document_idle"
     }
   ],
