@@ -12,6 +12,13 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 - **TalkBack (lector de pantalla):** cuando está prendido, la página se muestra como vista nativa de Android para que el lector pueda recorrer textos, links y botones de las páginas. Sin lector se sigue usando el modo por textura, más liviano.
 
+## [1.0.11] - 2026-11-10
+
+### Corregido
+
+- **Gmail no abría** después de iniciar sesión en Google, y la pestaña quedaba colgada en "Te damos la bienvenida" después de la clave de paso. El disfraz de Firefox del login cambiaba el user agent en plena navegación y Chromium la cancelaba.
+- **Login de Google con clave de paso (passkey):** Google seguía respondiendo "el navegador no es seguro" en algunas cuentas. Ahora en las páginas de login no quedan huellas de Chrome a la vista.
+
 ## [1.0.10] - 2026-11-09
 
 ### Agregado
