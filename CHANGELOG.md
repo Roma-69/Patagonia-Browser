@@ -22,6 +22,7 @@ Lo que se sumó en la PC desde la 1.0.6 llega al celular.
 - **Buscar** el texto seleccionado: aparece en el menú de Copiar y abre la búsqueda de DuckDuckGo en una pestaña nueva.
 - **Compartir** la página (Menú → Compartir) con WhatsApp, correo o la app que quieras.
 - Accesos rápidos nuevos en el inicio: **WhatsApp** (abre la app) y **Windguru**.
+- **Música en segundo plano:** lo que está sonando (YouTube, radios, podcasts) sigue al minimizar Patagonia, abrir otra app o apagar la pantalla. Aparece una notificación con **Pausar / Reproducir** y **Cerrar**, y también responde a los botones de los auriculares.
 - **Aviso de versión nueva:** una vez por día Patagonia mira en GitHub si salió una versión nueva del celular y la avisa en la página de inicio. Se puede apagar en Configuración.
 
 ## [Android 1.1.2] - Sin publicar (incluido en la 1.2.0)
