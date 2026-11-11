@@ -174,7 +174,24 @@ function registrarPermisos({ sesion, dialog, obtenerVentana, esPestanaPropia, es
         } finally { procesando = false; }
     }
 
+    // Cámara y micrófono: Electron solo deja contestar sí/no en la comprobación,
+    // y un "no" la página lo lee como "bloqueado por el navegador". Google Meet
+    // (y otros) ven eso y ni siquiera piden permiso. Por eso, mientras el usuario
+    // no haya bloqueado el sitio, contestamos "sí" acá; el aviso real
+    // ("Bloquear / Permitir") aparece igual cuando la página pide la cámara o el micrófono.
+    function comprobarMedia(contenido, origenDeclarado, detalles = {}) {
+        if (!contenido || contenido.isDestroyed() || !esPestanaPropia(contenido)) return false;
+        if (!detalles || typeof detalles !== "object" || detalles.isMainFrame === false) return false;
+        const origen = origenSeguro(contenido.getURL());
+        const fuentes = [detalles.securityOrigin, detalles.requestingUrl, origenDeclarado].filter(valor => valor !== undefined);
+        if (!origen || fuentes.some(valor => origenSeguro(valor) !== origen)) return false;
+        if (detalles.embeddingOrigin !== undefined && origenSeguro(detalles.embeddingOrigin) !== origen) return false;
+        const tipos = detalles.mediaType === "audio" || detalles.mediaType === "video" ? [detalles.mediaType] : ["audio", "video"];
+        return tipos.some(tipo => decisiones.get(`${origen}|media|${tipo}`) !== false);
+    }
+
     sesion.setPermissionCheckHandler((contenido, permiso, origen, detalles) => {
+        if (permiso === "media") return comprobarMedia(contenido, origen, detalles);
         const contexto = contextoValido(contenido, permiso, detalles, origen);
         return contexto ? decisionGuardada(contexto) === true : false;
     });
