@@ -31,6 +31,13 @@ Lo que se sumó en la PC desde la 1.0.6 llega al celular.
 
 - **TalkBack (lector de pantalla):** cuando está prendido, la página se muestra como vista nativa de Android para que el lector pueda recorrer textos, links y botones de las páginas. Sin lector se sigue usando el modo por textura, más liviano.
 
+## [1.0.12] - Sin publicar
+
+### Corregido
+
+- **Google Meet no podía usar la cámara ni el micrófono:** Patagonia le decía a la página que estaban "bloqueados por el navegador" antes de preguntarte, y Meet ni siquiera los pedía. Ahora aparece el aviso de siempre (**Bloquear / Permitir durante esta sesión**) y, si elegís Bloquear, queda bloqueado.
+- **Compartir pantalla ("Presentar ahora") en Meet:** antes fallaba siempre. Ahora Patagonia pregunta qué querés compartir: la pantalla completa o una ventana. Con la pantalla completa también se comparte el sonido de la PC.
+
 ## [1.0.11] - 2026-11-10
 
 ### Corregido

@@ -73,7 +73,8 @@ test("a visible choice is reused during the session and media grants remain gran
     assert.deepEqual(await Promise.all([primera, simultanea]), [true, true]);
     assert.equal(f.gestor.cantidadDecisiones(), 1);
     assert.equal(f.sesion.comprobar(pagina.contenido, "media", "https://meet.example", { securityOrigin: "https://meet.example", mediaType: "audio" }), true);
-    assert.equal(f.sesion.comprobar(pagina.contenido, "media", "https://meet.example", { securityOrigin: "https://meet.example", mediaType: "video" }), false);
+    // La cámara todavía no se decidió: la comprobación dice "sí" para que el sitio la pida y aparezca el aviso.
+    assert.equal(f.sesion.comprobar(pagina.contenido, "media", "https://meet.example", { securityOrigin: "https://meet.example", mediaType: "video" }), true);
     assert.equal(await f.solicitar(pagina.contenido, "media", detalles), true);
     assert.equal(f.preguntas.length, 1);
 });
@@ -130,6 +131,29 @@ test("different permissions are queued and an overlapping media choice keeps exi
     assert.equal(await audioVideo, false);
     assert.equal(f.sesion.comprobar(pagina.contenido, "media", "https://meet.example", { mediaType: "audio" }), true);
     assert.equal(f.sesion.comprobar(pagina.contenido, "media", "https://meet.example", { mediaType: "video" }), false);
+});
+
+test("Meet: undecided camera/mic are not reported as blocked, blocked ones are", async () => {
+    const f = fixture();
+    const pagina = f.pagina("https://meet.google.com/abc-defg-hij");
+    const origen = "https://meet.google.com";
+    assert.equal(f.sesion.comprobar(pagina.contenido, "media", origen, { securityOrigin: origen, mediaType: "video" }), true);
+    assert.equal(f.sesion.comprobar(pagina.contenido, "media", origen, { securityOrigin: origen, mediaType: "audio" }), true);
+    assert.equal(f.sesion.comprobar(pagina.contenido, "media", origen, { securityOrigin: origen, mediaType: "unknown" }), true);
+    assert.equal(f.preguntas.length, 0, "comprobar no muestra avisos");
+    const pedido = f.solicitar(pagina.contenido, "media", { securityOrigin: origen, requestingUrl: pagina.contenido.getURL(), mediaTypes: ["audio", "video"] });
+    assert.equal(f.preguntas.length, 1);
+    f.preguntas[0].resolve({ response: 0 });
+    assert.equal(await pedido, false);
+    assert.equal(f.sesion.comprobar(pagina.contenido, "media", origen, { securityOrigin: origen, mediaType: "video" }), false);
+    assert.equal(f.sesion.comprobar(pagina.contenido, "media", origen, { securityOrigin: origen, mediaType: "unknown" }), false);
+    // Subframes, otros orígenes y páginas ajenas siguen cerrados.
+    const otra = f.pagina("https://meet.google.com/otra");
+    assert.equal(f.sesion.comprobar(otra.contenido, "media", origen, { securityOrigin: origen, mediaType: "video", isMainFrame: false }), false);
+    assert.equal(f.sesion.comprobar(otra.contenido, "media", "https://evil.example", { securityOrigin: "https://evil.example", mediaType: "video" }), false);
+    assert.equal(f.sesion.comprobar({ isDestroyed: () => false, getURL: () => "https://meet.google.com/" }, "media", origen, { mediaType: "video" }), false);
+    const insegura = f.pagina("http://meet.example/");
+    assert.equal(f.sesion.comprobar(insegura.contenido, "media", "http://meet.example", { mediaType: "video" }), false);
 });
 
 test("background tabs cannot show permission dialogs and switching tabs cancels a pending one", async () => {

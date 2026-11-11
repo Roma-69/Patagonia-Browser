@@ -179,6 +179,7 @@ for (const restaurar of [true, false]) test(`main startup respects restore=${res
     const sesionElectron = {
         setPermissionCheckHandler(fn) { this.comprobarPermiso = fn; },
         setPermissionRequestHandler(fn) { this.solicitarPermiso = fn; },
+        setDisplayMediaRequestHandler(fn) { this.compartirPantalla = fn; },
         webRequest: { onBeforeSendHeaders(fn) { sesionElectron.ajustarCabeceras = fn; } }
     };
     const preguntasPermisos = [];
@@ -258,6 +259,7 @@ for (const restaurar of [true, false]) test(`main startup respects restore=${res
         if (nombre.endsWith("/find")) return require("../src/main/find");
         if (nombre.endsWith("/menu")) return require("../src/main/menu");
         if (nombre.endsWith("/permissions")) return require("../src/main/permissions");
+        if (nombre.endsWith("/compartirPantalla")) return require("../src/main/compartirPantalla");
         if (nombre.endsWith("/adblocker")) return { crearProteccion: () => ({
             iniciar: () => Promise.resolve(), esperar: async () => {}, cerrar() {}, actualizarSiHaceFalta() {}, reiniciarPestana() {}, olvidarPestana() {},
             estado: () => ({ disponible: true, sitio: "", activa: false, permitida: false, anuncios: 0, rastreadores: 0, total: 0 })

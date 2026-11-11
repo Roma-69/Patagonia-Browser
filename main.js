@@ -10,7 +10,9 @@ const {
     nativeImage,
     clipboard,
     autoUpdater,
-    net
+    net,
+    desktopCapturer,
+    webContents
 } = require("electron");
 
 const eventoInstalador = typeof process !== "undefined" ? (process.argv || [])[1] : undefined;
@@ -1331,6 +1333,16 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             obtenerVentana: () => ventanaPrincipal,
             esPestanaPropia: contenido => pestanas.some(pestana => pestana.vista.webContents === contenido),
             esPestanaActiva: contenido => obtenerPestanaActiva()?.vista.webContents === contenido
+        });
+        require("./src/main/compartirPantalla").registrarCompartirPantalla({
+            sesion: session.defaultSession,
+            desktopCapturer,
+            dialog,
+            webContents,
+            obtenerVentana: () => ventanaPrincipal,
+            esPestanaPropia: contenido => pestanas.some(pestana => pestana.vista.webContents === contenido),
+            esPestanaActiva: contenido => obtenerPestanaActiva()?.vista.webContents === contenido,
+            origenSeguro: require("./src/main/permissions").origenSeguro
         });
         require("./src/main/googleLogin").instalarLoginGoogle({
             app,
