@@ -66,8 +66,8 @@
             if (!respuesta.correcto) throw new Error(respuesta.error);
             favoritos = respuesta.favoritos;
             cargado = true;
-            estado.textContent = mensaje;
-            aviso.textContent = mensaje;
+            estado.textContent = respuesta.mensaje || mensaje;
+            aviso.textContent = respuesta.mensaje || mensaje;
         } catch (error) {
             estado.textContent = error.message || "No se pudo completar la acción.";
             aviso.textContent = "No se pudo actualizar favoritos. Abrí la lista para ver el detalle.";
@@ -86,6 +86,18 @@
         abrir.setAttribute("aria-expanded", String(!panel.hidden));
         if (!panel.hidden) ejecutar(() => window.patagonia.listarFavoritos());
     });
+    const exportar = document.getElementById("exportarFavoritos");
+    const importar = document.getElementById("importarFavoritos");
+    exportar?.addEventListener("click", () => ejecutar(() => window.patagonia.exportarFavoritos(), ""));
+    importar?.addEventListener("click", () => ejecutar(async () => {
+        const respuesta = await window.patagonia.importarFavoritos();
+        if (respuesta.correcto && typeof respuesta.agregados === "number") {
+            respuesta.mensaje = respuesta.agregados
+                ? `Se agregaron ${respuesta.agregados} favoritos.`
+                : "Esos favoritos ya estaban guardados.";
+        }
+        return respuesta;
+    }));
     window.PatagoniaFavorites = {
         actualizarPagina(pestana) { pagina = pestana; actualizarEstrella(); }
     };

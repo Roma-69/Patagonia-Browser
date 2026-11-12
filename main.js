@@ -1382,7 +1382,8 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             archivo: path.join(app.getPath("userData"), "favoritos.json"),
             obtenerVentana: () => ventanaPrincipal,
             obtenerPestana: obtenerPestanaActiva,
-            navegar
+            navegar,
+            dialog
         });
         const argv = process.argv || [];
         const urlApp = extraerURLApp(argv);

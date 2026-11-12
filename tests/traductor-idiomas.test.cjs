@@ -99,3 +99,29 @@ test("clic derecho: 'Mostrar original' cuando la página ya está traducida", ()
     assert.ok(!etiquetas(true).includes("Traducir página al español"));
     assert.ok(etiquetas(false).includes("Traducir página al español"));
 });
+
+test("favoritos: el archivo de la PC se lee igual en el otro lado y no duplica", async () => {
+    const { exportarFavoritos, leerFavoritos } = require("../src/shared/favoritosArchivo");
+    const html = exportarFavoritos([
+        { titulo: "Windguru <Sarmiento> & \"más\"", url: "https://www.windguru.cz/123" },
+        { titulo: "malo", url: "javascript:alert(1)" },
+        { titulo: "Ruta", url: "file:///C:/x" }
+    ]);
+    assert.match(html, /NETSCAPE-Bookmark-file-1/);
+    assert.deepEqual(leerFavoritos(html), [{ titulo: "Windguru <Sarmiento> & \"más\"", url: "https://www.windguru.cz/123" }]);
+    // Formato de Chrome/Firefox, con carpetas y atributos extra.
+    const otro = `<DL><DT><H3>Barra</H3><DL><DT><A HREF="https://duckduckgo.com/" ADD_DATE="1">Duck&amp;Go</A>
+        <DT><A HREF='https://duckduckgo.com/'>repetido</A><DT><A HREF="https://user:pw@x.com/">no</A></DL></DL>`;
+    assert.deepEqual(leerFavoritos(otro), [{ titulo: "Duck&Go", url: "https://duckduckgo.com/" }]);
+
+    const fsp = require("node:fs/promises");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "patagonia-fav-"));
+    const { crearAlmacenFavoritos } = require("../src/main/bookmarks");
+    const almacen = crearAlmacenFavoritos(path.join(dir, "favoritos.json"));
+    const primera = await almacen.importar(leerFavoritos(html + otro));
+    assert.equal(primera.agregados, 2);
+    const segunda = await almacen.importar(leerFavoritos(html));
+    assert.equal(segunda.agregados, 0);
+    assert.equal((await almacen.listar()).length, 2);
+    await fsp.rm(dir, { recursive: true, force: true });
+});
