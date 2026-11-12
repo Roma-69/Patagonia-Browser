@@ -149,7 +149,7 @@ const paresTraductor = paresDisponibles();
 let modelosTraductor = null;
 const modelosDelTraductor = () => modelosTraductor ??= require("./src/main/translator/modelos").crearModelos({
     carpetaIncluida: require("./src/main/translator/motor").CARPETA_MODELOS,
-    carpetaDescargas: path.join(app.getPath("userData"), "traductor-idiomas"),
+    carpetaDescargas: () => path.join(app.getPath("userData"), "traductor-idiomas"),
     pedir: (url, opciones) => net.fetch(url, opciones)
 });
 const motorTraductor = crearMotorTraductor({ cargarModelo: par => modelosDelTraductor().leer(par) });
@@ -158,7 +158,11 @@ const gestorTraduccion = crearGestorTraduccion({
     motor: motorTraductor,
     preferencias: preferenciasTraductor,
     pares: () => paresTraductor,
-    modelos: { soportado: idioma => modelosDelTraductor().soportado(idioma), preparar: (...a) => modelosDelTraductor().preparar(...a) },
+    modelos: {
+        // soportado() no mira el disco: la barra del traductor no tiene que esperar nada.
+        soportado: require("./src/main/translator/modelos").soportado,
+        preparar: (...a) => modelosDelTraductor().preparar(...a)
+    },
     obtenerContenido: () => obtenerContenido(obtenerPestanaActiva()),
     notificar: estado => {
         if (!ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;

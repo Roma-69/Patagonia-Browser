@@ -69,15 +69,19 @@ function descomprimir(datos, nombre) {
     return datos;
 }
 
+const soportado = idioma => IDIOMAS.includes(idioma);
+
+// `carpetaDescargas` puede ser una función: la carpeta se resuelve recién cuando hace falta
+// bajar o leer un idioma, no al mostrar la barra del traductor.
 function crearModelos({ carpetaIncluida, carpetaDescargas, pedir = globalThis.fetch, sistema = fs } = {}) {
     const enCurso = new Map();
+    const descargas = () => (typeof carpetaDescargas === "function" ? carpetaDescargas() : carpetaDescargas);
 
     function tieneArchivos(carpeta, par) {
         try { return sistema.readdirSync(path.join(carpeta, par)).some(n => n.startsWith("model.")); }
         catch { return false; }
     }
-    const local = par => esPar(par) && (tieneArchivos(carpetaIncluida, par) || tieneArchivos(carpetaDescargas, par));
-    const soportado = idioma => IDIOMAS.includes(idioma);
+    const local = par => esPar(par) && (tieneArchivos(carpetaIncluida, par) || tieneArchivos(descargas(), par));
 
     async function pedirJSON(url) {
         const respuesta = await pedir(url, { cache: "no-store" });
@@ -94,8 +98,9 @@ function crearModelos({ carpetaIncluida, carpetaDescargas, pedir = globalThis.fe
     async function bajar(par, archivos, alProgreso) {
         const total = archivos.reduce((s, r) => s + (Number(r.attachment.size) || 0), 0);
         let hechos = 0;
-        const final = path.join(carpetaDescargas, par);
-        const temporal = path.join(carpetaDescargas, `.${par}-${process.pid}-${Date.now()}`);
+        const raiz = descargas();
+        const final = path.join(raiz, par);
+        const temporal = path.join(raiz, `.${par}-${process.pid}-${Date.now()}`);
         sistema.mkdirSync(temporal, { recursive: true });
         try {
             for (const r of archivos) {
@@ -148,11 +153,11 @@ function crearModelos({ carpetaIncluida, carpetaDescargas, pedir = globalThis.fe
 
     function leer(par) {
         if (!esPar(par)) throw new Error("Par de idiomas inválido.");
-        const carpeta = tieneArchivos(carpetaIncluida, par) ? carpetaIncluida : carpetaDescargas;
+        const carpeta = tieneArchivos(carpetaIncluida, par) ? carpetaIncluida : descargas();
         return leerModelo(par, carpeta);
     }
 
     return { soportado, local, preparar, leer };
 }
 
-module.exports = { crearModelos, elegirArchivos, compararVersion, IDIOMAS, REGISTROS, ADJUNTOS };
+module.exports = { crearModelos, soportado, elegirArchivos, compararVersion, IDIOMAS, REGISTROS, ADJUNTOS };
