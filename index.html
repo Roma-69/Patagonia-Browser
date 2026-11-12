@@ -1017,9 +1017,15 @@ button{
         <section id="panelConfiguracion" hidden aria-labelledby="tituloConfiguracion">
             <h2 id="tituloConfiguracion">Configuración</h2>
             <form id="formularioConfiguracion">
+                <label for="buscador">Buscador</label>
+                <select id="buscador">
+                    <option value="brave" data-inicio="https://search.brave.com/">Brave Search (recomendado)</option>
+                    <option value="duckduckgo" data-inicio="https://duckduckgo.com/">DuckDuckGo</option>
+                </select>
+                <p>Brave Search usa su propio índice de la web: no depende de Google ni de Microsoft. DuckDuckGo queda como respaldo. Se aplica apenas lo cambiás.</p>
                 <label for="paginaInicio">Página de inicio</label>
                 <input id="paginaInicio" type="url" required maxlength="2048"
-                    placeholder="https://duckduckgo.com/" autocomplete="off">
+                    placeholder="https://search.brave.com/" autocomplete="off">
                 <p>Se usa al pulsar el botón Inicio. Las pestañas nuevas abren el inicio de Patagonia.</p>
                 <label class="configuracion-casilla">
                     <input id="restaurarPestanas" type="checkbox">
@@ -1035,7 +1041,7 @@ button{
                     <input id="modoChicos" type="checkbox">
                     Modo chicos
                 </label>
-                <p>Bloquea sitios para adultos, fuerza la búsqueda segura (DuckDuckGo, Google, Bing) y pone YouTube en modo restringido. Se aplica apenas lo tildás o destildás.</p>
+                <p>Bloquea sitios para adultos, fuerza la búsqueda segura (Brave Search, DuckDuckGo, Google, Bing) y pone YouTube en modo restringido. Se aplica apenas lo tildás o destildás.</p>
                 <label class="configuracion-casilla">
                     <input id="letraGrande" type="checkbox">
                     Letra grande
@@ -1167,7 +1173,7 @@ button{
     #panelConfiguracion h2 { font-size:17px; margin-bottom:14px; }
     #panelConfiguracion label { display:block; font-size:13px; margin:12px 0 6px; }
     #panelConfiguracion p { color:#c4cbd8; font-size:12px; line-height:1.5; margin:10px 0; }
-    #paginaInicio { width:100%; padding:9px; color:#fff; background:#151a23; border:1px solid #59657c; border-radius:6px; }
+    #paginaInicio, #buscador { width:100%; padding:9px; color:#fff; background:#151a23; border:1px solid #59657c; border-radius:6px; }
     #panelConfiguracion .configuracion-casilla { display:flex; align-items:start; gap:8px; line-height:1.5; }
 </style>
 <style>

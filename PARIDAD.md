@@ -23,7 +23,8 @@ Patagonia es **un solo navegador** en dos equipos. La regla es simple:
 | Bloqueo de anuncios y rastreadores (incluye YouTube) | ✅ Ghostery | ✅ uBlock Origin | Motor distinto, mismo resultado |
 | Traductor privado (en el equipo) | ✅ 1.3.0: inglés incluido; portugués, francés, alemán e italiano se bajan la primera vez | ✅ | Mismo motor de Firefox |
 | "Mostrar original" desde el menú | ✅ 1.3.0 (clic derecho) | ✅ | |
-| Modo chicos (tilde) | ✅ | ✅ | |
+| Buscador: Brave Search por defecto, DuckDuckGo de respaldo | ✅ 1.3.0 Configuración → Buscador | ✅ 1.3.0 Configuración → Buscador | Sin depender de Google ni Microsoft para buscar |
+| Modo chicos (tilde) | ✅ 1.3.0: Brave pasa a safe.search.brave.com | ✅ 1.3.0: Brave pasa a safe.search.brave.com | |
 | Letra grande y modo lectura | ✅ | ✅ | |
 | Abrir un sitio como app | ✅ "Crear app de esta página" | ✅ 1.3.0 "Agregar a la pantalla de inicio" | |
 | Imprimir / guardar como PDF | ✅ Ctrl+P | ✅ 1.3.0 Menú → Imprimir | |
@@ -46,6 +47,7 @@ Hacerla **en la PC y en el celular** con la versión que se va a publicar:
 - [ ] **WhatsApp Web** (PC) / acceso a WhatsApp (celu).
 - [ ] **Google Meet**: se ve y se escucha (en la PC, también "Presentar ahora").
 - [ ] **Traductor**: una página en inglés y una en portugués; "Mostrar original".
-- [ ] **Modo chicos**: tildar, buscar algo para adultos (no tiene que aparecer), destildar.
+- [ ] **Buscador**: escribir algo en la barra → abre Brave Search. Cambiar a DuckDuckGo en Configuración → la próxima búsqueda va a DuckDuckGo. Volver a Brave.
+- [ ] **Modo chicos**: tildar, buscar algo para adultos en Brave (tiene que abrir safe.search.brave.com y no mostrar nada para adultos), destildar.
 - [ ] Favoritos: agregar uno, exportarlo e importarlo en el otro equipo.
 - [ ] Se instala **encima** de la versión anterior sin perder favoritos ni sesión.

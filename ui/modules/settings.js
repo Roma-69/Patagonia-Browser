@@ -7,12 +7,13 @@
     const actualizar = document.getElementById("actualizarAutomatico");
     const chicos = document.getElementById("modoChicos");
     const letra = document.getElementById("letraGrande");
+    const buscador = document.getElementById("buscador");
     const guardar = document.getElementById("guardarConfiguracion");
     const estado = document.getElementById("estadoConfiguracion");
     let ocupado = false;
     let bloqueada = false;
     function habilitar() {
-        for (const elemento of [inicio, restaurar, actualizar, chicos, letra, guardar]) elemento.disabled = ocupado || bloqueada;
+        for (const elemento of [buscador, inicio, restaurar, actualizar, chicos, letra, guardar]) elemento.disabled = ocupado || bloqueada;
     }
     async function ejecutar(accion, guardando = false) {
         if (ocupado) return;
@@ -28,10 +29,12 @@
             actualizar.checked = configuracion.actualizar !== false;
             chicos.checked = configuracion.modoChicos === true;
             letra.checked = configuracion.letraGrande === true;
+            buscador.value = configuracion.buscador || "brave";
             bloqueada = Boolean(configuracion.error);
             const avisos = {
                 chicos: configuracion.modoChicos ? "Modo chicos activado." : "Modo chicos desactivado.",
-                letra: configuracion.letraGrande ? "Letra grande activada." : "Letra grande desactivada."
+                letra: configuracion.letraGrande ? "Letra grande activada." : "Letra grande desactivada.",
+                buscador: `Buscador: ${buscador.selectedOptions[0]?.textContent.replace(/\s*\(.*\)$/, "") || "Brave Search"}.`
             };
             estado.textContent = configuracion.error || avisos[guardando] || (guardando ? "Configuración guardada." : "");
         } catch (error) { estado.textContent = error.message || "No se pudo completar la operación."; }
@@ -60,10 +63,22 @@
             predeterminado.disabled = false;
         }
     });
-    const datosFormulario = () => ({ inicio: inicio.value.trim(), restaurar: restaurar.checked, actualizar: actualizar.checked, modoChicos: chicos.checked, letraGrande: letra.checked });
+    const datosFormulario = () => ({ inicio: inicio.value.trim(), restaurar: restaurar.checked, actualizar: actualizar.checked, modoChicos: chicos.checked, letraGrande: letra.checked, buscador: buscador.value });
     formulario.addEventListener("submit", evento => {
         evento.preventDefault();
         ejecutar(() => window.patagonia.guardarConfiguracion(datosFormulario()), true);
+    });
+    // Al cambiar de buscador, si el inicio era la portada del otro, pasa al nuevo.
+    let buscadorAnterior = buscador.value;
+    buscador.addEventListener("focus", () => { buscadorAnterior = buscador.value; });
+    buscador.addEventListener("change", () => {
+        const portadas = [...buscador.options].map(opcion => opcion.dataset.inicio);
+        if (!inicio.value.trim() || portadas.includes(inicio.value.trim())) {
+            inicio.value = buscador.selectedOptions[0].dataset.inicio;
+        }
+        if (!formulario.reportValidity()) { buscador.value = buscadorAnterior; return; }
+        buscadorAnterior = buscador.value;
+        ejecutar(() => window.patagonia.guardarConfiguracion(datosFormulario()), "buscador");
     });
     // El tilde del modo chicos se guarda y aplica al instante.
     for (const [casilla, aviso] of [[chicos, "chicos"], [letra, "letra"]]) {

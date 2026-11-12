@@ -21,6 +21,12 @@ Desde esta versión **la PC y el celular llevan el mismo número** y hacen lo mi
 - **PC — más idiomas en el traductor:** además del inglés, traduce **portugués, francés, alemán e italiano**. Cada idioma se baja de Mozilla **una sola vez** (unos 20 MB, verificado) y después traduce en tu equipo sin mandar la página a nadie, igual que el celular.
 - **PC — "Mostrar original" desde el clic derecho** cuando la página está traducida (antes, si cerrabas la barra, había que recargar).
 
+### Cambiado
+
+- **Brave Search es el buscador (PC y celular):** usa su propio índice de la web, sin depender de Google ni de Microsoft. En **Configuración → Buscador** se puede elegir **DuckDuckGo** como respaldo. Vale para la barra de direcciones, la pestaña nueva de la PC, el clic derecho ("Buscar … en Brave Search") y **Buscar** el texto seleccionado en el celular.
+- PC: quien tenía DuckDuckGo como página de inicio de fábrica pasa a Brave Search. Si habías puesto tu propia página de inicio, no se toca.
+- **Modo chicos con Brave (PC y celular):** las búsquedas en Brave pasan solas a **safe.search.brave.com**, la versión de Brave con búsqueda segura estricta y fija. Se sigue forzando también en DuckDuckGo, Google y Bing.
+
 ### Corregido
 
 - **Google Meet no podía usar la cámara ni el micrófono:** Patagonia le decía a la página que estaban "bloqueados por el navegador" antes de preguntarte, y Meet ni siquiera los pedía. Ahora aparece el aviso de siempre (**Bloquear / Permitir durante esta sesión**) y, si elegís Bloquear, queda bloqueado.

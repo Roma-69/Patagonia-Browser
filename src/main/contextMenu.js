@@ -1,5 +1,5 @@
 // Menú de clic derecho para las páginas: imágenes, enlaces, texto y campos editables.
-const BUSCADOR = "https://duckduckgo.com/?q=";
+const { obtenerBuscador, urlBusqueda } = require("../shared/buscadores");
 
 function esWeb(valor) {
     try {
@@ -60,8 +60,8 @@ function crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, zoom
         grupos.push([
             { label: "Copiar", role: "copy" },
             {
-                label: `Buscar "${resumir(seleccion)}" en DuckDuckGo`,
-                click: () => abrirEnPestana(BUSCADOR + encodeURIComponent(seleccion.slice(0, 500)))
+                label: `Buscar "${resumir(seleccion)}" en ${obtenerBuscador().nombre}`,
+                click: () => abrirEnPestana(urlBusqueda(seleccion.slice(0, 500)))
             }
         ]);
     }

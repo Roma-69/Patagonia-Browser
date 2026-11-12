@@ -59,7 +59,8 @@ test("selected text can be copied and searched privately", () => {
     const plantilla = crearPlantillaMenu({ selectionText: "  Fórmula 1 en Interlagos  " }, opciones);
     assert.equal(plantilla[0].role, "copy");
     plantilla[1].click();
-    assert.equal(registro.abiertas[0], "https://duckduckgo.com/?q=F%C3%B3rmula%201%20en%20Interlagos");
+    assert.equal(plantilla[1].label, 'Buscar "Fórmula 1 en Interlagos" en Brave Search');
+    assert.equal(registro.abiertas[0], "https://search.brave.com/search?q=F%C3%B3rmula%201%20en%20Interlagos");
 });
 
 test("text fields get edit actions and empty areas get navigation", () => {
