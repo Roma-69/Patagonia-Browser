@@ -17,15 +17,28 @@ function urlGoogle(url) {
 
 // Orquesta la traducción por pestaña. `notificar(estado)` avisa a la interfaz cuando
 // cambia lo que hay que mostrar en la pestaña activa.
-function crearGestorTraduccion({ motor, preferencias, pares, obtenerContenido, notificar, temporizador = { setInterval, clearInterval } }) {
+// `modelos` (opcional) baja otros idiomas la primera vez que hacen falta (ver modelos.js).
+function crearGestorTraduccion({ motor, preferencias, pares, modelos, obtenerContenido, notificar, temporizador = { setInterval, clearInterval } }) {
     const datos = new Map(); // id de webContents → estado
 
-    const inicial = () => ({ estado: "oculta", barraCerrada: false, idioma: "", sitio: "", url: "", hechos: 0, total: 0, error: "", generacion: 0, vigilancia: null });
+    const inicial = () => ({ estado: "oculta", barraCerrada: false, idioma: "", sitio: "", url: "", hechos: 0, total: 0, error: "", generacion: 0, vigilancia: null, ruta: null, descarga: null });
     const de = contenido => {
         if (!datos.has(contenido.id)) datos.set(contenido.id, inicial());
         return datos.get(contenido.id);
     };
-    const tieneModelo = idioma => pares().includes(`${idioma}${DESTINO}`);
+    const tieneModelo = idioma => pares().includes(`${idioma}${DESTINO}`) || Boolean(modelos?.soportado(idioma));
+    // Si el idioma no viene incluido, lo baja una sola vez y devuelve el camino de traducción.
+    async function ruta(d, contenido) {
+        if (d.ruta) return d.ruta;
+        const par = `${d.idioma}${DESTINO}`;
+        if (!modelos || pares().includes(par)) return (d.ruta = [par]);
+        const camino = await modelos.preparar(d.idioma, DESTINO, progreso => {
+            d.descarga = progreso;
+            avisar(contenido);
+        });
+        d.descarga = null;
+        return (d.ruta = camino);
+    }
 
     function publico(d) {
         return {
@@ -37,6 +50,7 @@ function crearGestorTraduccion({ motor, preferencias, pares, obtenerContenido, n
             siempre: Boolean(d.idioma) && preferencias.siempreTraducir(d.idioma),
             hechos: d.hechos,
             total: d.total,
+            descarga: d.descarga ? { ...d.descarga } : null,
             error: d.error
         };
     }
@@ -92,7 +106,7 @@ function crearGestorTraduccion({ motor, preferencias, pares, obtenerContenido, n
         for (let i = 0; i < pares.length; i += LOTE) {
             if (contenido.isDestroyed() || d.generacion !== generacion) return i;
             const lote = pares.slice(i, i + LOTE);
-            const traducciones = await motor.traducir(`${d.idioma}${DESTINO}`, lote.map(([, texto]) => texto));
+            const traducciones = await motor.traducir(d.ruta || `${d.idioma}${DESTINO}`, lote.map(([, texto]) => texto));
             if (contenido.isDestroyed() || d.generacion !== generacion) return i;
             await enPagina(contenido, aplicar(lote.map(([indice], j) => [indice, traducciones[j]])));
             d.hechos += lote.length;
@@ -109,6 +123,8 @@ function crearGestorTraduccion({ motor, preferencias, pares, obtenerContenido, n
         Object.assign(d, { estado: "traduciendo", hechos: 0, total: 0, error: "" });
         avisar(contenido);
         try {
+            await ruta(d, contenido);
+            if (contenido.isDestroyed() || d.generacion !== generacion) return;
             await pasada(contenido, d, generacion);
             if (contenido.isDestroyed() || d.generacion !== generacion) return;
             d.estado = "traducida";
@@ -125,7 +141,10 @@ function crearGestorTraduccion({ motor, preferencias, pares, obtenerContenido, n
             }, 2500);
         } catch (error) {
             if (contenido.isDestroyed() || d.generacion !== generacion) return;
-            Object.assign(d, { estado: "error", error: "No se pudo traducir esta página." });
+            const sinRed = Boolean(d.descarga) || (!d.ruta && modelos);
+            Object.assign(d, { estado: "error", descarga: null, error: sinRed
+                ? `No se pudo bajar el idioma ${nombreIdioma(d.idioma)}. Revisá la conexión y probá de nuevo.`
+                : "No se pudo traducir esta página." });
             avisar(contenido);
         }
     }

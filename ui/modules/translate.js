@@ -37,6 +37,10 @@
             texto.textContent = local
                 ? `Esta página está en ${idioma}.`
                 : `Esta página está en ${idioma}. La traducción privada todavía no está disponible para este idioma.`;
+        } else if (estado.estado === "traduciendo" && estado.descarga) {
+            const { hechos = 0, total = 0 } = estado.descarga;
+            const porcentaje = total ? Math.min(100, Math.round(hechos * 100 / total)) : 0;
+            texto.textContent = `Bajando el ${idioma} (solo la primera vez)… ${porcentaje} %`;
         } else if (estado.estado === "traduciendo") {
             texto.textContent = estado.total
                 ? `Traduciendo en tu equipo… ${Math.min(estado.hechos, estado.total)} de ${estado.total}`

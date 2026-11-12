@@ -279,6 +279,7 @@ for (const restaurar of [true, false]) test(`main startup respects restore=${res
         if (nombre.endsWith("/translator/motor")) return { crearMotor: () => ({ traducir: async (_par, textos) => textos, cerrar() {} }), paresDisponibles: () => ["enes"] };
         if (nombre.endsWith("/translator/preferencias")) return require("../src/main/translator/preferencias");
         if (nombre.endsWith("/translator/gestor")) return require("../src/main/translator/gestor");
+        if (nombre.endsWith("/translator/modelos")) return require("../src/main/translator/modelos");
         return {};
     };
     require("node:vm").runInNewContext("(function () {\n" + await fs.readFile(path.join(__dirname, "../main.js"), "utf8") + "\n})();", {
