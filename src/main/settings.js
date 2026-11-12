@@ -2,6 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { PAGINA_INICIO } = require("../shared/constants");
+const { BUSCADORES, BUSCADOR_PREDETERMINADO, esBuscadorValido } = require("../shared/buscadores");
 const { crearIPCInterfaz } = require("./security");
 
 function validarConfiguracion(valor) {
@@ -16,11 +17,16 @@ function validarConfiguracion(valor) {
     const actualizar = typeof valor.actualizar === "boolean" ? valor.actualizar : true;
     const modoChicos = valor.modoChicos === true;
     const letraGrande = valor.letraGrande === true;
-    return { inicio: url.href, restaurar: valor.restaurar, actualizar, modoChicos, letraGrande };
+    // Hasta la 1.0.11 no se podía elegir buscador y el inicio de fábrica era DuckDuckGo:
+    // esas configuraciones pasan a Brave. Si alguien puso su propia página, se respeta.
+    const vieja = !("buscador" in valor);
+    const buscador = esBuscadorValido(valor.buscador) ? valor.buscador : BUSCADOR_PREDETERMINADO;
+    const inicio = vieja && url.href === BUSCADORES.duckduckgo.inicio ? BUSCADORES.brave.inicio : url.href;
+    return { inicio, restaurar: valor.restaurar, actualizar, modoChicos, letraGrande, buscador };
 }
 
 function crearConfiguracion(archivo) {
-    let datos = { inicio: PAGINA_INICIO, restaurar: true, actualizar: true, modoChicos: false, letraGrande: false };
+    let datos = { inicio: PAGINA_INICIO, restaurar: true, actualizar: true, modoChicos: false, letraGrande: false, buscador: BUSCADOR_PREDETERMINADO };
     let errorLectura = "";
     let cola = Promise.resolve();
     const estado = () => ({ ...datos, error: errorLectura });

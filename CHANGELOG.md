@@ -31,7 +31,20 @@ Lo que se sumó en la PC desde la 1.0.6 llega al celular.
 
 - **TalkBack (lector de pantalla):** cuando está prendido, la página se muestra como vista nativa de Android para que el lector pueda recorrer textos, links y botones de las páginas. Sin lector se sigue usando el modo por textura, más liviano.
 
+## [Android] - Próxima versión, sin publicar
+
+### Cambiado
+
+- **Brave Search es el buscador:** usa su propio índice de la web, sin depender de Google ni de Microsoft. En **Configuración → Buscador** se puede elegir **DuckDuckGo** como respaldo. Vale para la barra de direcciones y para **Buscar** el texto seleccionado.
+- **Modo chicos con Brave:** las búsquedas en Brave pasan solas a **safe.search.brave.com**, la versión de Brave con búsqueda segura estricta y fija.
+
 ## [1.0.12] - Sin publicar
+
+### Cambiado
+
+- **Brave Search es el buscador:** usa su propio índice de la web, sin depender de Google ni de Microsoft. En **Configuración → Buscador** se puede elegir **DuckDuckGo** como respaldo; se aplica al toque en la barra de direcciones, la pestaña nueva y el clic derecho ("Buscar … en Brave Search").
+- Quien tenía DuckDuckGo como página de inicio de fábrica pasa a Brave Search. Si habías puesto tu propia página de inicio, no se toca.
+- **Modo chicos con Brave:** las búsquedas en Brave pasan solas a **safe.search.brave.com**, la versión de Brave con búsqueda segura estricta y fija. Se sigue forzando también en DuckDuckGo, Google y Bing.
 
 ### Corregido
 

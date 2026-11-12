@@ -69,6 +69,7 @@ class _BrowserShellState extends State<BrowserShell> {
   // Configuración (igual que en la PC): modo chicos, letra grande, traductor y aviso de versión.
   bool _kidsMode = false;
   bool _largeText = false;
+  SearchEngine _searchEngine = SearchEngine.fallback;
   bool _alwaysTranslate = false;
   bool _updateNotices = true;
   final Set<String> _neverTranslateHosts = {};
@@ -140,6 +141,9 @@ class _BrowserShellState extends State<BrowserShell> {
           ..clear()
           ..addAll(preferences.getStringList('unprotectedHosts') ?? const []);
         _kidsMode = preferences.getBool(_kidsModeKey) ?? false;
+        _searchEngine = SearchEngine.fromId(
+          preferences.getString(_searchEngineKey),
+        );
         _largeText = preferences.getBool(_largeTextKey) ?? false;
         _alwaysTranslate = preferences.getBool(_alwaysTranslateKey) ?? false;
         _updateNotices = preferences.getBool(_updateNoticesKey) ?? true;
@@ -182,6 +186,7 @@ class _BrowserShellState extends State<BrowserShell> {
 
   static const _protectionNoticeKey = 'geckoProtectionNoticeShown';
   static const _kidsModeKey = 'kidsMode';
+  static const _searchEngineKey = 'searchEngine';
   static const _largeTextKey = 'largeText';
   static const _alwaysTranslateKey = 'alwaysTranslate';
   static const _updateNoticesKey = 'updateNotices';
@@ -258,7 +263,7 @@ class _BrowserShellState extends State<BrowserShell> {
   }
 
   Future<void> _navigate(String value) async {
-    final uri = NavigationInput.resolve(value);
+    final uri = NavigationInput.resolve(value, engine: _searchEngine);
     final tab = _current;
     final shouldProtect = !_unprotectedHosts.contains(uri.host.toLowerCase());
     _addressFocus.unfocus();
@@ -1408,6 +1413,18 @@ class _BrowserShellState extends State<BrowserShell> {
     _showMessage(enabled ? 'Modo chicos activado.' : 'Modo chicos desactivado.');
   }
 
+  Future<void> _setSearchEngine(SearchEngine engine) async {
+    setState(() => _searchEngine = engine);
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(_searchEngineKey, engine.id);
+    } catch (_) {
+      _showMessage('No pudimos guardar los cambios en el teléfono.');
+      return;
+    }
+    _showMessage('Buscador: ${engine.label}.');
+  }
+
   Future<void> _setLargeText(bool enabled) async {
     setState(() => _largeText = enabled);
     await _saveBool(_largeTextKey, enabled);
@@ -1518,7 +1535,7 @@ class _BrowserShellState extends State<BrowserShell> {
   }
 
   void _searchText(String text) {
-    _addTab(url: Uri.https('duckduckgo.com', '/', {'q': text}));
+    _addTab(url: _searchEngine.search(text));
   }
 
   void _showContextMenu(_BrowserTab tab, GeckoContextMenu menu) {
@@ -1846,6 +1863,34 @@ class _BrowserShellState extends State<BrowserShell> {
                     value: _largeText,
                     activeThumbColor: _blue,
                     onChanged: _gecko ? (value) => toggle(_setLargeText, value) : null,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.search),
+                    title: const Text('Buscador'),
+                    subtitle: const Text(
+                      'Brave Search usa su propio índice: no depende de Google ni de Microsoft. DuckDuckGo queda de respaldo.',
+                      style: TextStyle(color: _muted),
+                    ),
+                    trailing: DropdownButton<SearchEngine>(
+                      key: const ValueKey('searchEngine'),
+                      value: _searchEngine,
+                      dropdownColor: _navy,
+                      underline: const SizedBox.shrink(),
+                      items: [
+                        for (final engine in SearchEngine.values)
+                          DropdownMenuItem(
+                            value: engine,
+                            child: Text(
+                              engine == SearchEngine.brave ? 'Brave' : engine.label,
+                            ),
+                          ),
+                      ],
+                      onChanged: (engine) async {
+                        if (engine == null || engine == _searchEngine) return;
+                        await _setSearchEngine(engine);
+                        if (sheetContext.mounted) setSheetState(() {});
+                      },
+                    ),
                   ),
                   SwitchListTile(
                     secondary: const Icon(Icons.translate),

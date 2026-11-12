@@ -242,7 +242,7 @@ for (const restaurar of [true, false]) test(`main startup respects restore=${res
         loadFile() { setImmediate(() => { this.webContents.emit("did-finish-load"); cargaLista(); }); return Promise.resolve(); }
     }
     const navegador = { ...require("../src/main/navigation"), navegar: (p, url) => { p.vista.destino = url; } };
-    const paginaNueva = pathToFileURL(path.join(__dirname, "../ui/new-tab.html")).href;
+    const paginaNueva = `${pathToFileURL(path.join(__dirname, "../ui/new-tab.html")).href}?buscador=brave`;
     const requirePrueba = nombre => {
         if (nombre === "electron") return { app, ipcMain, Menu, BrowserWindow: Ventana, WebContentsView: Vista, session: { defaultSession: sesionElectron }, shell: {}, dialog };
         if (nombre === "electron-squirrel-startup") return false;
@@ -273,6 +273,7 @@ for (const restaurar of [true, false]) test(`main startup respects restore=${res
         if (nombre.endsWith("/loadErrors")) return { registrarErroresCarga: () => {} };
         if (nombre.endsWith("/webApps")) return require("../src/main/webApps");
         if (nombre.endsWith("/contextMenu")) return require("../src/main/contextMenu");
+        if (nombre.endsWith("/buscadores")) return require("../src/shared/buscadores");
         if (nombre.endsWith("/defaultBrowser")) return require("../src/main/defaultBrowser");
         if (nombre.endsWith("/zoom")) return require("../src/main/zoom");
         if (nombre.endsWith("/updater")) return require("../src/main/updater");

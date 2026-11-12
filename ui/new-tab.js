@@ -3,6 +3,19 @@
 
     const CLAVE_ACCESOS = "patagonia-accesos-rapidos-v1";
     const MAXIMO_ACCESOS = 4;
+    // Igual que src/shared/buscadores.js: Brave por defecto, DuckDuckGo de respaldo.
+    const BUSQUEDAS = {
+        brave: "https://search.brave.com/search?q=",
+        duckduckgo: "https://duckduckgo.com/?q="
+    };
+    const buscador = (() => {
+        try {
+            const elegido = new URLSearchParams(window.location.search).get("buscador");
+            return Object.prototype.hasOwnProperty.call(BUSQUEDAS, elegido) ? elegido : "brave";
+        } catch {
+            return "brave";
+        }
+    })();
 
     function prepararDireccion(valor) {
         const texto = String(valor || "").trim();
@@ -12,7 +25,7 @@
             return `http://${texto}`;
         }
         if (texto.includes(" ") || !texto.includes(".")) {
-            return `https://duckduckgo.com/?q=${encodeURIComponent(texto)}`;
+            return BUSQUEDAS[buscador] + encodeURIComponent(texto);
         }
         return `https://${texto}`;
     }

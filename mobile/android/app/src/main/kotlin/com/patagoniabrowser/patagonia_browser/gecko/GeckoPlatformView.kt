@@ -123,7 +123,7 @@ class GeckoPlatformView(
     }
 
     private fun installDelegates() {
-        // Al seleccionar texto, además de Copiar y Seleccionar todo aparece "Buscar" (DuckDuckGo).
+        // Al seleccionar texto, además de Copiar y Seleccionar todo aparece "Buscar" (con el buscador elegido).
         GeckoEngine.activity?.let { activity ->
             session.selectionActionDelegate = PatagoniaSelection(activity) { text -> send("searchText", text) }
         }
@@ -506,7 +506,7 @@ interface AndroidPermissionRequester {
 
 /**
  * El menú de texto seleccionado de Gecko (Copiar, Seleccionar todo, apps de Android) más un
- * "Buscar" que abre la búsqueda en DuckDuckGo en una pestaña nueva, como el clic derecho de la PC.
+ * "Buscar" que abre la búsqueda (Brave o DuckDuckGo) en una pestaña nueva, como el clic derecho de la PC.
  */
 private class PatagoniaSelection(
     activity: Activity,

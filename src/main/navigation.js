@@ -1,6 +1,7 @@
 const {
     PAGINA_INICIO
 } = require("../shared/constants");
+const { urlBusqueda } = require("../shared/buscadores");
 
 function prepararDireccion(direccion) {
     const texto = String(
@@ -26,10 +27,7 @@ function prepararDireccion(direccion) {
         texto.includes(" ") ||
         !texto.includes(".")
     ) {
-        return (
-            "https://duckduckgo.com/?q=" +
-            encodeURIComponent(texto)
-        );
+        return urlBusqueda(texto);
     }
 
     return `https://${texto}`;

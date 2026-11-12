@@ -10,6 +10,18 @@ test("fuerza la búsqueda segura en los buscadores", () => {
     assert.equal(urlSegura("https://www.bing.com/search?q=hola"), "https://www.bing.com/search?q=hola&adlt=strict");
 });
 
+test("Brave Search pasa a su dominio con búsqueda segura estricta", () => {
+    assert.equal(urlSegura("https://search.brave.com/search?q=hola"), "https://safe.search.brave.com/search?q=hola");
+    assert.equal(urlSegura("https://search.brave.com/images?q=hola"), "https://safe.search.brave.com/images?q=hola");
+    assert.equal(urlSegura("https://search.brave.com/"), "https://safe.search.brave.com/");
+    assert.equal(urlSegura("https://safe.search.brave.com/search?q=hola"), null);
+    assert.equal(
+        urlSegura("https://safe.search.brave.com/search?q=hola&bypass_safesearch_strict=1"),
+        "https://safe.search.brave.com/search?q=hola"
+    );
+    assert.equal(urlSegura("https://brave.com/download/"), null);
+});
+
 test("no toca lo que ya es seguro ni otros sitios", () => {
     assert.equal(urlSegura("https://duckduckgo.com/?q=hola&kp=1"), null);
     assert.equal(urlSegura("https://www.google.com/search?q=x&safe=active"), null);

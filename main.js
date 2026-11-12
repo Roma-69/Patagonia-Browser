@@ -80,6 +80,7 @@ const {
     crearVentanaApp
 } = require("./src/main/webApps");
 const { registrarMenuContextual } = require("./src/main/contextMenu");
+const { elegirBuscador, buscadorActual } = require("./src/shared/buscadores");
 const navegadorPredeterminado = require("./src/main/defaultBrowser");
 const zoom = require("./src/main/zoom");
 const { crearActualizador, instaladoConSquirrel } = require("./src/main/updater");
@@ -164,7 +165,12 @@ function paginaInicio() {
 }
 
 function esNuevaPestanaPatagonia(url) {
-    return url === URL_NUEVA_PESTANA;
+    // La pestaña nueva lleva el buscador elegido en la dirección (?buscador=brave).
+    return typeof url === "string" && url.split(/[?#]/)[0] === URL_NUEVA_PESTANA;
+}
+
+function direccionNuevaPestana() {
+    return `${URL_NUEVA_PESTANA}?buscador=${encodeURIComponent(buscadorActual())}`;
 }
 
 function irAInicio() {
@@ -473,7 +479,7 @@ function crearPestana(
     if (cerrandoVentana || !ventanaPrincipal || ventanaPrincipal.isDestroyed()) return null;
     const id = siguienteId++;
     const esNuevaPestana = url === null;
-    const destino = esNuevaPestana ? URL_NUEVA_PESTANA : url;
+    const destino = esNuevaPestana ? direccionNuevaPestana() : url;
 
     const vista = vistaExistente || new WebContentsView({
         webPreferences: PREFERENCIAS_WEB
@@ -1308,11 +1314,13 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             archivo: path.join(app.getPath("userData"), "configuracion.json"),
             obtenerVentana: () => ventanaPrincipal,
             alCambiar: configuracion => {
+                elegirBuscador(configuracion.buscador);
                 modoChicos.aplicar(configuracion.modoChicos);
                 aplicarLetraGrandeATodas();
             }
         });
         await gestorConfiguracion.iniciar();
+        elegirBuscador(gestorConfiguracion.estado().buscador);
         modoChicos.aplicar(gestorConfiguracion.estado().modoChicos);
         gestorSesion = registrarSesiones({
             ipcMain,
