@@ -237,6 +237,18 @@ class GeckoController {
       _call('translate', {'from': from, 'to': to});
   Future<void> restoreTranslation() => _call('restoreTranslation');
 
+  /// Imprimir o guardar como PDF (diálogo de impresión de Android). false si no se pudo.
+  Future<bool> printPage(String title) async {
+    if (_disposed) return false;
+    try {
+      return await _channel.invokeMethod<bool>('print', title) ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
   /// Modo lectura: la nota de la página en JSON (ver patagonia_lector/lector.js),
   /// o null si la página no tiene una nota para leer.
   Future<String?> readArticle() async {
@@ -286,10 +298,13 @@ class GeckoEngineInfo {
   static void listen({
     required ValueChanged<int> onPanel,
     required Future<bool> Function(int id, String url) onExtensionTab,
+    ValueChanged<String>? onOpenUrl,
   }) {
     channel.setMethodCallHandler((call) async {
       final value = call.arguments;
       switch (call.method) {
+        case 'openUrl':
+          if (value is String) onOpenUrl?.call(value);
         case 'uboPanel':
           if (value is int) onPanel(value);
         case 'extensionTab':
@@ -345,6 +360,21 @@ class GeckoEngineInfo {
   /// Abre la app de WhatsApp. false si no está instalada.
   static Future<bool> openWhatsApp() async =>
       await _engine<bool>('openWhatsApp') ?? false;
+
+  /// "Agregar a la pantalla de inicio" (como "Crear app" en la PC). false si el
+  /// lanzador del celular no lo permite.
+  static Future<bool> addShortcut(String url, String title) async =>
+      await _engine<bool>('addShortcut', {'url': url, 'title': title}) ?? false;
+
+  /// Sitio con el que se abrió Patagonia (acceso directo), o null.
+  static Future<String?> takeLaunchUrl() => _engine<String>('takeLaunchUrl');
+
+  /// Guarda un archivo de texto donde elija el usuario. false si canceló o falló.
+  static Future<bool> saveTextFile(String name, String text) async =>
+      await _engine<bool>('saveTextFile', {'name': name, 'text': text}) ?? false;
+
+  /// Abre un archivo de texto que elija el usuario. null si canceló o falló.
+  static Future<String?> openTextFile() => _engine<String>('openTextFile');
 
   /// Versión instalada de Patagonia (ej. '1.2.0'), o null si no se sabe.
   static Future<String?> appVersion() => _engine<String>('appVersion');

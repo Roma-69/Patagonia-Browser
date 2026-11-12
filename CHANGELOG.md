@@ -6,7 +6,27 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
-## [Android 1.2.0] - Sin publicar
+## [1.3.0] - Sin publicar (PC y Android)
+
+Desde esta versión **la PC y el celular llevan el mismo número** y hacen lo mismo (ver `PARIDAD.md`).
+
+### Agregado
+
+- **Pasar favoritos entre la PC y el celular, sin cuenta ni nube:**
+  - PC: Favoritos → **Exportar…** guarda un archivo; **Importar…** lo trae. No repite los que ya tenés.
+  - Celular: Menú → Favoritos → botones de **exportar** e **importar** arriba de la lista.
+  - Es el formato estándar de favoritos: también sirve para traer los de Chrome, Firefox o Edge.
+- **Celular — Agregar a la pantalla de inicio** (Menú): un ícono con la inicial del sitio que lo abre directo en Patagonia. Es lo mismo que "Crear app de esta página" de la PC.
+- **Celular — Imprimir o guardar PDF** (Menú): abre el diálogo de impresión de Android, que también tiene "Guardar como PDF". Es lo mismo que Ctrl+P en la PC.
+- **PC — más idiomas en el traductor:** además del inglés, traduce **portugués, francés, alemán e italiano**. Cada idioma se baja de Mozilla **una sola vez** (unos 20 MB, verificado) y después traduce en tu equipo sin mandar la página a nadie, igual que el celular.
+- **PC — "Mostrar original" desde el clic derecho** cuando la página está traducida (antes, si cerrabas la barra, había que recargar).
+
+### Corregido
+
+- **Google Meet no podía usar la cámara ni el micrófono:** Patagonia le decía a la página que estaban "bloqueados por el navegador" antes de preguntarte, y Meet ni siquiera los pedía. Ahora aparece el aviso de siempre (**Bloquear / Permitir durante esta sesión**) y, si elegís Bloquear, queda bloqueado.
+- **Compartir pantalla ("Presentar ahora") en Meet:** antes fallaba siempre. Ahora Patagonia pregunta qué querés compartir: la pantalla completa o una ventana. Con la pantalla completa también se comparte el sonido de la PC.
+
+## [Android 1.2.0] - 2026-11-10
 
 Lo que se sumó en la PC desde la 1.0.6 llega al celular.
 
@@ -30,13 +50,6 @@ Lo que se sumó en la PC desde la 1.0.6 llega al celular.
 ### Corregido
 
 - **TalkBack (lector de pantalla):** cuando está prendido, la página se muestra como vista nativa de Android para que el lector pueda recorrer textos, links y botones de las páginas. Sin lector se sigue usando el modo por textura, más liviano.
-
-## [1.0.12] - Sin publicar
-
-### Corregido
-
-- **Google Meet no podía usar la cámara ni el micrófono:** Patagonia le decía a la página que estaban "bloqueados por el navegador" antes de preguntarte, y Meet ni siquiera los pedía. Ahora aparece el aviso de siempre (**Bloquear / Permitir durante esta sesión**) y, si elegís Bloquear, queda bloqueado.
-- **Compartir pantalla ("Presentar ahora") en Meet:** antes fallaba siempre. Ahora Patagonia pregunta qué querés compartir: la pantalla completa o una ventana. Con la pantalla completa también se comparte el sonido de la PC.
 
 ## [1.0.11] - 2026-11-10
 
