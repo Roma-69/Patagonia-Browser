@@ -381,6 +381,14 @@ class GeckoEngineInfo {
   static Future<String> installUpdate(String apkUrl) async =>
       await _engine<String>('installUpdate', apkUrl) ?? 'error';
 
+  /// true si Patagonia es el navegador predeterminado del celular.
+  static Future<bool> isDefaultBrowser() async =>
+      await _engine<bool>('isDefaultBrowser') ?? false;
+
+  /// Pide a Android que Patagonia sea el navegador predeterminado. false si no se pudo.
+  static Future<bool> makeDefaultBrowser() async =>
+      await _engine<bool>('makeDefaultBrowser') ?? false;
+
   /// Versión instalada de Patagonia (ej. '1.2.0'), o null si no se sabe.
   static Future<String?> appVersion() => _engine<String>('appVersion');
 

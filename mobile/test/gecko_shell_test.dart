@@ -21,6 +21,7 @@ class FakeGecko {
   String? article;
   String? appVersion;
   String installResult = 'instalando';
+  bool isDefaultBrowser = false;
 
   int get lastId => views.keys.last;
   List<String> methods(int id) => (calls[id] ?? []).map((c) => c.method).toList();
@@ -67,6 +68,8 @@ class FakeGecko {
         if (call.method == 'openUBlockPanel') return true;
         if (call.method == 'appVersion') return appVersion;
         if (call.method == 'installUpdate') return installResult;
+        if (call.method == 'isDefaultBrowser') return isDefaultBrowser;
+        if (call.method == 'makeDefaultBrowser') return true;
         if (call.method == 'share') return true;
         return null;
       },
@@ -775,6 +778,37 @@ void main() {
     await tester.ensureVisible(version);
     await tester.pumpAndSettle();
     expect(find.text('Patagonia Browser 1.3.0'), findsOneWidget);
+  });
+
+  testWidgets('Configuración ofrece usar Patagonia como navegador predeterminado', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+    await openMenuItem(tester, 'Configuración');
+    final boton = find.text('Usar Patagonia');
+    await tester.ensureVisible(boton);
+    await tester.pumpAndSettle();
+    await tester.tap(boton);
+    await tester.pumpAndSettle();
+    expect(gecko.engineCalls.map((c) => c.method), contains('makeDefaultBrowser'));
+  });
+
+  testWidgets('si ya es el predeterminado, no muestra el botón', (tester) async {
+    gecko.isDefaultBrowser = true;
+    SharedPreferences.setMockInitialValues({});
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+    await openMenuItem(tester, 'Configuración');
+    final fila = find.byKey(const ValueKey('defaultBrowser'));
+    await tester.ensureVisible(fila);
+    await tester.pumpAndSettle();
+    expect(find.text('Usar Patagonia'), findsNothing);
+    expect(
+      find.text('Patagonia ya abre los links de WhatsApp, el mail y otras apps.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('no avisa si ya está actualizada', (tester) async {

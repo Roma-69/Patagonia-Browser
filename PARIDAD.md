@@ -33,6 +33,7 @@ Patagonia es **un solo navegador** en dos equipos. La regla es simple:
 | Compartir pantalla | ✅ 1.3.0 | — | Pendiente de evaluar en Android |
 | Login de Google / Gmail | ✅ 1.0.11 | ✅ | |
 | Aviso de versión nueva | ✅ se actualiza sola | ✅ 1.3.1: tocás el aviso, baja el APK y abre "Instalar" (sin pasar por GitHub) | Android pide confirmar con "Instalar"; la primera vez, permitir instalar desde Patagonia |
+| Navegador predeterminado | ✅ Configuración → "Usar Patagonia como navegador predeterminado" | ✅ 1.3.1: Configuración → Navegador predeterminado | |
 | Ver la versión instalada | ✅ Configuración | ✅ 1.3.1: Menú → Configuración → Versión | |
 | Música con la pantalla apagada, la app minimizada o en otra pestaña | ✅ (Windows lo hace solo) | ✅ 1.3.0: también al cambiar de pestaña | |
 | Separar pestañas en otra ventana | ✅ | — | No aplica en el celular |

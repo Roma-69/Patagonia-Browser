@@ -76,6 +76,7 @@ class _BrowserShellState extends State<BrowserShell> {
   final Set<String> _neverTranslateHosts = {};
   MobileRelease? _availableUpdate;
   bool _installingUpdate = false;
+  bool _isDefaultBrowser = false;
   String? _installedVersion;
   Future<void> _pendingSave = Future<void>.value();
 
@@ -1950,7 +1951,12 @@ class _BrowserShellState extends State<BrowserShell> {
     onUpdate: _openUpdatePage,
   );
 
-  void _showSettings() {
+  Future<void> _showSettings() async {
+    if (_gecko) {
+      final isDefault = await GeckoEngineInfo.isDefaultBrowser();
+      if (!mounted) return;
+      _isDefaultBrowser = isDefault;
+    }
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -2076,6 +2082,33 @@ class _BrowserShellState extends State<BrowserShell> {
                     onChanged: _gecko
                         ? (value) => toggle(_setUpdateNotices, value)
                         : null,
+                  ),
+                  ListTile(
+                    key: const ValueKey('defaultBrowser'),
+                    leading: const Icon(Icons.open_in_browser),
+                    title: const Text('Navegador predeterminado'),
+                    subtitle: Text(
+                      _isDefaultBrowser
+                          ? 'Patagonia ya abre los links de WhatsApp, el mail y otras apps.'
+                          : 'Hacé que los links de WhatsApp, el mail y otras apps se abran en Patagonia.',
+                      style: const TextStyle(color: _muted),
+                    ),
+                    trailing: _isDefaultBrowser
+                        ? const Icon(Icons.check_circle, color: _green)
+                        : TextButton(
+                            onPressed: _gecko
+                                ? () async {
+                                    Navigator.of(sheetContext).pop();
+                                    final ok = await GeckoEngineInfo.makeDefaultBrowser();
+                                    if (!ok && mounted) {
+                                      _showMessage(
+                                        'Elegilo en Ajustes → Apps → Apps predeterminadas → Navegador.',
+                                      );
+                                    }
+                                  }
+                                : null,
+                            child: const Text('Usar Patagonia'),
+                          ),
                   ),
                   ListTile(
                     key: const ValueKey('appVersion'),
