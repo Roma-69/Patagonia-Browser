@@ -1,6 +1,7 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
+const { exportarFavoritos, leerFavoritos } = require("../shared/favoritosArchivo");
 
 function normalizarURL(valor) {
     const url = new URL(valor);
@@ -65,6 +66,22 @@ function crearAlmacenFavoritos(archivo) {
             await guardar(nuevos);
             return nuevos;
         }),
+        // Suma los favoritos de un archivo (de la PC o del celular) sin repetir los que ya están.
+        importar: (paginas = []) => ejecutar(async () => {
+            const favoritos = await leer();
+            const existentes = new Set(favoritos.map(item => item.url));
+            let agregados = 0;
+            for (const pagina of paginas) {
+                let url;
+                try { url = normalizarURL(pagina.url); } catch { continue; }
+                if (existentes.has(url)) continue;
+                existentes.add(url);
+                favoritos.push({ id: randomUUID(), url, titulo: String(pagina.titulo || new URL(url).hostname).slice(0, 300) });
+                agregados++;
+            }
+            if (agregados) await guardar(favoritos);
+            return Object.assign(favoritos, { agregados });
+        }),
         eliminar: (id) => ejecutar(async () => {
             const favoritos = await leer();
             const nuevos = favoritos.filter(item => item.id !== id);
@@ -74,7 +91,9 @@ function crearAlmacenFavoritos(archivo) {
     };
 }
 
-function registrarFavoritos({ ipcMain, archivo, obtenerVentana, obtenerPestana, navegar }) {
+const TOPE_ARCHIVO = 5 * 1024 * 1024;
+
+function registrarFavoritos({ ipcMain, archivo, obtenerVentana, obtenerPestana, navegar, dialog, sistema = fs }) {
     const almacen = crearAlmacenFavoritos(archivo);
     function registrar(canal, accion) {
         ipcMain.handle(canal, async (evento, valor) => {
@@ -85,7 +104,8 @@ function registrarFavoritos({ ipcMain, archivo, obtenerVentana, obtenerPestana, 
                     evento.senderFrame !== ventana.webContents.mainFrame) {
                     throw new Error("Solicitud de favoritos no autorizada.");
                 }
-                return { correcto: true, favoritos: await accion(valor) };
+                const favoritos = await accion(valor);
+                return { correcto: true, favoritos: favoritos ? [...favoritos] : favoritos, agregados: favoritos?.agregados };
             } catch (error) {
                 return { correcto: false, error: error.message };
             }
@@ -103,6 +123,32 @@ function registrarFavoritos({ ipcMain, archivo, obtenerVentana, obtenerPestana, 
         });
     });
     registrar("eliminar-favorito", id => almacen.eliminar(id));
+    // Pasar favoritos al celular (y al revés): un archivo, sin cuenta ni nube.
+    registrar("exportar-favoritos", async () => {
+        const favoritos = await almacen.listar();
+        if (!favoritos.length) throw new Error("Todavía no hay favoritos para exportar.");
+        const { canceled, filePath } = await dialog.showSaveDialog(obtenerVentana(), {
+            title: "Exportar favoritos",
+            defaultPath: "favoritos-patagonia.html",
+            filters: [{ name: "Favoritos", extensions: ["html"] }]
+        });
+        if (canceled || !filePath) return favoritos;
+        await sistema.writeFile(filePath, exportarFavoritos(favoritos), "utf8");
+        return favoritos;
+    });
+    registrar("importar-favoritos", async () => {
+        const { canceled, filePaths } = await dialog.showOpenDialog(obtenerVentana(), {
+            title: "Importar favoritos",
+            properties: ["openFile"],
+            filters: [{ name: "Favoritos", extensions: ["html", "htm"] }]
+        });
+        if (canceled || !filePaths?.length) return almacen.listar();
+        const datos = await sistema.stat(filePaths[0]);
+        if (datos.size > TOPE_ARCHIVO) throw new Error("El archivo es demasiado grande para ser de favoritos.");
+        const paginas = leerFavoritos(await sistema.readFile(filePaths[0], "utf8"));
+        if (!paginas.length) throw new Error("Ese archivo no tiene favoritos.");
+        return almacen.importar(paginas);
+    });
     registrar("abrir-favorito", async id => {
         const favoritos = await almacen.listar();
         const favorito = favoritos.find(item => item.id === id);

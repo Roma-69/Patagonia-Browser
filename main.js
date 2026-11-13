@@ -145,12 +145,24 @@ const gestorBusqueda = crearBusqueda({
 });
 // Traductor de páginas: corre en este equipo con el motor de Firefox Translations.
 const paresTraductor = paresDisponibles();
-const motorTraductor = crearMotorTraductor();
+// Los demás idiomas (portugués, francés, alemán, italiano) se bajan de Mozilla la primera vez.
+let modelosTraductor = null;
+const modelosDelTraductor = () => modelosTraductor ??= require("./src/main/translator/modelos").crearModelos({
+    carpetaIncluida: require("./src/main/translator/motor").CARPETA_MODELOS,
+    carpetaDescargas: () => path.join(app.getPath("userData"), "traductor-idiomas"),
+    pedir: (url, opciones) => net.fetch(url, opciones)
+});
+const motorTraductor = crearMotorTraductor({ cargarModelo: par => modelosDelTraductor().leer(par) });
 const preferenciasTraductor = crearPreferenciasTraductor(() => path.join(app.getPath("userData"), "traductor.json"));
 const gestorTraduccion = crearGestorTraduccion({
     motor: motorTraductor,
     preferencias: preferenciasTraductor,
     pares: () => paresTraductor,
+    modelos: {
+        // soportado() no mira el disco: la barra del traductor no tiene que esperar nada.
+        soportado: require("./src/main/translator/modelos").soportado,
+        preparar: (...a) => modelosDelTraductor().preparar(...a)
+    },
     obtenerContenido: () => obtenerContenido(obtenerPestanaActiva()),
     notificar: estado => {
         if (!ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
@@ -508,6 +520,8 @@ function crearPestana(
             if (pestana.id !== idPestanaActiva) return;
             gestorTraduccion.abrir();
         },
+        traducida: () => gestorTraduccion.estado(vista.webContents).traducida,
+        original: () => { gestorTraduccion.mostrarOriginal(vista.webContents); },
         leer: () => abrirModoLectura(vista.webContents)
     });
     vista.webContents.on("zoom-changed", (_evento, sentido) => {
@@ -1372,7 +1386,8 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             archivo: path.join(app.getPath("userData"), "favoritos.json"),
             obtenerVentana: () => ventanaPrincipal,
             obtenerPestana: obtenerPestanaActiva,
-            navegar
+            navegar,
+            dialog
         });
         const argv = process.argv || [];
         const urlApp = extraerURLApp(argv);

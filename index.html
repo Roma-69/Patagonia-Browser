@@ -941,6 +941,10 @@ button{
             <p id="estadoFavoritos" role="status"></p>
             <p id="favoritosVacios">Todavía no guardaste favoritos. Usá la estrella junto a la dirección.</p>
             <ul id="listaFavoritos"></ul>
+            <div class="favoritos-archivo">
+                <button id="exportarFavoritos" type="button" title="Guardar tus favoritos en un archivo para pasarlos al celular">Exportar…</button>
+                <button id="importarFavoritos" type="button" title="Traer favoritos desde un archivo del celular o de otro navegador">Importar…</button>
+            </div>
         </section>
 
         <button id="abrirHistorial" class="sidebar-item" aria-expanded="false" aria-controls="panelHistorial">
@@ -1111,6 +1115,10 @@ button{
     #avisoApp:empty { display:none; }
     #panelFavoritos { padding:4px 8px 16px; }
     #panelFavoritos p { color:#c4cbd8; font-size:13px; line-height:1.5; }
+    .favoritos-archivo { display:flex; gap:8px; margin-top:10px; }
+    .favoritos-archivo button { flex:1; padding:7px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:#e8ecf3; font:inherit; font-size:13px; cursor:pointer; }
+    .favoritos-archivo button:hover { background:rgba(255,255,255,.12); }
+    .favoritos-archivo button:disabled { opacity:.5; cursor:default; }
     #listaFavoritos { list-style:none; padding:0; margin:0; }
     #listaFavoritos li { display:flex; align-items:center; gap:6px; margin:6px 0; }
     .favorito-abrir { flex:1; min-width:0; text-align:left; padding:10px; border:0;

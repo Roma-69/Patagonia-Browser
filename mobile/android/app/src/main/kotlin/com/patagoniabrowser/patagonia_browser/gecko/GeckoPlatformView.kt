@@ -384,6 +384,27 @@ class GeckoPlatformView(
         }, 6000)
     }
 
+    /** Imprimir o guardar como PDF: Gecko arma el PDF y Android muestra su diálogo de impresión. */
+    private fun printPage(title: String?, result: MethodChannel.Result) {
+        val activity = GeckoEngine.activity ?: return result.success(false)
+        session.saveAsPdf().accept({ stream ->
+            // Se lee en otro hilo para no trabar la pantalla con páginas largas.
+            Thread {
+                val pdf = try {
+                    stream?.use { it.readBytes() }
+                } catch (_: Exception) {
+                    null
+                }
+                main.post {
+                    if (closed || pdf == null) result.success(false)
+                    else result.success(GeckoPrint.print(activity, pdf, title))
+                }
+            }.start()
+        }, {
+            main.post { result.success(false) }
+        })
+    }
+
     /** Guardar imagen (o enlace): se pide con el motor y va a Descargas como cualquier descarga. */
     private fun saveUrl(url: String) {
         val uri = Uri.parse(url)
@@ -458,6 +479,7 @@ class GeckoPlatformView(
             }
             "readPage" -> return readPage(result)
             "readArticle" -> return readArticle(result)
+            "print" -> return printPage(call.arguments as? String, result)
             "saveUrl" -> (call.arguments as? String)?.let { saveUrl(it) }
             "translate" -> {
                 val args = call.arguments as? Map<*, *>

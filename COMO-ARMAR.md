@@ -9,8 +9,9 @@ Guía paso a paso para generar los tres entregables desde este repositorio:
 Todos los comandos se escriben en **PowerShell**, parados en la carpeta del repositorio
 (`Patagonia-Browser-Git`), salvo que se indique otra cosa.
 
-> Versión actual: **1.0.11** en escritorio (`package.json`) y **1.1.1+10** en móvil
-> (`mobile/pubspec.yaml`). Si cambiás la versión, cambiala en los dos lugares.
+> Versión actual: **1.3.0** en escritorio (`package.json`) y en móvil (`mobile/pubspec.yaml`,
+> `1.3.0+15`). Desde la 1.3.0 **PC y Android llevan siempre el mismo número**: si cambiás la
+> versión, cambiala en los dos lugares (en Android sumá 1 al número después del `+`).
 
 ---
 

@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'gecko/gecko_view.dart';
 import 'navigation_input.dart';
+import 'favoritos_archivo.dart';
 import 'local_assistant.dart';
 import 'privacy_protection.dart';
 import 'reader_view.dart';
@@ -104,7 +105,12 @@ class _BrowserShellState extends State<BrowserShell> {
       GeckoEngineInfo.listen(
         onPanel: _showUBlockPanel,
         onExtensionTab: _openExtensionTab,
+        onOpenUrl: _openFromShortcut,
       );
+      // Si Patagonia se abrió desde un acceso directo de la pantalla de inicio.
+      GeckoEngineInfo.takeLaunchUrl().then((url) {
+        if (url != null && mounted) _navigate(url);
+      });
       // uBlock Origin se prepara mientras se muestra el inicio.
       GeckoEngineInfo.ensureUBlock().catchError((Object _) => '');
     }
@@ -1319,6 +1325,22 @@ class _BrowserShellState extends State<BrowserShell> {
                   },
                 ),
                 _MenuTile(
+                  icon: Icons.add_to_home_screen,
+                  label: 'Agregar a la pantalla de inicio',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _addShortcut();
+                  },
+                ),
+                _MenuTile(
+                  icon: Icons.print_outlined,
+                  label: 'Imprimir o guardar PDF',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _printCurrent();
+                  },
+                ),
+                _MenuTile(
                   icon: Icons.chrome_reader_mode_outlined,
                   label: 'Modo lectura',
                   onTap: () {
@@ -1483,6 +1505,80 @@ class _BrowserShellState extends State<BrowserShell> {
   Future<void> _share(String text, {String? title}) async {
     final shared = _gecko && await GeckoEngineInfo.share(text, title: title);
     if (!shared) await _copyText(text, 'Dirección copiada.');
+  }
+
+  /// Lo mismo que "Crear app de esta página" en la PC: un ícono del sitio en el inicio.
+  Future<void> _addShortcut() async {
+    final url = _current.url;
+    if (!NavigationInput.isWebUri(url)) {
+      _showMessage('Abrí una página para agregarla al inicio.');
+      return;
+    }
+    final title = _current.title.trim().isEmpty ? url!.host : _current.title;
+    final ok = await GeckoEngineInfo.addShortcut(url.toString(), title);
+    if (!ok) {
+      _showMessage('Tu celular no permite agregar accesos directos desde Patagonia.');
+    }
+    // Si sale bien, Android muestra su propio aviso para confirmar.
+  }
+
+  /// Abrir el sitio de un acceso directo cuando Patagonia ya estaba abierta.
+  void _openFromShortcut(String url) {
+    if (!mounted) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null || !NavigationInput.isWebUri(uri)) return;
+    _addTab(url: uri);
+  }
+
+  /// Imprimir o guardar como PDF (como Ctrl+P en la PC).
+  Future<void> _printCurrent() async {
+    final gecko = _current.gecko;
+    if (gecko == null || !NavigationInput.isWebUri(_current.url)) {
+      _showMessage('Abrí una página para imprimirla.');
+      return;
+    }
+    _showMessage('Preparando la página…');
+    final ok = await gecko.printPage(_current.title);
+    if (!ok && mounted) _showMessage('No se pudo preparar la página para imprimir.');
+  }
+
+  /// Favoritos al archivo, para pasarlos a la PC (o a otro celular) sin cuenta ni nube.
+  Future<void> _exportFavorites() async {
+    if (_favorites.isEmpty) {
+      _showMessage('Todavía no hay favoritos para exportar.');
+      return;
+    }
+    final text = FavoritosArchivo.exportar(
+      _favorites.map((page) => (titulo: page.title, url: page.url)),
+    );
+    final ok = await GeckoEngineInfo.saveTextFile(FavoritosArchivo.nombre, text);
+    if (ok) _showMessage('Favoritos guardados. Pasá el archivo a la PC y usá Importar.');
+  }
+
+  /// Favoritos desde un archivo de la PC (o de otro navegador). No repite los que ya están.
+  Future<void> _importFavorites() async {
+    final text = await GeckoEngineInfo.openTextFile();
+    if (text == null || !mounted) return;
+    final pages = FavoritosArchivo.leer(text);
+    if (pages.isEmpty) {
+      _showMessage('Ese archivo no tiene favoritos.');
+      return;
+    }
+    final known = _favorites.map((page) => page.url).toSet();
+    var added = 0;
+    setState(() {
+      for (final page in pages) {
+        if (!known.add(page.url)) continue;
+        _favorites.add(_SavedPage(title: page.titulo, url: page.url));
+        added++;
+      }
+    });
+    if (added > 0) await _savePages('favorites', _favorites);
+    _showMessage(
+      added > 0
+          ? 'Se agregaron $added favoritos.'
+          : 'Esos favoritos ya estaban guardados.',
+    );
   }
 
   Future<void> _shareCurrent() async {
@@ -2425,6 +2521,24 @@ class _BrowserShellState extends State<BrowserShell> {
                         ),
                       ),
                     ),
+                    if (title == 'Favoritos' && _gecko) ...[
+                      IconButton(
+                        tooltip: 'Exportar a un archivo',
+                        icon: const Icon(Icons.file_upload_outlined),
+                        onPressed: () {
+                          Navigator.pop(sheetContext);
+                          _exportFavorites();
+                        },
+                      ),
+                      IconButton(
+                        tooltip: 'Importar de un archivo',
+                        icon: const Icon(Icons.file_download_outlined),
+                        onPressed: () {
+                          Navigator.pop(sheetContext);
+                          _importFavorites();
+                        },
+                      ),
+                    ],
                     if (title == 'Historial' && pages.isNotEmpty)
                       TextButton(
                         onPressed: () {

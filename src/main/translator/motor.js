@@ -29,10 +29,12 @@ function leerModelo(par, carpeta = CARPETA_MODELOS) {
         return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
     };
     const model = leer("model.");
-    const vocab = leer("vocab.");
     const shortlist = leer("lex.");
-    if (!model || !vocab || !shortlist) throw new Error(`Falta el modelo de traducción ${par}.`);
-    return { model, shortlist, vocabs: [vocab] };
+    // Algunos modelos traen un vocabulario por idioma (srcvocab/trgvocab) en vez de uno compartido.
+    const compartido = leer("vocab.");
+    const vocabs = compartido ? [compartido] : [leer("srcvocab."), leer("trgvocab.")];
+    if (!model || !shortlist || vocabs.some(v => !v)) throw new Error(`Falta el modelo de traducción ${par}.`);
+    return { model, shortlist, vocabs };
 }
 
 function crearHilo() {
@@ -89,13 +91,16 @@ function crearMotor({ crearProceso = crearHilo, cargarModelo = leerModelo, ocios
         temporizador.clearTimeout(reloj);
         reloj = temporizador.setTimeout(() => { if (!pendientes.size) cerrar(); }, ocioso);
     }
-    async function traducir(par, textos) {
-        const clave = t => `${par}\u0000${t}`;
+    // `ruta` es un par ("enes") o una lista de pares para pasar por el inglés (["pten", "enes"]).
+    async function traducir(ruta, textos) {
+        const pares = Array.isArray(ruta) ? ruta : [ruta];
+        const nombre = pares.join(">");
+        const clave = t => `${nombre}\u0000${t}`;
         const faltan = [...new Set(textos.filter(t => !cache.has(clave(t))))];
         if (faltan.length) {
-            await modelo(par);
+            for (const par of pares) await modelo(par);
             const respuesta = await llamar("translate", {
-                models: [{ from: par.slice(0, 2), to: par.slice(2) }],
+                models: pares.map(par => ({ from: par.slice(0, 2), to: par.slice(2) })),
                 texts: faltan.map(text => ({ text, html: false }))
             });
             faltan.forEach((texto, i) => cache.set(clave(texto), respuesta?.[i]?.target?.text ?? texto));
