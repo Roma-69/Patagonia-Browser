@@ -6,7 +6,18 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
-## [1.3.0] - Sin publicar (PC y Android)
+## [1.3.1] - Sin publicar (Android; la PC no tiene cambios)
+
+### Agregado
+
+- **Celular — Patagonia como navegador predeterminado:** Menú → Configuración → **Navegador predeterminado** → *Usar Patagonia*. Así los links que tocás en WhatsApp, el mail u otras apps se abren en Patagonia. En la PC ya se podía.
+- **Celular — la versión a la vista:** Menú → Configuración → **Versión** muestra qué versión de Patagonia tenés instalada.
+
+### Cambiado
+
+- **Celular — actualizar sin entrar a GitHub:** cuando aparece "Hay una versión nueva", lo tocás y Patagonia baja la versión nueva sola y abre el **Instalar** de Android. Se instala arriba, sin perder favoritos ni historial. La primera vez Android pide permitir que Patagonia instale su actualización ("Permitir de esta fuente"). Si algo falla, abre la página de descarga como antes.
+
+## [1.3.0] - Publicada el 12/11/2026 (PC y Android)
 
 Desde esta versión **la PC y el celular llevan el mismo número** y hacen lo mismo (ver `PARIDAD.md`).
 

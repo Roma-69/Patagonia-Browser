@@ -1,6 +1,9 @@
 package com.patagoniabrowser.patagonia_browser
 
 import android.Manifest
+import android.app.role.RoleManager
+import android.os.Build
+import android.provider.Settings
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -66,6 +69,11 @@ class MainActivity : FlutterActivity(), AndroidPermissionRequester {
                 }
                 "openWhatsApp" -> result.success(openWhatsApp())
                 "appVersion" -> result.success(appVersion())
+                "isDefaultBrowser" -> result.success(isDefaultBrowser())
+                "makeDefaultBrowser" -> result.success(makeDefaultBrowser())
+                "installUpdate" -> Actualizacion.instalar(this, call.arguments as? String) {
+                    result.success(it)
+                }
                 "addShortcut" -> {
                     val args = call.arguments as? Map<*, *>
                     result.success(addShortcut(args?.get("url") as? String, args?.get("title") as? String))
@@ -111,7 +119,7 @@ class MainActivity : FlutterActivity(), AndroidPermissionRequester {
         super.onCreate(savedInstanceState)
     }
 
-    /** Patagonia ya estaba abierta y se tocó un acceso directo: abrir el sitio en una pestaña. */
+    /** Patagonia ya estaba abierta y se tocó un acceso directo o un link de otra app: abrir el sitio en una pestaña. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         val url = webUrl(intent) ?: return
@@ -281,6 +289,41 @@ class MainActivity : FlutterActivity(), AndroidPermissionRequester {
         return false
     }
 
+    /** true si Patagonia es el navegador predeterminado del celular. */
+    private fun isDefaultBrowser(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roles = getSystemService(RoleManager::class.java)
+            if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_BROWSER)) {
+                return roles.isRoleHeld(RoleManager.ROLE_BROWSER)
+            }
+        }
+        val prueba = Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com"))
+        val elegido = packageManager.resolveActivity(prueba, PackageManager.MATCH_DEFAULT_ONLY)
+        return elegido?.activityInfo?.packageName == packageName
+    }
+
+    /** Pide a Android que Patagonia sea el navegador predeterminado (o abre los ajustes). */
+    private fun makeDefaultBrowser(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roles = getSystemService(RoleManager::class.java)
+            if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_BROWSER) &&
+                !roles.isRoleHeld(RoleManager.ROLE_BROWSER)) {
+                try {
+                    startActivityForResult(roles.createRequestRoleIntent(RoleManager.ROLE_BROWSER), REQUEST_BROWSER_ROLE)
+                    return true
+                } catch (_: ActivityNotFoundException) {
+                    // Sigue con los ajustes.
+                }
+            }
+        }
+        return try {
+            startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        }
+    }
+
     private fun appVersion(): String? = try {
         packageManager.getPackageInfo(packageName, 0).versionName
     } catch (_: PackageManager.NameNotFoundException) {
@@ -348,6 +391,7 @@ class MainActivity : FlutterActivity(), AndroidPermissionRequester {
 
     companion object {
         private const val REQUEST_PERMISSIONS = 4107
+        private const val REQUEST_BROWSER_ROLE = 4112
         private const val REQUEST_SAVE_FILE = 4110
         private const val REQUEST_OPEN_FILE = 4111
         private const val MAX_TEXT_FILE = 5 * 1024 * 1024
