@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carpeta donde se baja la versión nueva de Patagonia antes de instalarla. -->
+<paths>
+    <cache-path name="actualizacion" path="actualizacion/" />
+</paths>

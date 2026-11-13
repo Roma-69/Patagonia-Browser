@@ -20,6 +20,7 @@ class FakeGecko {
   Map<String, Object?>? pageText;
   String? article;
   String? appVersion;
+  String installResult = 'instalando';
 
   int get lastId => views.keys.last;
   List<String> methods(int id) => (calls[id] ?? []).map((c) => c.method).toList();
@@ -65,6 +66,7 @@ class FakeGecko {
         if (call.method == 'ensureUBlock') return '1.75.0';
         if (call.method == 'openUBlockPanel') return true;
         if (call.method == 'appVersion') return appVersion;
+        if (call.method == 'installUpdate') return installResult;
         if (call.method == 'share') return true;
         return null;
       },
@@ -714,6 +716,65 @@ void main() {
       gecko.views[gecko.lastId]!['url'],
       'https://github.com/Roma-69/Patagonia-Browser/releases/tag/movil-v1.2.1',
     );
+  });
+
+  testWidgets('tocar el aviso baja e instala el APK sin pasar por GitHub', (tester) async {
+    gecko.appVersion = '1.3.0';
+    const apk =
+        'https://github.com/Roma-69/Patagonia-Browser/releases/download/movil-v1.3.1/Patagonia-Android-1.3.1-Publicacion.apk';
+    BrowserShell.debugLatestRelease = () async =>
+        const MobileRelease(version: '1.3.1', tag: 'movil-v1.3.1', apkUrl: apk);
+    SharedPreferences.setMockInitialValues({});
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+    final aviso = find.text('Hay una versión nueva: 1.3.1. Tocá para bajarla.');
+    await tester.ensureVisible(aviso);
+    await tester.pumpAndSettle();
+    final pestanas = gecko.views.length;
+    await tester.tap(aviso);
+    await tester.pumpAndSettle();
+    final call = gecko.engineCalls.lastWhere((c) => c.method == 'installUpdate');
+    expect(call.arguments, apk);
+    // No abre la página de GitHub.
+    expect(gecko.views.length, pestanas);
+  });
+
+  testWidgets('si no se puede bajar solo, abre la página del release', (tester) async {
+    gecko.appVersion = '1.3.0';
+    gecko.installResult = 'error';
+    BrowserShell.debugLatestRelease = () async => const MobileRelease(
+      version: '1.3.1',
+      tag: 'movil-v1.3.1',
+      apkUrl:
+          'https://github.com/Roma-69/Patagonia-Browser/releases/download/movil-v1.3.1/Patagonia.apk',
+    );
+    SharedPreferences.setMockInitialValues({});
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+    final aviso = find.text('Hay una versión nueva: 1.3.1. Tocá para bajarla.');
+    await tester.ensureVisible(aviso);
+    await tester.pumpAndSettle();
+    await tester.tap(aviso);
+    await tester.pumpAndSettle();
+    expect(
+      gecko.views[gecko.lastId]!['url'],
+      'https://github.com/Roma-69/Patagonia-Browser/releases/tag/movil-v1.3.1',
+    );
+  });
+
+  testWidgets('Configuración muestra la versión instalada', (tester) async {
+    gecko.appVersion = '1.3.0';
+    SharedPreferences.setMockInitialValues({});
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+    await openMenuItem(tester, 'Configuración');
+    final version = find.byKey(const ValueKey('appVersion'));
+    await tester.ensureVisible(version);
+    await tester.pumpAndSettle();
+    expect(find.text('Patagonia Browser 1.3.0'), findsOneWidget);
   });
 
   testWidgets('no avisa si ya está actualizada', (tester) async {

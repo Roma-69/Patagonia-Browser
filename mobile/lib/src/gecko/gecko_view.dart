@@ -376,6 +376,11 @@ class GeckoEngineInfo {
   /// Abre un archivo de texto que elija el usuario. null si canceló o falló.
   static Future<String?> openTextFile() => _engine<String>('openTextFile');
 
+  /// Baja el APK de la versión nueva y abre el instalador de Android. Devuelve
+  /// "instalando", "permiso" (falta permitir instalar apps), "ocupado" o "error".
+  static Future<String> installUpdate(String apkUrl) async =>
+      await _engine<String>('installUpdate', apkUrl) ?? 'error';
+
   /// Versión instalada de Patagonia (ej. '1.2.0'), o null si no se sabe.
   static Future<String?> appVersion() => _engine<String>('appVersion');
 

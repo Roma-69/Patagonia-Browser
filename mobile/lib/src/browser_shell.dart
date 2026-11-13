@@ -75,6 +75,8 @@ class _BrowserShellState extends State<BrowserShell> {
   bool _updateNotices = true;
   final Set<String> _neverTranslateHosts = {};
   MobileRelease? _availableUpdate;
+  bool _installingUpdate = false;
+  String? _installedVersion;
   Future<void> _pendingSave = Future<void>.value();
 
   bool _isLive(_BrowserTab tab) => mounted && _tabs.contains(tab);
@@ -1469,9 +1471,14 @@ class _BrowserShellState extends State<BrowserShell> {
 
   /// Una vez por día como mucho: si en GitHub hay una versión de celular más nueva, avisa.
   Future<void> _checkForUpdate({bool force = false}) async {
-    if (!_gecko || !_updateNotices) return;
-    final installed = await GeckoEngineInfo.appVersion();
+    if (!_gecko) return;
+    var installed = await GeckoEngineInfo.appVersion();
     if (installed == null || !mounted) return;
+    if (_installedVersion != installed) setState(() => _installedVersion = installed);
+    if (!_updateNotices) return;
+    // "Patagonia Pruebas" (versión -prueba) siempre ofrece la última oficial: así se
+    // puede probar el aviso y la instalación directa sin esperar a otra versión.
+    if (installed.contains('-prueba')) installed = '0.0.0';
     SharedPreferences? preferences;
     try {
       preferences = await SharedPreferences.getInstance();
@@ -1480,9 +1487,16 @@ class _BrowserShellState extends State<BrowserShell> {
       if (!force && now - last < const Duration(hours: 20).inMilliseconds) {
         final known = preferences.getString('latestMobileVersion');
         final tag = preferences.getString('latestMobileTag');
+        final apk = preferences.getString('latestMobileApk');
         if (known != null && tag != null && UpdateCheck.isNewer(known, installed)) {
           if (mounted) {
-            setState(() => _availableUpdate = MobileRelease(version: known, tag: tag));
+            setState(
+              () => _availableUpdate = MobileRelease(
+                version: known,
+                tag: tag,
+                apkUrl: UpdateCheck.isValidApkUrl(apk) ? apk : null,
+              ),
+            );
           }
         }
         return;
@@ -1497,6 +1511,12 @@ class _BrowserShellState extends State<BrowserShell> {
     try {
       await preferences?.setString('latestMobileVersion', latest.version);
       await preferences?.setString('latestMobileTag', latest.tag);
+      final apk = latest.apkUrl;
+      if (apk == null) {
+        await preferences?.remove('latestMobileApk');
+      } else {
+        await preferences?.setString('latestMobileApk', apk);
+      }
     } catch (_) {
       // No pasa nada: mañana se vuelve a consultar.
     }
@@ -1505,12 +1525,38 @@ class _BrowserShellState extends State<BrowserShell> {
     }
   }
 
-  void _openUpdatePage() {
+  /// Tocar el aviso baja la versión nueva y abre el instalador de Android, sin pasar
+  /// por GitHub. Si algo falla, queda el camino de antes: la página del release.
+  Future<void> _openUpdatePage() async {
     final update = _availableUpdate;
-    if (update == null) return;
+    if (update == null || _installingUpdate) return;
+    final apk = update.apkUrl;
+    if (apk == null) return _openReleasePage(update);
+    setState(() => _installingUpdate = true);
+    _showMessage(
+      'Bajando Patagonia ${update.version}… Tarda un ratito (unos 100 MB). Podés seguir navegando.',
+    );
+    final result = await GeckoEngineInfo.installUpdate(apk);
+    if (!mounted) return;
+    setState(() => _installingUpdate = false);
+    switch (result) {
+      case 'instalando':
+        _showMessage('Tocá "Instalar". Se instala arriba, sin perder favoritos ni historial.');
+      case 'permiso':
+        _showMessage(
+          'Activá "Permitir de esta fuente" para Patagonia, volvé y tocá el aviso de nuevo.',
+        );
+      case 'ocupado':
+        _showMessage('Ya se está bajando la versión nueva. Esperá un momento.');
+      default:
+        _openReleasePage(update);
+    }
+  }
+
+  void _openReleasePage(MobileRelease update) {
     _addTab(url: Uri.parse(update.pageUrl));
     _showMessage(
-      'Bajá el archivo .apk de "Assets" y abrilo para actualizar. Tus favoritos no se pierden.',
+      'No se pudo bajar solo. Bajá el archivo .apk de "Assets" y abrilo: tus favoritos no se pierden.',
     );
   }
 
@@ -2030,6 +2076,17 @@ class _BrowserShellState extends State<BrowserShell> {
                     onChanged: _gecko
                         ? (value) => toggle(_setUpdateNotices, value)
                         : null,
+                  ),
+                  ListTile(
+                    key: const ValueKey('appVersion'),
+                    leading: const Icon(Icons.info_outline),
+                    title: const Text('Versión'),
+                    subtitle: Text(
+                      _installedVersion == null
+                          ? 'Patagonia Browser'
+                          : 'Patagonia Browser ${_installedVersion!}',
+                      style: const TextStyle(color: _muted),
+                    ),
                   ),
                 ],
               ),

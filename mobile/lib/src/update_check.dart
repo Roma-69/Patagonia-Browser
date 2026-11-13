@@ -49,11 +49,32 @@ class UpdateCheck {
       final version = tag.substring(mobileTagPrefix.length);
       if (parse(version) == null) continue;
       if (best == null || isNewer(version, best.version)) {
-        best = MobileRelease(version: version, tag: tag);
+        best = MobileRelease(version: version, tag: tag, apkUrl: _apkUrl(item, tag));
       }
     }
     return best;
   }
+
+  /// Dirección de descarga del APK del release, o null si no tiene ninguno.
+  static String? _apkUrl(Map<dynamic, dynamic> release, String tag) {
+    final assets = release['assets'];
+    if (assets is! List) return null;
+    for (final asset in assets) {
+      if (asset is! Map) continue;
+      final url = asset['browser_download_url'];
+      if (url is String && isValidApkUrl(url)) return url;
+    }
+    return null;
+  }
+
+  /// Solo APKs de los releases de celular de Patagonia (lo mismo controla Android).
+  static bool isValidApkUrl(String? url) =>
+      url != null &&
+      url.startsWith(
+        'https://github.com/Roma-69/Patagonia-Browser/releases/download/$mobileTagPrefix',
+      ) &&
+      url.endsWith('.apk') &&
+      !url.contains('..');
 
   /// null si no hay conexión o GitHub no contesta bien.
   static Future<MobileRelease?> fetchLatest() async {
@@ -76,10 +97,13 @@ class UpdateCheck {
 }
 
 class MobileRelease {
-  const MobileRelease({required this.version, required this.tag});
+  const MobileRelease({required this.version, required this.tag, this.apkUrl});
 
   final String version;
   final String tag;
+
+  /// El APK para instalar directo desde el aviso (sin entrar a GitHub).
+  final String? apkUrl;
 
   String get pageUrl => '${UpdateCheck.releasePage}$tag';
 }

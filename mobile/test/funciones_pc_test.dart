@@ -49,6 +49,30 @@ void main() {
       expect(UpdateCheck.isNewer('basura', '1.2.0'), isFalse);
     });
 
+    test('toma el APK del release para instalarlo directo', () {
+      const apk =
+          'https://github.com/Roma-69/Patagonia-Browser/releases/download/movil-v1.3.0/Patagonia-Android-1.3.0-Publicacion.apk';
+      final latest = UpdateCheck.latestMobile([
+        {
+          'tag_name': 'movil-v1.3.0',
+          'draft': false,
+          'prerelease': false,
+          'assets': [
+            {'browser_download_url': 'https://otro-sitio.com/trucho.apk'},
+            {'browser_download_url': apk},
+          ],
+        },
+      ])!;
+      expect(latest.apkUrl, apk);
+      expect(UpdateCheck.isValidApkUrl('https://otro-sitio.com/trucho.apk'), isFalse);
+      expect(
+        UpdateCheck.isValidApkUrl(
+          'https://github.com/Roma-69/Patagonia-Browser/releases/download/v1.3.0/Setup.exe',
+        ),
+        isFalse,
+      );
+    });
+
     test('elige la versión de celular más nueva publicada', () {
       final latest = UpdateCheck.latestMobile([
         {'tag_name': 'v1.0.11', 'draft': false, 'prerelease': false},
@@ -62,6 +86,7 @@ void main() {
         latest.pageUrl,
         'https://github.com/Roma-69/Patagonia-Browser/releases/tag/movil-v1.2.0',
       );
+      expect(latest.apkUrl, isNull);
       expect(UpdateCheck.latestMobile('nada'), isNull);
       expect(UpdateCheck.latestMobile([]), isNull);
     });

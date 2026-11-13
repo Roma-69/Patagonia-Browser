@@ -66,6 +66,9 @@ class MainActivity : FlutterActivity(), AndroidPermissionRequester {
                 }
                 "openWhatsApp" -> result.success(openWhatsApp())
                 "appVersion" -> result.success(appVersion())
+                "installUpdate" -> Actualizacion.instalar(this, call.arguments as? String) {
+                    result.success(it)
+                }
                 "addShortcut" -> {
                     val args = call.arguments as? Map<*, *>
                     result.success(addShortcut(args?.get("url") as? String, args?.get("title") as? String))

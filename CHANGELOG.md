@@ -6,7 +6,17 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
-## [1.3.0] - Sin publicar (PC y Android)
+## [1.3.1] - Sin publicar (PC y Android)
+
+### Cambiado
+
+- **Celular — actualizar sin entrar a GitHub:** cuando aparece "Hay una versión nueva", lo tocás y Patagonia baja la versión nueva sola y abre el **Instalar** de Android. Se instala arriba, sin perder favoritos ni historial. La primera vez Android pide permitir que Patagonia instale su actualización ("Permitir de esta fuente"). Si algo falla, abre la página de descarga como antes.
+
+### Agregado
+
+- **Celular — la versión a la vista:** Menú → Configuración → **Versión** muestra qué versión de Patagonia tenés instalada.
+
+## [1.3.0] - Publicada el 12/11/2026 (PC y Android)
 
 Desde esta versión **la PC y el celular llevan el mismo número** y hacen lo mismo (ver `PARIDAD.md`).
 
