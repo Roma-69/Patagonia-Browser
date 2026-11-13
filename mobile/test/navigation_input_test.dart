@@ -25,7 +25,7 @@ void main() {
           'https://user:secret@example.com',
           '999.1.1.1',
         ]) {
-          expect(NavigationInput.resolve(input).host, 'duckduckgo.com');
+          expect(NavigationInput.resolve(input).host, 'search.brave.com');
         }
       },
     );
@@ -51,11 +51,35 @@ void main() {
       );
     });
 
-    test('convierte texto en una búsqueda segura', () {
+    test('convierte texto en una búsqueda de Brave Search', () {
       final uri = NavigationInput.resolve('clima en Bariloche');
+      expect(uri.host, 'search.brave.com');
+      expect(uri.path, '/search');
+      expect(uri.queryParameters['q'], 'clima en Bariloche');
+    });
+
+    test('DuckDuckGo queda como buscador de respaldo', () {
+      final uri = NavigationInput.resolve(
+        'clima en Bariloche',
+        engine: SearchEngine.duckduckgo,
+      );
       expect(uri.host, 'duckduckgo.com');
       expect(uri.path, '/');
       expect(uri.queryParameters['q'], 'clima en Bariloche');
+      expect(
+        NavigationInput.resolve('', engine: SearchEngine.duckduckgo).host,
+        'duckduckgo.com',
+      );
+    });
+
+    test('sin texto abre la portada del buscador, no Google', () {
+      expect(NavigationInput.resolve('').toString(), 'https://search.brave.com/');
+    });
+
+    test('un buscador desconocido vuelve a Brave', () {
+      expect(SearchEngine.fromId('google'), SearchEngine.brave);
+      expect(SearchEngine.fromId(null), SearchEngine.brave);
+      expect(SearchEngine.fromId('duckduckgo'), SearchEngine.duckduckgo);
     });
   });
 }

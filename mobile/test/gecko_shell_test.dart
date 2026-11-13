@@ -615,13 +615,47 @@ void main() {
     expect(find.text('Abrir en pestaña nueva'), findsNothing);
   });
 
-  testWidgets('Buscar el texto seleccionado abre DuckDuckGo', (tester) async {
+  testWidgets('Buscar el texto seleccionado abre Brave Search', (tester) async {
     final id = await open(tester, 'https://example.com');
+    await gecko.emit(tester, id, 'searchText', 'estepa patagónica');
+    await tester.pumpAndSettle();
+    final url = Uri.parse(gecko.views[gecko.lastId]!['url'] as String);
+    expect(url.host, 'search.brave.com');
+    expect(url.path, '/search');
+    expect(url.queryParameters['q'], 'estepa patagónica');
+  });
+
+  testWidgets('con DuckDuckGo elegido, Buscar usa DuckDuckGo', (tester) async {
+    final id = await open(
+      tester,
+      'https://example.com',
+      preferences: {'searchEngine': 'duckduckgo'},
+    );
     await gecko.emit(tester, id, 'searchText', 'estepa patagónica');
     await tester.pumpAndSettle();
     final url = Uri.parse(gecko.views[gecko.lastId]!['url'] as String);
     expect(url.host, 'duckduckgo.com');
     expect(url.queryParameters['q'], 'estepa patagónica');
+  });
+
+  testWidgets('el buscador se elige en Configuración', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+
+    await openMenuItem(tester, 'Configuración');
+    final selector = find.byKey(const ValueKey('searchEngine'));
+    await tester.ensureVisible(selector);
+    await tester.pumpAndSettle();
+    expect(find.text('Brave'), findsOneWidget);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('DuckDuckGo').last);
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('searchEngine'), 'duckduckgo');
   });
 
   testWidgets('modo lectura muestra la nota sola', (tester) async {

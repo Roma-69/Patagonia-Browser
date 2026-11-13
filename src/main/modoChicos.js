@@ -12,12 +12,26 @@ const BUSCADORES = [
 
 const DOMINIOS_YOUTUBE = /(^|\.)(youtube\.com|youtube-nocookie\.com|youtubei\.googleapis\.com|youtube\.googleapis\.com)$/;
 
+// Brave Search tiene su propio dominio con búsqueda segura estricta y fija:
+// safe.search.brave.com (es el que Brave recomienda para chicos y escuelas).
+const BRAVE = "search.brave.com";
+const BRAVE_SEGURO = "safe.search.brave.com";
+
 // Devuelve la dirección con búsqueda segura, o null si ya está bien o no es un buscador.
 function urlSegura(direccion) {
     let url;
     try { url = new URL(direccion); } catch { return null; }
     if (!["http:", "https:"].includes(url.protocol)) return null;
     const host = url.hostname.toLowerCase();
+    if (host === BRAVE || host === BRAVE_SEGURO) {
+        // Este parámetro servía para saltear el filtro: se saca siempre.
+        const salteo = url.searchParams.has("bypass_safesearch_strict");
+        if (host === BRAVE_SEGURO && !salteo) return null;
+        url.protocol = "https:";
+        url.hostname = BRAVE_SEGURO;
+        url.searchParams.delete("bypass_safesearch_strict");
+        return url.href;
+    }
     const buscador = BUSCADORES.find(b => b.dominio.test(host) && b.ruta.test(url.pathname));
     if (!buscador || url.searchParams.get(buscador.param) === buscador.valor) return null;
     url.searchParams.set(buscador.param, buscador.valor);
@@ -68,4 +82,4 @@ function crearModoChicos({ app, sesion }) {
     };
 }
 
-module.exports = { DNS_FAMILIAR, urlSegura, cabecerasChicos, crearModoChicos };
+module.exports = { DNS_FAMILIAR, BRAVE_SEGURO, urlSegura, cabecerasChicos, crearModoChicos };

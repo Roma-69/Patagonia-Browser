@@ -22,7 +22,7 @@ El motor de bloqueo integrado utiliza la biblioteca de Ghostery para descargar y
 
 La excepción de protección para un sitio cambia el bloqueo de ese sitio; no debe interpretarse como un control que impida las descargas de listas. Las actualizaciones de listas no equivalen a actualizar el programa completo.
 
-DuckDuckGo está configurado como página de inicio predeterminada. Lo que se escribe en la barra de direcciones o en el buscador de la nueva pestaña y no es una dirección web se envía a DuckDuckGo para realizar la búsqueda; se puede consultar su [política de privacidad](https://duckduckgo.com/privacy). Cada sitio visitado aplica sus propias condiciones.
+Brave Search es el buscador y la página de inicio predeterminados: usa su propio índice de la web, sin depender de Google ni de Microsoft. En Configuración se puede elegir DuckDuckGo como respaldo. Lo que se escribe en la barra de direcciones o en el buscador de la nueva pestaña y no es una dirección web se envía al buscador elegido para realizar la búsqueda; se pueden consultar sus políticas de privacidad: [Brave Search](https://search.brave.com/help/privacy-policy) y [DuckDuckGo](https://duckduckgo.com/privacy). Cada sitio visitado aplica sus propias condiciones.
 
 La biblioteca de bloqueo define listas alojadas en GitHub. Las descargas desde ese servicio y el uso del repositorio o de sus páginas de publicaciones se rigen por la [declaración de privacidad de GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement). La definición de los proveedores de listas se encuentra en el [código de Ghostery Adblocker](https://github.com/ghostery/adblocker/blob/master/packages/adblocker/src/fetch.ts).
 

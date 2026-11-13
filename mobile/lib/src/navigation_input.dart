@@ -1,3 +1,29 @@
+/// Buscadores de Patagonia (igual que en la PC, src/shared/buscadores.js):
+/// Brave Search, con índice propio y sin Google ni Microsoft, por defecto y
+/// DuckDuckGo como respaldo.
+enum SearchEngine {
+  brave('brave', 'Brave Search', 'search.brave.com', '/search'),
+  duckduckgo('duckduckgo', 'DuckDuckGo', 'duckduckgo.com', '/');
+
+  const SearchEngine(this.id, this.label, this.host, this.searchPath);
+
+  final String id;
+  final String label;
+  final String host;
+  final String searchPath;
+
+  static const SearchEngine fallback = SearchEngine.brave;
+
+  static SearchEngine fromId(String? id) => SearchEngine.values.firstWhere(
+    (engine) => engine.id == id,
+    orElse: () => fallback,
+  );
+
+  Uri get home => Uri.https(host, '/');
+
+  Uri search(String text) => Uri.https(host, searchPath, {'q': text});
+}
+
 class NavigationInput {
   const NavigationInput._();
 
@@ -7,9 +33,12 @@ class NavigationInput {
       uri.host.isNotEmpty &&
       uri.userInfo.isEmpty;
 
-  static Uri resolve(String value) {
+  static Uri resolve(
+    String value, {
+    SearchEngine engine = SearchEngine.fallback,
+  }) {
     final input = value.trim();
-    if (input.isEmpty) return Uri.parse('https://www.google.com/');
+    if (input.isEmpty) return engine.home;
     final parsed = Uri.tryParse(input);
     if (isWebUri(parsed)) return parsed!;
 
@@ -23,7 +52,7 @@ class NavigationInput {
             : address;
       }
     }
-    return Uri.https('duckduckgo.com', '/', {'q': input});
+    return engine.search(input);
   }
 
   static bool _looksLikeHost(String host) {
