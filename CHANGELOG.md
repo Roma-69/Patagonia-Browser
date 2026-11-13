@@ -29,6 +29,7 @@ Desde esta versión **la PC y el celular llevan el mismo número** y hacen lo mi
 
 ### Corregido
 
+- **Celular — la música ya no se corta al cambiar de pestaña:** si estás escuchando algo en YouTube (o una radio) y pasás a otra pestaña, sigue sonando. Cuando lo pausás, esa pestaña vuelve a dormirse para no gastar batería. En la PC ya funcionaba así.
 - **Google Meet no podía usar la cámara ni el micrófono:** Patagonia le decía a la página que estaban "bloqueados por el navegador" antes de preguntarte, y Meet ni siquiera los pedía. Ahora aparece el aviso de siempre (**Bloquear / Permitir durante esta sesión**) y, si elegís Bloquear, queda bloqueado.
 - **Compartir pantalla ("Presentar ahora") en Meet:** antes fallaba siempre. Ahora Patagonia pregunta qué querés compartir: la pantalla completa o una ventana. Con la pantalla completa también se comparte el sonido de la PC.
 

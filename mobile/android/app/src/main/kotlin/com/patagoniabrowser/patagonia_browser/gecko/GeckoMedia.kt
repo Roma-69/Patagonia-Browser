@@ -45,6 +45,9 @@ object GeckoMedia {
     private var artworkRequest = 0
     private const val ARTWORK_SIZE = 512
 
+    /** Esta pestaña es la que está sonando: no se duerme aunque cambies a otra pestaña. */
+    fun isPlaying(session: GeckoSession): Boolean = playing && owner.get() === session
+
     /** Hay algo sonando o en pausa que la notificación puede manejar. */
     val active: Boolean get() = media != null
 
@@ -81,13 +84,18 @@ object GeckoMedia {
                 if (media !== mediaSession) return
                 playing = false
                 refresh(app)
+                GeckoEngine.sleepIfHidden(session)
             }
 
-            override fun onStop(session: GeckoSession, mediaSession: MediaSession) =
+            override fun onStop(session: GeckoSession, mediaSession: MediaSession) {
                 release(app, mediaSession)
+                GeckoEngine.sleepIfHidden(session)
+            }
 
-            override fun onDeactivated(session: GeckoSession, mediaSession: MediaSession) =
+            override fun onDeactivated(session: GeckoSession, mediaSession: MediaSession) {
                 release(app, mediaSession)
+                GeckoEngine.sleepIfHidden(session)
+            }
         }
     }
 

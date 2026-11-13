@@ -33,7 +33,7 @@ Patagonia es **un solo navegador** en dos equipos. La regla es simple:
 | Compartir pantalla | ✅ 1.3.0 | — | Pendiente de evaluar en Android |
 | Login de Google / Gmail | ✅ 1.0.11 | ✅ | |
 | Aviso de versión nueva | ✅ se actualiza sola | ✅ avisa en el inicio | Android no puede instalarse solo fuera de Google Play |
-| Música con la pantalla apagada o la app minimizada | ✅ (Windows lo hace solo) | ✅ | |
+| Música con la pantalla apagada, la app minimizada o en otra pestaña | ✅ (Windows lo hace solo) | ✅ 1.3.0: también al cambiar de pestaña | |
 | Separar pestañas en otra ventana | ✅ | — | No aplica en el celular |
 | Compartir la página | — | ✅ | En la PC se copia la dirección |
 
@@ -43,7 +43,7 @@ Hacerla **en la PC y en el celular** con la versión que se va a publicar:
 
 - [ ] Abre rápido y muestra el inicio con el árbol bandera.
 - [ ] Entrar a la cuenta de Google y abrir **Gmail**.
-- [ ] **YouTube**: un video sin anuncios; en el celu, sigue sonando con la pantalla apagada.
+- [ ] **YouTube**: un video sin anuncios; en el celu, sigue sonando con la pantalla apagada y al pasar a otra pestaña.
 - [ ] **WhatsApp Web** (PC) / acceso a WhatsApp (celu).
 - [ ] **Google Meet**: se ve y se escucha (en la PC, también "Presentar ahora").
 - [ ] **Traductor**: una página en inglés y una en portugués; "Mostrar original".

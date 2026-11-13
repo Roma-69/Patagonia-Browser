@@ -182,11 +182,20 @@ object GeckoEngine {
 
     /** La pestaña que se ve. uBO usa esto para saber de qué sitio mostrar el panel. */
     fun setActive(context: Context, session: GeckoSession, active: Boolean) {
-        session.setActive(active)
+        // La pestaña que está sonando sigue despierta aunque pases a otra: la música no se corta.
+        // Cuando la pausás o termina, sleepIfHidden la duerme para no gastar batería.
+        session.setActive(active || GeckoMedia.isPlaying(session))
         session.setFocused(active)
         runtime(context).webExtensionController.setTabActive(session, active)
         if (active) activeSession = WeakReference(session)
         else if (activeSession.get() === session) activeSession = WeakReference(null)
+    }
+
+    /** Si la pestaña no es la que se ve y ya no suena, se duerme como cualquier otra de fondo. */
+    fun sleepIfHidden(session: GeckoSession) {
+        if (session.isOpen && activeSession.get() !== session && !GeckoMedia.isPlaying(session)) {
+            session.setActive(false)
+        }
     }
 
     fun forget(session: GeckoSession) {
