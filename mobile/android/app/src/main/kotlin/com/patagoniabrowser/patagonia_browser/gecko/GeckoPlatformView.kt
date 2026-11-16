@@ -61,6 +61,8 @@ class GeckoPlatformView(
     private val session: GeckoSession
     private val main = Handler(Looper.getMainLooper())
     private var closed = false
+    /** Dirección de la página abierta (para el aviso de descargas peligrosas). */
+    private var pagina: String? = null
     private var desktop = params["desktop"] == true
     private val popup = params["popup"] == true
 
@@ -138,7 +140,10 @@ class GeckoPlatformView(
                 url: String?,
                 perms: MutableList<PermissionDelegate.ContentPermission>,
                 hasUserGesture: Boolean,
-            ) = send("location", url)
+            ) {
+                pagina = url
+                send("location", url)
+            }
 
             override fun onCanGoBack(session: GeckoSession, canGoBack: Boolean) =
                 send("canGoBack", canGoBack)
@@ -236,7 +241,7 @@ class GeckoPlatformView(
             override fun onCrash(session: GeckoSession) = send("crash", null)
             override fun onKill(session: GeckoSession) = send("crash", null)
             override fun onExternalResponse(session: GeckoSession, response: WebResponse) {
-                GeckoDownloads.save(appContext, response) { status, name ->
+                GeckoDownloads.save(appContext, response, pagina) { status, name ->
                     main.post { send("download", mapOf("status" to status, "name" to name)) }
                 }
             }
@@ -414,7 +419,7 @@ class GeckoPlatformView(
         }
         GeckoWebExecutor(GeckoEngine.runtime(appContext)).fetch(WebRequest(url)).accept({ response ->
             if (response == null) return@accept
-            GeckoDownloads.save(appContext, response) { status, name ->
+            GeckoDownloads.save(appContext, response, pagina) { status, name ->
                 main.post { send("download", mapOf("status" to status, "name" to name)) }
             }
         }, {

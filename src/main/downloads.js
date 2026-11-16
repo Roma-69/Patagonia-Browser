@@ -2,7 +2,7 @@ const { randomUUID } = require("node:crypto");
 const { stat } = require("node:fs/promises");
 const path = require("node:path");
 
-function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaPropia, comprobarArchivo = stat }) {
+function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaPropia, comprobarArchivo = stat, confirmarPeligrosa }) {
     const registros = new Map();
     const activos = new Map();
     let revision = 0;
@@ -26,8 +26,13 @@ function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaP
         const terminadas = [...registros.keys()].filter(id => !activos.has(id));
         for (const id of terminadas.slice(0, Math.max(0, terminadas.length - 100))) registros.delete(id);
     }
-    sesion.on("will-download", (_evento, item, contenido) => {
+    sesion.on("will-download", (evento, item, contenido) => {
         if (!esPestanaPropia(contenido)) return;
+        // Aviso en descargas peligrosas: un programa de un sitio desconocido se pregunta antes de bajarlo.
+        if (confirmarPeligrosa && !confirmarPeligrosa(item, contenido)) {
+            evento.preventDefault();
+            return;
+        }
         const id = randomUUID();
         const dato = { id, nombre: item.getFilename(), estado: "descargando", recibidos: 0, total: 0, ruta: "" };
         registros.set(id, dato);

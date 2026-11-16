@@ -1082,6 +1082,26 @@ ipcInterfaz.handle("usar-como-predeterminado", async () => {
     }
 });
 
+// ---- Aviso en descargas peligrosas ----
+function confirmarDescargaPeligrosa(item, contenido) {
+    const { revisarDescarga, textoAviso } = require("./src/shared/descargasPeligrosas");
+    const nombre = item.getFilename();
+    const aviso = revisarDescarga({ nombre, url: item.getURL(), pagina: contenido.getURL() });
+    if (!aviso) return true;
+    // Cuadro modal: hasta que la persona elija, la descarga no arranca.
+    const respuesta = dialog.showMessageBoxSync(ventanaPrincipal && !ventanaPrincipal.isDestroyed() ? ventanaPrincipal : undefined, {
+        type: "warning",
+        title: "Patagonia te cuida",
+        message: "¿Bajar este programa?",
+        detail: textoAviso({ nombre, ...aviso }),
+        buttons: ["No bajar", "Bajar igual"],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true
+    });
+    return respuesta === 1;
+}
+
 ipcInterfaz.on("zoom-normal", () => zoomActiva(0));
 ipcInterfaz.handle("reiniciar-para-actualizar", () => {
     if (!actualizador?.reiniciar()) return { correcto: false, error: "Todavía no hay una actualización lista." };
@@ -1347,7 +1367,8 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             sesion: session.defaultSession,
             shell,
             obtenerVentana: () => ventanaPrincipal,
-            esPestanaPropia: contenido => pestanas.some(pestana => pestana.vista.webContents === contenido)
+            esPestanaPropia: contenido => pestanas.some(pestana => pestana.vista.webContents === contenido),
+            confirmarPeligrosa: confirmarDescargaPeligrosa
         });
         gestorPermisos = registrarPermisos({
             sesion: session.defaultSession,
