@@ -203,7 +203,7 @@ function crearElementoPestana(pestana) {
 }
 
 function actualizarElementoPestana(vista, pestana) {
-    const texto = (pestana.incognito ? "🕶️ " : "") + (pestana.titulo || "Nueva pestaña");
+    const texto = pestana.titulo || "Nueva pestaña";
     vista.elemento.classList.toggle("activa", Boolean(pestana.activa));
     vista.elemento.classList.toggle("incognito", Boolean(pestana.incognito));
     vista.seleccionar.setAttribute("aria-pressed", String(Boolean(pestana.activa)));

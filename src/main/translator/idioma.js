@@ -75,8 +75,16 @@ function idiomaDeAtributo(lang) {
 }
 
 // El texto manda: muchos sitios declaran lang="en" aunque estén en español.
+// Lo que declara la página solo se usa si hay texto de verdad para traducir y no
+// parece castellano (las apps como Meet tienen poco texto y a veces dicen "en").
 function detectarIdioma({ texto, lang } = {}) {
-    return detectarPorAlfabeto(texto, lang) || detectarPorTexto(texto) || idiomaDeAtributo(lang);
+    const porTexto = detectarPorAlfabeto(texto, lang) || detectarPorTexto(texto);
+    if (porTexto) return porTexto;
+    const palabras = String(texto || "").toLowerCase().match(/\p{L}+/gu) || [];
+    if (palabras.length < 40) return "";
+    const castellano = palabras.filter(p => LISTAS.es.has(p)).length;
+    if (castellano >= 5 && castellano / palabras.length > 0.08) return "";
+    return idiomaDeAtributo(lang);
 }
 
 function nombreIdioma(codigo) {
