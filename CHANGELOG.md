@@ -6,7 +6,7 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
-## [Próxima versión] - Sin publicar (PC y Android)
+## [1.4.1] - Sin publicar (PC y Android)
 
 ### ¿Por qué se actualiza?
 
@@ -20,9 +20,16 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
   - "Limpiar lista" saca los nombres de la lista pero **no borra los archivos**: siguen en Descargas. Lo bajado en incógnito sale de la lista al cerrar la última pestaña de incógnito.
   - En la PC esto ya estaba (el panel de descargas). Ahora el celu hace lo mismo.
 
+### Corregido
+
+- **Los enlaces que abren una aplicación ya funcionan.** Botones como "Abrir Claude", las reuniones de Zoom, Spotify, WhatsApp o los enlaces de correo no hacían nada y había que ir a otro navegador. Ahora Patagonia te pregunta **"¿Abrir otra aplicación?"**, te muestra de qué sitio viene y la abre si aceptás. Podés tildar **"Permitir siempre"** para que no te vuelva a preguntar en ese sitio.
+  - En el celular pasaba lo mismo: solo abría el teléfono, el correo, los mensajes, los mapas, WhatsApp y Google Play; cualquier otra aplicación quedaba sin abrir. Ahora funcionan todas, con el mismo aviso.
+  - Si no tenés instalada esa aplicación, Patagonia te lo dice en vez de quedarse callado.
+- **Seguridad:** los enlaces que se usaron para atacar Windows y Android (`ms-msdt:`, `search-ms:`, `intent:` y parecidos) quedan bloqueados sin preguntar, y las páginas no pueden llenarte la pantalla de avisos.
+
 ---
 
-## [1.4.0] - Sin publicar (PC y Android) — "Patagonia te cuida"
+## [1.4.0] - 17 nov 2026 (PC y Android) — "Patagonia te cuida"
 
 ### ¿Por qué se actualiza?
 

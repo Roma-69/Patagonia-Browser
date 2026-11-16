@@ -27,6 +27,7 @@ class GeckoEvents {
     this.onSearchText,
     this.onTranslation,
     this.onTranslationError,
+    this.onExternalLink,
   });
 
   final ValueChanged<String>? onLocation;
@@ -61,6 +62,9 @@ class GeckoEvents {
   /// Novedades del traductor (idioma detectado, página traducida, errores).
   final ValueChanged<GeckoTranslationState>? onTranslation;
   final ValueChanged<String>? onTranslationError;
+
+  /// Un enlace que abre otra app del celular (WhatsApp, Spotify, "Abrir Claude"…).
+  final ValueChanged<String>? onExternalLink;
 }
 
 /// Lo que se mantuvo apretado en la página.
@@ -217,6 +221,9 @@ class GeckoController {
         }
       case 'translationError':
         events.onTranslationError?.call(_text(value));
+      case 'externalLink':
+        final url = _text(value).trim();
+        if (url.isNotEmpty) events.onExternalLink?.call(url);
     }
     return null;
   }
@@ -244,6 +251,19 @@ class GeckoController {
   Future<void> translate(String from, {String to = 'es'}) =>
       _call('translate', {'from': from, 'to': to});
   Future<void> restoreTranslation() => _call('restoreTranslation');
+
+  /// Abre un enlace con otra app del celular. Se llama después de que el usuario
+  /// aceptó el aviso. false si no hay ninguna app que lo sepa abrir.
+  Future<bool> openExternal(String url) async {
+    if (_disposed) return false;
+    try {
+      return await _channel.invokeMethod<bool>('openExternal', url) ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
 
   /// Imprimir o guardar como PDF (diálogo de impresión de Android). false si no se pudo.
   Future<bool> printPage(String title) async {

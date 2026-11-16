@@ -159,11 +159,11 @@ class GeckoPlatformView(
             ): GeckoResult<AllowOrDeny> {
                 val uri = Uri.parse(request.uri)
                 return when (uri.scheme?.lowercase()) {
-                    "http", "https", "about", "data", "blob", "moz-extension", "resource", null ->
-                        GeckoResult.allow()
+                    in INTERNOS, null -> GeckoResult.allow()
                     else -> {
-                        // Enlaces de teléfono, correo, WhatsApp, mapas: se abren con la app que corresponde.
-                        if (request.hasUserGesture) openExternal(uri)
+                        // Enlaces que abren otra app (WhatsApp, Spotify, Zoom, "Abrir Claude"…).
+                        // Decide Patagonia en Flutter, que es quien le pregunta al usuario.
+                        if (request.hasUserGesture) send("externalLink", request.uri)
                         GeckoResult.deny()
                     }
                 }
@@ -329,16 +329,29 @@ class GeckoPlatformView(
         } else appContext.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun openExternal(uri: Uri) {
-        val scheme = uri.scheme?.lowercase() ?: return
-        if (scheme !in setOf("tel", "mailto", "sms", "smsto", "geo", "whatsapp", "market")) return
-        val activity = GeckoEngine.activity ?: return
+    /**
+     * Abre el enlace con la app que corresponda. Llega solo desde Flutter, después de
+     * que el usuario aceptó. Igual se vuelve a revisar acá, por las dudas.
+     */
+    private fun openExternal(url: String?, result: MethodChannel.Result) {
+        val uri = Uri.parse(url ?: return result.success(false))
+        val scheme = uri.scheme?.lowercase()
+        if (scheme == null || scheme in INTERNOS || scheme in PELIGROSOS ||
+            url.length > LARGO_MAXIMO || url.any { it == '\n' || it == '\r' || it == '\t' }
+        ) {
+            return result.success(false)
+        }
+        val activity = GeckoEngine.activity ?: return result.success(false)
         try {
             activity.startActivity(
+                // Sin componente: elige Android, no la página.
                 Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE),
             )
+            result.success(true)
         } catch (_: ActivityNotFoundException) {
-            send("externalFailed", uri.toString())
+            result.success(false)
+        } catch (_: SecurityException) {
+            result.success(false)
         }
     }
 
@@ -488,6 +501,7 @@ class GeckoPlatformView(
             "readPage" -> return readPage(result)
             "readArticle" -> return readArticle(result)
             "print" -> return printPage(call.arguments as? String, result)
+            "openExternal" -> return openExternal(call.arguments as? String, result)
             "saveUrl" -> (call.arguments as? String)?.let { saveUrl(it) }
             "translate" -> {
                 val args = call.arguments as? Map<*, *>
@@ -566,5 +580,21 @@ private class PatagoniaSelection(
 
     companion object {
         const val ACTION_SEARCH = "com.patagoniabrowser.BUSCAR"
+
+        // La misma decisión que toma la PC (src/shared/protocolosExternos.js) y
+        // Flutter (lib/src/protocolos_externos.dart). Acá es la última revisión.
+        val INTERNOS = setOf(
+            "http", "https", "about", "blob", "data", "file", "filesystem",
+            "javascript", "view-source", "ws", "wss",
+            "chrome", "chrome-extension", "devtools", "moz-extension", "resource",
+        )
+        val PELIGROSOS = setOf(
+            "ms-msdt", "search-ms", "ms-officecmd", "ms-cxh", "ms-cxh-full",
+            "ms-appinstaller", "ms-availablenetworks", "ms-settings",
+            "shell", "vbscript", "vnd.ms-cmd", "cmd", "powershell",
+            "ldap", "ldaps", "smb", "nfs", "res", "mk", "cid", "help", "afp", "jar",
+            "intent", "android-app", "content", "package",
+        )
+        const val LARGO_MAXIMO = 2048
     }
 }
