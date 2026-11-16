@@ -2,9 +2,10 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { ElectronBlocker } = require("@ghostery/adblocker-electron");
+const { LISTAS } = require("../src/main/listasProteccion");
 
 async function construir({ destino = path.join(__dirname, "../assets/patagonia-adblock.bin"), fetchImpl = globalThis.fetch } = {}) {
-    console.log("Actualizando las listas de anuncios y rastreadores...");
+    console.log("Actualizando las listas de anuncios, rastreadores y avisos de cookies...");
     const signal = AbortSignal.timeout(30000);
     const fetchValidado = async url => {
         signal.throwIfAborted();
@@ -14,7 +15,7 @@ async function construir({ destino = path.join(__dirname, "../assets/patagonia-a
         if (!texto.trim() || /^\s*(?:<!doctype|<html)/i.test(texto)) throw new Error("La descarga no contiene listas de protección válidas.");
         return { text: async () => texto };
     };
-    const bloqueador = await ElectronBlocker.fromPrebuiltAdsAndTracking(fetchValidado);
+    const bloqueador = await ElectronBlocker.fromLists(fetchValidado, LISTAS);
     const temporal = `${destino}.${randomUUID()}.tmp`;
     await fs.mkdir(path.dirname(destino), { recursive: true });
     try { await fs.writeFile(temporal, bloqueador.serialize()); await fs.rename(temporal, destino); }

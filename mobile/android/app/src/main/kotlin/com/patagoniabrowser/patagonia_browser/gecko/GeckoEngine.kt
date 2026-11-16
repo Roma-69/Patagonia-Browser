@@ -32,6 +32,8 @@ object GeckoEngine {
     private const val LECTOR_PATH = "resource://android/assets/patagonia_lector/"
     const val CHICOS_ID = "chicos@patagoniabrowser.com"
     private const val CHICOS_PATH = "resource://android/assets/patagonia_chicos/"
+    const val CUIDA_ID = "cuida@patagoniabrowser.com"
+    private const val CUIDA_PATH = "resource://android/assets/patagonia_cuida/"
     const val ESCUDO_ID = "escudo@patagoniabrowser.com"
     private const val ESCUDO_PATH = "resource://android/assets/patagonia_escudo/"
 
@@ -48,6 +50,7 @@ object GeckoEngine {
     private const val PREF_LETRA = "flutter.largeText"
 
     private var chicos: GeckoResult<WebExtension>? = null
+    private var cuida: GeckoResult<WebExtension>? = null
     private var escudo: GeckoResult<WebExtension>? = null
     private val chicosPorts = mutableListOf<WebExtension.Port>()
     var kidsMode = false
@@ -91,8 +94,9 @@ object GeckoEngine {
         applyFontSize(settings)
         return GeckoRuntime.create(context.applicationContext, settings).also {
             runtime = it
-            // El modo chicos y el escudo contra estafas tienen que estar listos antes de la primera página.
+            // El modo chicos y las protecciones propias tienen que estar listos antes de la primera página.
             chicos(context)
+            cuida(context)
             escudo(context)
         }
     }
@@ -330,6 +334,19 @@ object GeckoEngine {
 
         override fun error(code: String, message: String?, details: Any?) = success(false)
         override fun notImplemented() = success(false)
+    }
+
+    /** Extensión propia (assets/patagonia_cuida): oculta los avisos de cookies. */
+    fun cuida(context: Context): GeckoResult<WebExtension> {
+        cuida?.let { return it }
+        val result = runtime(context).webExtensionController.ensureBuiltIn(CUIDA_PATH, CUIDA_ID)
+        result.exceptionally<WebExtension> { error ->
+            Log.e(TAG, "No se pudo preparar Patagonia Cuida", error)
+            cuida = null
+            GeckoResult.fromException(error)
+        }
+        cuida = result
+        return result
     }
 
     /** Extensión propia (assets/patagonia_escudo): escudo contra estafas. */

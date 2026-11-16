@@ -1457,6 +1457,12 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             esPestanaActiva: contenido => obtenerPestanaActiva()?.vista.webContents === contenido,
             origenSeguro: require("./src/main/permissions").origenSeguro
         });
+        // Fotos limpias: las fotos que se suben pierden los datos escondidos (GPS, FBMD...).
+        session.defaultSession.registerPreloadScript?.({
+            id: "patagonia-fotos-limpias",
+            type: "frame",
+            filePath: path.join(__dirname, "src", "main", "fotosLimpias.js")
+        });
         require("./src/main/googleLogin").instalarLoginGoogle({
             app,
             sesion: session.defaultSession,
