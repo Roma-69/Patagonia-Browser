@@ -6,7 +6,34 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
-## [1.3.1] - Sin publicar (Android; la PC no tiene cambios)
+## [1.4.0] - Sin publicar (PC y Android) — "Patagonia te cuida"
+
+### ¿Por qué se actualiza?
+
+Esta versión es para cuidar a la familia en internet. Todo se hace **en tu equipo**: Patagonia no manda a ningún lado lo que visitás.
+
+- 📷 **Fotos limpias.** Las fotos guardan datos escondidos: dónde se sacaron (la ubicación de tu casa, por ejemplo), con qué celular y, en Facebook e Instagram, una marca oculta de Meta (FBMD) para seguirlas. Ahora Patagonia borra esos datos cuando subís o bajás fotos desde el navegador. La foto se ve igual. Solo se limpia lo que pasa por Patagonia: lo que subís desde la app de Facebook, Instagram o la galería no pasa por el navegador.
+- 🚫 **Sin carteles de cookies.** Las páginas ya no te tapan la pantalla con el "Aceptar cookies". Los anuncios (YouTube incluido) se siguen bloqueando como antes, así que las páginas cargan más rápido y gastan menos datos.
+- 🛡️ **Escudo contra estafas.** Te llega un WhatsApp que dice "Tu cuenta de Mercado Pago fue bloqueada, entrá acá", o "Tenés un paquete retenido en el Correo", o "ANSES te depositó un bono". El link lleva a una página igualita a la real que te roba la clave. Ahora Patagonia la frena **antes de que cargue** con una pantalla roja: *Volver a un lugar seguro* o *Entrar igual (no recomendado)*. Revisa una lista de páginas peligrosas conocidas (se actualiza sola cada semana) y las direcciones que se hacen pasar por Mercado Pago, Mercado Libre, ANSES, AFIP, Correo Argentino, Andreani, bancos y billeteras, PayPal, Netflix, WhatsApp o iCloud sin ser las oficiales.
+- ⚠️ **Aviso en descargas peligrosas.** Si bajás un programa (`.exe`, `.msi`, `.bat`) o una app (`.apk`) de una página que Patagonia no conoce, te pregunta antes: *No bajar* o *Bajar igual*. Es la forma más común de que entre un virus (el famoso "Comprobante.pdf.exe" o el "WhatsApp Plus.apk"). No molesta con fotos, documentos ni programas de sitios conocidos (Microsoft, Google, fabricantes de drivers, sitios `.gob.ar`...).
+- 🕶️ **Modo incógnito.** Sirve cuando le prestás la compu o el celu a alguien, o cuando querés buscar algo sin que quede guardado, como un regalo sorpresa. Al cerrar la última pestaña de incógnito se borra todo: historial, cuentas abiertas y lo que guardaron las páginas. Ojo: **no te hace invisible**; tu proveedor de internet y las páginas igual ven que entraste.
+- 🌐 **Traductor renovado.** Se terminó el cartel que aparecía arriba de cada página en otro idioma: ahora es un **ícono chiquito 文A** en la barra de direcciones que usás solo si querés. Ahí están *Traducir*, *Mostrar original*, *Siempre traducir* y *No traducir nunca este sitio*. En la PC traduce muchos más idiomas (ruso, chino, japonés, coreano, árabe, griego, neerlandés, polaco, turco y más).
+
+### Cómo se usa
+
+- **Modo incógnito:** PC → botón 🕶️ al lado del **+**, **Ctrl+Shift+N**, menú *Archivo* o clic derecho en un enlace → *Abrir enlace en pestaña de incógnito*. Celular → Menú → *Nueva pestaña de incógnito*.
+- **Traductor:** tocar el ícono 文A de la barra de direcciones (aparece solo en páginas en otro idioma).
+- Fotos limpias, cookies, escudo y aviso de descargas funcionan solos, también en incógnito.
+
+### Por dentro (para quien mantiene el código)
+
+- Bloqueador de la PC con EasyList Cookie y *annoyances-cookies*; en el celu, extensión propia `patagonia_cuida`. El motor guardado con las listas viejas se borra solo.
+- Fotos limpias: `src/main/fotosLimpias.js` (preload de las páginas y descargas) y `FotosLimpias.kt` (selector de archivos y descargas), con el mismo resultado byte a byte.
+- Escudo: reglas comunes en `src/shared/escudo.js` (copia exacta en la extensión `patagonia_escudo` del celu). Listas `phishing-filter` + `urlhaus-filter`; la copia incluida se actualiza con *Actions → Escudo - actualizar listas*.
+- Descargas peligrosas: `src/shared/descargasPeligrosas.js` y `DescargasPeligrosas.kt` con las mismas listas.
+- Incógnito: sesión en memoria `patagonia-incognito` en la PC (el bloqueador y las descargas ahora cubren varias sesiones); sesión privada de Gecko en el celu con las extensiones activas en incógnito.
+
+## [1.3.1] - Publicada el 13/11/2026 (Android; la PC no tuvo cambios)
 
 ### Agregado
 

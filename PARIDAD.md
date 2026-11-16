@@ -21,7 +21,7 @@ Patagonia es **un solo navegador** en dos equipos. La regla es simple:
 | Función | PC (Windows) | Android | Nota |
 |---|---|---|---|
 | Bloqueo de anuncios y rastreadores (incluye YouTube) | ✅ Ghostery | ✅ uBlock Origin | Motor distinto, mismo resultado |
-| Traductor privado (en el equipo) | ✅ 1.3.0: inglés incluido; portugués, francés, alemán e italiano se bajan la primera vez | ✅ | Mismo motor de Firefox |
+| Traductor privado (en el equipo) | ✅ 1.4.0: inglés incluido; 30 idiomas más se bajan la primera vez | ✅ todos los de Firefox | Mismo motor de Firefox |
 | "Mostrar original" desde el menú | ✅ 1.3.0 (clic derecho) | ✅ | |
 | Buscador: Brave Search por defecto, DuckDuckGo de respaldo | ✅ 1.3.0 Configuración → Buscador | ✅ 1.3.0 Configuración → Buscador | Sin depender de Google ni Microsoft para buscar |
 | Modo chicos (tilde) | ✅ 1.3.0: Brave pasa a safe.search.brave.com | ✅ 1.3.0: Brave pasa a safe.search.brave.com | |
@@ -38,6 +38,12 @@ Patagonia es **un solo navegador** en dos equipos. La regla es simple:
 | Música con la pantalla apagada, la app minimizada o en otra pestaña | ✅ (Windows lo hace solo) | ✅ 1.3.0: también al cambiar de pestaña | |
 | Separar pestañas en otra ventana | ✅ | — | No aplica en el celular |
 | Compartir la página | — | ✅ | En la PC se copia la dirección |
+| Fotos limpias (sin GPS ni marca FBMD de Meta) al subir y bajar | ✅ 1.4.0 al elegir, arrastrar o pegar fotos y al bajarlas | ✅ 1.4.0 en el selector de archivos y al bajarlas | Mismo resultado byte a byte (JS y Kotlin) |
+| Sin carteles de cookies | ✅ 1.4.0 EasyList Cookie + annoyances-cookies (Ghostery) | ✅ 1.4.0 reglas generales de EasyList Cookie (extensión Patagonia Cuida) | En la PC hay además reglas por sitio: tapa algunos carteles más |
+| Escudo contra estafas (pantalla roja) | ✅ 1.4.0 | ✅ 1.4.0 (extensión Patagonia Escudo) | Mismas reglas y lista (copia exacta de `src/shared/escudo.js`) |
+| Aviso en descargas peligrosas | ✅ 1.4.0 cuadro antes de bajar | ✅ 1.4.0 cuadro antes de guardar | Mismas listas (`descargasPeligrosas.js` / `DescargasPeligrosas.kt`) |
+| Modo incógnito | ✅ 1.4.0 pestañas de incógnito (Ctrl+Shift+N, botón 🕶️) | ✅ 1.4.0 Menú → Nueva pestaña de incógnito | En la PC no se puede mover a otra ventana (la ventana aparte usa la sesión normal) |
+| Traductor como ícono en la barra de direcciones | ✅ 1.4.0 menú del ícono 文A | ✅ 1.4.0 hoja del ícono | |
 
 ## Lista de prueba antes de publicar
 
@@ -52,4 +58,10 @@ Hacerla **en la PC y en el celular** con la versión que se va a publicar:
 - [ ] **Buscador**: escribir algo en la barra → abre Brave Search. Cambiar a DuckDuckGo en Configuración → la próxima búsqueda va a DuckDuckGo. Volver a Brave.
 - [ ] **Modo chicos**: tildar, buscar algo para adultos en Brave (tiene que abrir safe.search.brave.com y no mostrar nada para adultos), destildar.
 - [ ] Favoritos: agregar uno, exportarlo e importarlo en el otro equipo.
+- [ ] **Fotos limpias**: subir una foto sacada con el celu (con ubicación) a un sitio de prueba y bajar una foto de Facebook; ninguna conserva la ubicación.
+- [ ] **Cookies**: entrar a un diario (ej. lanacion.com.ar o elpais.com) y que no aparezca el cartel de cookies.
+- [ ] **Escudo**: abrir `https://mercadopago-seguridad.com` → pantalla roja; *Volver* vuelve; *Entrar igual* deja pasar.
+- [ ] **Descargas**: bajar un `.exe` o `.apk` de un sitio desconocido → pregunta antes; uno de GitHub o Microsoft → no pregunta.
+- [ ] **Incógnito**: abrir una pestaña de incógnito, entrar a Gmail, cerrarla y abrir otra: no queda la sesión abierta ni en el historial.
+- [ ] **Traductor**: no aparece ningún cartel; el ícono 文A traduce y muestra el original.
 - [ ] Se instala **encima** de la versión anterior sin perder favoritos ni sesión.
