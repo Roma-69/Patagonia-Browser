@@ -120,7 +120,7 @@ async function crearAccesoDirecto({ shell, escritorio, ejecutable, argumentosBas
     return { nombre, ruta };
 }
 
-function crearVentanaApp({ BrowserWindow, url, icono, preferencias, abrirEnNavegador, soloMismoSitio = true, limites }) {
+function crearVentanaApp({ BrowserWindow, url, icono, preferencias, abrirEnNavegador, abrirExterno, soloMismoSitio = true, limites }) {
     const ventana = new BrowserWindow({
         width: limites?.width || 1200,
         height: limites?.height || 800,
@@ -142,10 +142,16 @@ function crearVentanaApp({ BrowserWindow, url, icono, preferencias, abrirEnNaveg
     contenido.setWindowOpenHandler(({ url: destino }) => {
         const valida = urlAppValida(destino);
         if (valida) abrirEnNavegador(valida);
+        // Enlaces que abren una aplicación del equipo (mailto:, tel:, zoommtg:…).
+        else abrirExterno?.(contenido, destino);
         return { action: "deny" };
     });
     contenido.on("will-navigate", (evento, destino) => {
-        if (!urlAppValida(destino)) { evento.preventDefault(); return; }
+        if (!urlAppValida(destino)) {
+            evento.preventDefault();
+            abrirExterno?.(contenido, destino);
+            return;
+        }
         // Una pestaña separada navega libre, como en el navegador.
         if (!soloMismoSitio) return;
         try {

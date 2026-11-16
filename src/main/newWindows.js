@@ -23,9 +23,14 @@ function opcionesDeCarga(detalle) {
     return opciones;
 }
 
-function registrarAperturas({ contenido, crearVista, agregarPestana, puedeAbrir }) {
+function registrarAperturas({ contenido, crearVista, agregarPestana, puedeAbrir, abrirExterno }) {
     contenido.setWindowOpenHandler(detalle => {
-        if (!puedeAbrir() || !destinoPermitido(detalle.url)) return { action: "deny" };
+        if (!puedeAbrir()) return { action: "deny" };
+        if (!destinoPermitido(detalle.url)) {
+            // Puede ser un enlace que abre una aplicación del equipo (claude://, zoommtg://…).
+            abrirExterno?.(detalle.url);
+            return { action: "deny" };
+        }
         return {
             action: "allow",
             outlivesOpener: true,

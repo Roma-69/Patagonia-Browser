@@ -256,6 +256,7 @@ for (const restaurar of [true, false]) test(`main startup respects restore=${res
         if (nombre.endsWith("/shortcuts")) return require("../src/main/shortcuts");
         if (nombre.endsWith("/lifecycle")) return require("../src/main/lifecycle");
         if (nombre.endsWith("/newWindows")) return require("../src/main/newWindows");
+        if (nombre.endsWith("/enlacesExternos")) return require("../src/main/enlacesExternos");
         if (nombre.endsWith("/find")) return require("../src/main/find");
         if (nombre.endsWith("/menu")) return require("../src/main/menu");
         if (nombre.endsWith("/permissions")) return require("../src/main/permissions");
