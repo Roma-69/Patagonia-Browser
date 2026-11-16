@@ -1,0 +1,17 @@
+{
+  "manifest_version": 2,
+  "name": "Patagonia Cuida",
+  "version": "1.0",
+  "description": "Protecciones propias de Patagonia: oculta los avisos de cookies (EasyList Cookie). No envía nada fuera del teléfono.",
+  "browser_specific_settings": {
+    "gecko": { "id": "cuida@patagoniabrowser.com" }
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "css": ["cookies.css"],
+      "js": ["cookies-excepciones.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
