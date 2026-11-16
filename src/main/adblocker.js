@@ -115,6 +115,7 @@ function crearProteccion({
     rutaMotorIncluido,
     obtenerURLPrincipal,
     notificar,
+    revisarNavegacion,
     fetchImpl = globalThis.fetch,
     ahora = () => Date.now(),
     limiteDescargaMs = LIMITE_DESCARGA_MS
@@ -170,7 +171,9 @@ function crearProteccion({
         const alRecibirCabeceras = nuevoBloqueador.onHeadersReceived.bind(nuevoBloqueador);
 
         nuevoBloqueador.onBeforeRequest = (detalles, responder) => {
-            if (permitidoParaDetalle(detalles)) responder({});
+            // Escudo contra estafas: la página peligrosa no llega a cargar.
+            if (detalles.resourceType === "mainFrame" && revisarNavegacion?.(detalles)) responder({ cancel: true });
+            else if (permitidoParaDetalle(detalles)) responder({});
             else antesDeSolicitud(detalles, responder);
         };
         nuevoBloqueador.onHeadersReceived = (detalles, responder) => {

@@ -32,6 +32,8 @@ object GeckoEngine {
     private const val LECTOR_PATH = "resource://android/assets/patagonia_lector/"
     const val CHICOS_ID = "chicos@patagoniabrowser.com"
     private const val CHICOS_PATH = "resource://android/assets/patagonia_chicos/"
+    const val ESCUDO_ID = "escudo@patagoniabrowser.com"
+    private const val ESCUDO_PATH = "resource://android/assets/patagonia_escudo/"
 
     /** DNS familiar de Cloudflare (1.1.1.3): bloquea sitios para adultos y de malware. */
     const val DNS_FAMILIAR = "https://family.cloudflare-dns.com/dns-query"
@@ -46,6 +48,7 @@ object GeckoEngine {
     private const val PREF_LETRA = "flutter.largeText"
 
     private var chicos: GeckoResult<WebExtension>? = null
+    private var escudo: GeckoResult<WebExtension>? = null
     private val chicosPorts = mutableListOf<WebExtension.Port>()
     var kidsMode = false
         private set
@@ -88,8 +91,9 @@ object GeckoEngine {
         applyFontSize(settings)
         return GeckoRuntime.create(context.applicationContext, settings).also {
             runtime = it
-            // El modo chicos tiene que estar listo antes de la primera página.
+            // El modo chicos y el escudo contra estafas tienen que estar listos antes de la primera página.
             chicos(context)
+            escudo(context)
         }
     }
 
@@ -326,6 +330,19 @@ object GeckoEngine {
 
         override fun error(code: String, message: String?, details: Any?) = success(false)
         override fun notImplemented() = success(false)
+    }
+
+    /** Extensión propia (assets/patagonia_escudo): escudo contra estafas. */
+    fun escudo(context: Context): GeckoResult<WebExtension> {
+        escudo?.let { return it }
+        val result = runtime(context).webExtensionController.ensureBuiltIn(ESCUDO_PATH, ESCUDO_ID)
+        result.exceptionally<WebExtension> { error ->
+            Log.e(TAG, "No se pudo preparar el escudo contra estafas", error)
+            escudo = null
+            GeckoResult.fromException(error)
+        }
+        escudo = result
+        return result
     }
 
     /** Extensión propia (assets/patagonia_lector) para que el asistente lea el texto de la página. */

@@ -32,6 +32,17 @@ El bloqueador de anuncios puede usar listas públicas como EasyList y
 EasyPrivacy (https://easylist.to/), que tienen doble licencia:
 GPL-3.0 o CC BY-SA 3.0. Pertenecen a The EasyList authors.
 
+## Escudo contra estafas
+
+Desde la 1.4.0, el escudo contra estafas usa las listas públicas
+`phishing-filter` y `urlhaus-filter` del proyecto malware-filter
+(https://gitlab.com/malware-filter, de curbengh), que reúnen datos de
+OpenPhish, PhishTank (Cisco Talos), PhishStats y URLhaus (abuse.ch).
+Cada fuente conserva su licencia y sus condiciones de uso. La lista se
+guarda y se revisa en el equipo: Patagonia no manda a ningún lado qué
+páginas se visitan. Copia incluida: `assets/escudo-lista.txt` (y la misma
+en el celular), generada con `scripts/actualizar-listas-escudo.cjs`.
+
 ## Notas
 
 - Los avisos completos de Chromium y Electron vienen con el instalador,

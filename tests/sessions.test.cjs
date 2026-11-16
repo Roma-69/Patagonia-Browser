@@ -264,6 +264,9 @@ for (const restaurar of [true, false]) test(`main startup respects restore=${res
             iniciar: () => Promise.resolve(), esperar: async () => {}, cerrar() {}, actualizarSiHaceFalta() {}, reiniciarPestana() {}, olvidarPestana() {},
             estado: () => ({ disponible: true, sitio: "", activa: false, permitida: false, anuncios: 0, rastreadores: 0, total: 0 })
         }) };
+        if (nombre.endsWith("/escudo")) return { crearEscudoPC: () => ({
+            iniciar: async () => 0, actualizarSiHaceFalta: async () => false, revisarNavegacion: () => false, permitir() {}, olvidarPestana() {}
+        }) };
         if (nombre.endsWith("/closedTabs")) return require("../src/main/closedTabs");
         if (nombre.endsWith("/constants")) return { ALTURA_BARRA: 108, ALTURA_BUSQUEDA: 44, ANCHO_BARRA_LATERAL: 320, PAGINA_INICIO: "https://www.google.com" };
         if (nombre.endsWith("/navigation")) return navegador;

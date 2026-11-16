@@ -52,6 +52,8 @@ contextBridge.exposeInMainWorld("patagonia", {
     reiniciarParaActualizar: () => ipcRenderer.invoke("reiniciar-para-actualizar"),
 
     navegar: (url) => ipcRenderer.send("navegar", url),
+    escudoVolver: () => ipcRenderer.send("escudo-volver"),
+    escudoEntrar: () => ipcRenderer.send("escudo-entrar"),
 
     atras: () => ipcRenderer.send("atras"),
 

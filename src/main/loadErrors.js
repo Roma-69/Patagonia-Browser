@@ -20,6 +20,7 @@ function registrarErroresCarga(pestana, actualizar) {
         if (!principal) return;
         pestana.url = url;
         pestana.errorCarga = null;
+        pestana.peligro = null;
         pestana.vista.setVisible(true);
         actualizar();
     }
@@ -28,6 +29,8 @@ function registrarErroresCarga(pestana, actualizar) {
     contenido.on("did-fail-load", (_evento, codigo, _descripcion, url, principal) => {
         if (!principal || contenido.isDestroyed()) return;
         if (url && pestana.url !== url) return;
+        // El escudo frenó la página a propósito (ERR_BLOCKED_BY_CLIENT): queda su pantalla roja.
+        if (pestana.peligro) return;
         if (codigo === -3) {
             // Una descarga o una navegación cancelada puede dejar visible el
             // documento anterior. No mostrar la dirección del destino fallido.

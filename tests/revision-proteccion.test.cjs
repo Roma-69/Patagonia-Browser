@@ -132,3 +132,22 @@ test('guardar las listas descargadas permite el próximo arranque sin conexión'
     await segunda.iniciar();
     assert.equal(segunda.estado(1, 'https://a.example/').activa, true);
 });
+
+test('escudo: el bloqueador corta la página peligrosa antes de que cargue', async t => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'patagonia-escudo-'));
+    const archivo = path.join(dir, 'incluido.bin');
+    await fs.writeFile(archivo, ElectronBlocker.parse('||tracker.invalid^').serialize());
+    let manejador;
+    const sesion = {
+        webRequest: { onBeforeRequest(_filtro, fn) { manejador = fn; }, onHeadersReceived() {} },
+        registerPreloadScript() { return 'prueba'; }, unregisterPreloadScript() {}
+    };
+    const gestor = crearProteccion({ sesion, directorioDatos: dir, rutaMotorIncluido: archivo, fetchImpl: null,
+        revisarNavegacion: d => d.url.includes('estafa') });
+    t.after(async () => { gestor.cerrar(); await fs.rm(dir, { recursive: true, force: true }); });
+    await gestor.iniciar();
+    const responder = detalles => new Promise(resolve => manejador({ id: 1, method: 'GET', webContentsId: 1, ...detalles }, resolve));
+    assert.deepEqual(await responder({ resourceType: 'mainFrame', url: 'https://estafa.top/' }), { cancel: true });
+    assert.deepEqual(await responder({ resourceType: 'mainFrame', url: 'https://bien.example/' }), {});
+    assert.notDeepEqual(await responder({ resourceType: 'subFrame', url: 'https://estafa.top/', referrer: 'https://bien.example/' }), { cancel: true });
+});

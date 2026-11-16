@@ -70,6 +70,7 @@ const { registrarHistorial } = require("./src/main/history");
 const { registrarFavoritos } = require("./src/main/bookmarks");
 const { registrarErroresCarga } = require("./src/main/loadErrors");
 const { crearProteccion } = require("./src/main/adblocker");
+const { crearEscudoPC } = require("./src/main/escudo");
 const { obtenerHTMLPagina, MAX_ELEMENTOS } = require("./src/main/pageSnapshot");
 const {
     extraerURLApp,
@@ -115,6 +116,7 @@ let gestorDescargas;
 let gestorPermisos;
 let gestorFavoritos;
 let gestorProteccion;
+let escudo;
 let actualizador;
 const enlacesPendientes = [];
 const ventanasApp = new Set();
@@ -403,6 +405,9 @@ function enviarPestanas() {
             cargando: pestana.cargando,
             ...estadoNavegacion(pestana),
             errorCarga: pestana.errorCarga || null,
+            peligro: pestana.peligro
+                ? { url: pestana.peligro.url, motivo: pestana.peligro.motivo, marca: pestana.peligro.marca || "", sitio: pestana.peligro.sitio }
+                : null,
             activa:
                 pestana.id === idPestanaActiva
         })
@@ -548,6 +553,7 @@ function crearPestana(
     });
     vista.webContents.once("destroyed", () => {
         gestorProteccion?.olvidarPestana(idContenido);
+        escudo?.olvidarPestana(idContenido);
         gestorTraduccion.olvidar(idContenido);
         const recordar = cierresSolicitados.delete(id);
         if (!cerrandoVentana && ventanaPrincipal && !ventanaPrincipal.isDestroyed()) quitarPestana(id, recordar);
@@ -1082,6 +1088,91 @@ ipcInterfaz.handle("usar-como-predeterminado", async () => {
     }
 });
 
+// ---- Escudo contra estafas ----
+const TEXTO_ESCUDO = {
+    lista: "Esta página está marcada como peligrosa: es conocida por robar claves, datos de tarjetas o meter virus.",
+    imitacion: marca => `Esta página se hace pasar por ${marca}, pero su dirección no es la oficial.`
+};
+
+// Frena una página peligrosa. En una pestaña se muestra la pantalla roja; en una
+// ventana de app (sin pestañas) se avisa con un cuadro.
+function frenarPorEscudo(idContenido, url, resultado) {
+    const pestana = pestanas.find(p => !p.vista.webContents.isDestroyed() && p.vista.webContents.id === idContenido);
+    if (pestana) {
+        pestana.peligro = { url, ...resultado };
+        pestana.url = url;
+        pestana.titulo = "Página peligrosa";
+        pestana.favicon = "";
+        pestana.cargando = false;
+        pestana.vista.setVisible(false);
+        if (pestana.id === idPestanaActiva) enviarURLActual();
+        enviarPestanas();
+        return;
+    }
+    const contenido = webContents.fromId(idContenido);
+    if (!contenido || contenido.isDestroyed()) return;
+    const ventana = BrowserWindow.fromWebContents(contenido);
+    const mensaje = resultado.motivo === "imitacion" ? TEXTO_ESCUDO.imitacion(resultado.marca) : TEXTO_ESCUDO.lista;
+    void dialog.showMessageBox(ventana || undefined, {
+        type: "warning",
+        title: "Patagonia te cuida",
+        message: "Patagonia frenó esta página",
+        detail: `${mensaje}\n\n${resultado.sitio}`,
+        buttons: ["Volver", "Entrar igual (no recomendado)"],
+        defaultId: 0,
+        cancelId: 0
+    }).then(({ response }) => {
+        if (response !== 1 || contenido.isDestroyed()) return;
+        escudo.permitir(idContenido, url);
+        contenido.loadURL(url);
+    });
+}
+
+function pestanaConPeligro() {
+    const pestana = obtenerPestanaActiva();
+    return pestana?.peligro && obtenerContenido(pestana) ? pestana : null;
+}
+
+ipcInterfaz.on("escudo-volver", () => {
+    const pestana = pestanaConPeligro();
+    if (!pestana) return;
+    const contenido = obtenerContenido(pestana);
+    const frenada = pestana.peligro.url;
+    pestana.peligro = null;
+    pestana.errorCarga = null;
+    const actual = contenido.getURL();
+    // Chromium deja una página de error en la dirección frenada: se vuelve a la anterior.
+    if (!actual || actual === "about:blank" || actual === frenada) {
+        if (actual === frenada && contenido.navigationHistory.canGoBack()) {
+            contenido.navigationHistory.goBack();
+        } else {
+            // No hay a dónde volver (por ejemplo, un link de WhatsApp en una pestaña nueva): al inicio de Patagonia.
+            pestana.interna = true;
+            pestana.url = "";
+            contenido.loadURL(direccionNuevaPestana()).catch(() => {});
+        }
+        pestana.vista.setVisible(true);
+        enviarURLActual();
+        enviarPestanas();
+        return;
+    }
+    // La página anterior sigue cargada: se vuelve a mostrar.
+    pestana.interna = esNuevaPestanaPatagonia(actual);
+    pestana.url = pestana.interna ? "" : actual;
+    pestana.titulo = contenido.getTitle() || pestana.titulo;
+    pestana.vista.setVisible(true);
+    enviarURLActual();
+    enviarPestanas();
+});
+
+ipcInterfaz.on("escudo-entrar", () => {
+    const pestana = pestanaConPeligro();
+    if (!pestana) return;
+    const { url } = pestana.peligro;
+    escudo.permitir(obtenerContenido(pestana).id, url);
+    navegar(pestana, url);
+});
+
 ipcInterfaz.on("zoom-normal", () => zoomActiva(0));
 ipcInterfaz.handle("reiniciar-para-actualizar", () => {
     if (!actualizador?.reiniciar()) return { correcto: false, error: "Todavía no hay una actualización lista." };
@@ -1372,12 +1463,20 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             userAgentNormal: () => app.userAgentFallback,
             extras: [modoChicos.ajustarCabeceras]
         });
+        escudo = crearEscudoPC({
+            directorioDatos: app.getPath("userData"),
+            rutaListaIncluida: path.join(__dirname, "assets", "escudo-lista.txt"),
+            fetchImpl: (...args) => net.fetch(...args),
+            alBloquear: frenarPorEscudo
+        });
+        await escudo.iniciar().catch(error => console.error("El escudo contra estafas no pudo leer su lista:", error.message));
         gestorProteccion = crearProteccion({
             sesion: session.defaultSession,
             directorioDatos: app.getPath("userData"),
             rutaMotorIncluido: path.join(__dirname, "assets", "patagonia-adblock.bin"),
             obtenerURLPrincipal,
-            notificar: enviarEstadoProteccion
+            notificar: enviarEstadoProteccion,
+            revisarNavegacion: detalles => escudo.revisarNavegacion(detalles)
         });
         await gestorProteccion.iniciar().catch(error => {
             console.error("La protección contra anuncios no pudo iniciarse:", error.message);
@@ -1421,6 +1520,7 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             );
         }
         gestorProteccion.actualizarSiHaceFalta();
+        escudo.actualizarSiHaceFalta();
     })
     .catch((error) => {
         console.error(
