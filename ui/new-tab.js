@@ -160,6 +160,7 @@
             document.getElementById("avisoIncognito").hidden = false;
             document.body.classList.add("incognito");
             document.title = "Nueva pestaña de incógnito";
+            document.getElementById("estadoDatos").textContent = "Incógnito: se borra todo al cerrar";
         }
     } catch { /* sin aviso */ }
 
