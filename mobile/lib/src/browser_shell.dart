@@ -746,7 +746,6 @@ class _BrowserShellState extends State<BrowserShell> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final fullScreen = _gecko && _current.fullScreen;
-    final translationBar = fullScreen ? null : _buildTranslationBar();
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -768,7 +767,6 @@ class _BrowserShellState extends State<BrowserShell> {
                   color: _blue,
                   backgroundColor: _surface,
                 ),
-              ?translationBar,
               Expanded(
                 // Con clave: al entrar o salir de pantalla completa la página
                 // no se vuelve a crear (no se corta el video).
@@ -970,19 +968,25 @@ class _BrowserShellState extends State<BrowserShell> {
                         ),
                         suffixIcon: _current.url == null
                             ? null
-                            : IconButton(
-                                tooltip: _isCurrentFavorite
-                                    ? 'Quitar de favoritos'
-                                    : 'Agregar a favoritos',
-                                onPressed: _toggleFavorite,
-                                icon: Icon(
-                                  _isCurrentFavorite
-                                      ? Icons.star
-                                      : Icons.star_border,
-                                  color: _isCurrentFavorite
-                                      ? const Color(0xFFFFC857)
-                                      : _muted,
-                                ),
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ?_buildTranslateIcon(),
+                                  IconButton(
+                                    tooltip: _isCurrentFavorite
+                                        ? 'Quitar de favoritos'
+                                        : 'Agregar a favoritos',
+                                    onPressed: _toggleFavorite,
+                                    icon: Icon(
+                                      _isCurrentFavorite
+                                          ? Icons.star
+                                          : Icons.star_border,
+                                      color: _isCurrentFavorite
+                                          ? const Color(0xFFFFC857)
+                                          : _muted,
+                                    ),
+                                  ),
+                                ],
                               ),
                         contentPadding: const EdgeInsets.symmetric(
                           vertical: 12,
@@ -1874,86 +1878,111 @@ class _BrowserShellState extends State<BrowserShell> {
     _showMessage('Listo: en $host no se ofrece traducir.');
   }
 
-  Widget? _buildTranslationBar() {
+  /// Traductor (desde la 1.4.0): un ícono chico en la barra de direcciones en lugar de
+  /// una barra encima de la página. Al tocarlo se abren las opciones.
+  Widget? _buildTranslateIcon() {
     final tab = _current;
-    if (!_gecko || tab.translationHidden || tab.url == null) return null;
+    if (!_gecko || tab.url == null) return null;
     final bar = Translation.barFor(tab.translation);
-    final host = tab.url!.host.toLowerCase();
     if (bar == null) return null;
+    final host = tab.url!.host.toLowerCase();
     if (bar.kind == TranslationBarKind.offer &&
         !tab.translating &&
         _neverTranslateHosts.contains(host)) {
       return null;
     }
-    final translating = tab.translating || bar.kind == TranslationBarKind.translating;
-    final message = translating && bar.kind == TranslationBarKind.offer
-        ? 'Traduciendo del ${Translation.languageName(bar.language)}…'
-        : bar.message;
-    return Material(
-      color: const Color(0xFF14324A),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 2, 4),
-        child: Row(
+    final translating =
+        tab.translating || bar.kind == TranslationBarKind.translating;
+    final translated = bar.kind == TranslationBarKind.translated;
+    return IconButton(
+      key: const ValueKey('icono-traductor'),
+      tooltip: translating
+          ? 'Traduciendo…'
+          : translated
+          ? 'Traducida. Tocá para ver el original'
+          : 'Traducir esta página',
+      onPressed: () => _showTranslationOptions(tab, bar),
+      icon: translating
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFFFFC07A),
+              ),
+            )
+          : Icon(
+              translated ? Icons.g_translate : Icons.translate,
+              color: const Color(0xFFFFC07A),
+              size: 21,
+            ),
+    );
+  }
+
+  void _showTranslationOptions(_BrowserTab tab, TranslationBar bar) {
+    final host = tab.url?.host ?? '';
+    final idioma = Translation.languageName(bar.language);
+    final translating =
+        tab.translating || bar.kind == TranslationBarKind.translating;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _navy,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.translate, color: _blue, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                message,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13.5),
+            ListTile(
+              leading: const Icon(Icons.translate, color: Color(0xFFFFC07A)),
+              title: Text(
+                translating ? 'Traduciendo del $idioma…' : bar.message,
+              ),
+              subtitle: const Text(
+                'Se traduce en el teléfono, sin mandar la página a internet.',
               ),
             ),
-            if (translating)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: _blue),
-                ),
-              )
-            else if (bar.kind == TranslationBarKind.offer) ...[
-              TextButton(
-                onPressed: () => _translate(tab, bar.language),
-                child: const Text('Traducir'),
-              ),
-              PopupMenuButton<String>(
-                tooltip: 'Más opciones del traductor',
-                icon: const Icon(Icons.more_vert, size: 20),
-                onSelected: (value) {
-                  if (value == 'always') {
-                    _setAlwaysTranslate(true);
-                    _translate(tab, bar.language);
-                  } else if (value == 'never') {
-                    _neverTranslateHere(tab);
-                  }
+            if (bar.kind == TranslationBarKind.offer && !translating)
+              ListTile(
+                leading: const Icon(Icons.check_circle_outline, color: _blue),
+                title: const Text('Traducir al español'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _translate(tab, bar.language);
                 },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'always',
-                    child: Text('Siempre traducir'),
-                  ),
-                  PopupMenuItem(
-                    value: 'never',
-                    child: Text('Nunca en ${tab.url!.host}'),
-                  ),
-                ],
-              ),
-            ] else
-              TextButton(
-                onPressed: () {
-                  setState(() => tab.translationHidden = true);
+              )
+            else
+              ListTile(
+                leading: const Icon(Icons.undo, color: _blue),
+                title: const Text('Mostrar original'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  setState(() => tab.translating = false);
                   tab.gecko?.restoreTranslation();
                 },
-                child: const Text('Mostrar original'),
               ),
-            IconButton(
-              tooltip: 'Cerrar barra del traductor',
-              onPressed: () => setState(() => tab.translationHidden = true),
-              icon: const Icon(Icons.close, size: 20),
+            SwitchListTile(
+              secondary: const Icon(Icons.autorenew, color: _blue),
+              title: const Text('Siempre traducir al español'),
+              value: _alwaysTranslate,
+              onChanged: (value) {
+                Navigator.pop(sheetContext);
+                _setAlwaysTranslate(value);
+                if (value && bar.kind == TranslationBarKind.offer) {
+                  _translate(tab, bar.language);
+                }
+              },
             ),
+            if (host.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.block, color: _muted),
+                title: Text('No traducir nunca en $host'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _neverTranslateHere(tab);
+                },
+              ),
           ],
         ),
       ),

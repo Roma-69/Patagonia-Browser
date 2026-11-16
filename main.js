@@ -1285,6 +1285,25 @@ ipcInterfaz.on("traduccion-original", () => { gestorTraduccion.mostrarOriginal()
 ipcInterfaz.on("traduccion-siempre", (_evento, activo) => { if (typeof activo === "boolean") gestorTraduccion.siempre(activo); });
 ipcInterfaz.on("traduccion-nunca", () => { gestorTraduccion.nunca(); });
 ipcInterfaz.on("traduccion-cerrar", () => gestorTraduccion.cerrar());
+// Menú del ícono del traductor (barra de direcciones).
+ipcInterfaz.on("traduccion-menu", (_evento, posicion) => {
+    const contenido = obtenerContenido(obtenerPestanaActiva());
+    if (!contenido || !ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
+    const { crearMenuTraduccion } = require("./src/main/translator/menu");
+    const plantilla = crearMenuTraduccion(gestorTraduccion.estado(contenido), {
+        traducir: () => { gestorTraduccion.traducir(contenido); },
+        original: () => { gestorTraduccion.mostrarOriginal(contenido); },
+        siempre: activo => { gestorTraduccion.siempre(activo); },
+        nunca: () => { gestorTraduccion.nunca(); },
+        google: () => {
+            const destino = gestorTraduccion.google();
+            if (destino) navegar(obtenerPestanaActiva(), destino);
+        }
+    });
+    const x = Number.isFinite(posicion?.x) ? Math.max(0, Math.round(posicion.x)) : undefined;
+    const y = Number.isFinite(posicion?.y) ? Math.max(0, Math.round(posicion.y)) : undefined;
+    Menu.buildFromTemplate(plantilla).popup({ window: ventanaPrincipal, x, y });
+});
 ipcInterfaz.on("traduccion-google", () => {
     const destino = gestorTraduccion.google();
     if (destino) navegar(obtenerPestanaActiva(), destino);

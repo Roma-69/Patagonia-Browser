@@ -742,6 +742,9 @@ button{
             aria-label="Buscar o escribir una dirección"
         >
 
+        <span id="estadoTraduccion" class="estado-traduccion" role="status" aria-live="polite" hidden></span>
+        <button id="botonTraduccion" class="boton-traduccion" type="button" hidden
+            title="Traducir esta página" aria-label="Traductor: traducir esta página" aria-haspopup="menu">文A</button>
         <button id="indicadorZoom" type="button" hidden
             title="Volver al tamaño normal (Ctrl+0)" aria-label="Zoom de la página. Volver al tamaño normal">100%</button>
         <button id="guardarFavorito" class="boton-navegacion" type="button"
@@ -785,16 +788,6 @@ button{
     <button id="cerrarBusqueda" type="button" title="Cerrar búsqueda (Escape)" aria-label="Cerrar búsqueda">×</button>
 </section>
 
-<section id="barraTraduccion" hidden aria-label="Traducir página">
-    <span class="traduccion-icono" aria-hidden="true">文A</span>
-    <span id="textoTraduccion" role="status" aria-live="polite"></span>
-    <button id="botonTraducir" type="button" class="traduccion-principal">Traducir al español</button>
-    <button id="botonOriginal" type="button">Mostrar original</button>
-    <label id="opcionSiempre" class="traduccion-casilla"><input id="casillaSiempre" type="checkbox"> <span id="textoSiempre">Siempre traducir</span></label>
-    <button id="botonNunca" type="button">Nunca en este sitio</button>
-    <button id="botonGoogle" type="button" title="Envía la dirección de la página a Google para traducirla">Usar Google (no privado)</button>
-    <button id="cerrarTraduccion" type="button" class="traduccion-cerrar" title="Cerrar" aria-label="Cerrar barra de traducción">×</button>
-</section>
 
 <aside id="sidebar" class="sidebar">
 
@@ -1224,6 +1217,17 @@ button{
     #barraBusqueda button:disabled { opacity:.4; cursor:default; }
     #barraBusqueda :focus-visible { outline:2px solid #8faaff; outline-offset:2px; }
     #sidebar, #errorCarga { top:calc(108px + var(--alto-busqueda, 0px) + var(--alto-traduccion, 0px)); }
+    .boton-traduccion { flex:none; height:30px; padding:0 8px; margin-right:4px; border:0; border-radius:8px;
+        background:transparent; color:#cfe3f2; font-weight:700; letter-spacing:-1px; cursor:pointer; }
+    .boton-traduccion:hover { background:rgba(116,170,207,.18); }
+    .boton-traduccion.ofrece { color:#ffc07a; }
+    .boton-traduccion.traducida { background:linear-gradient(135deg, #ffc07a, #f08a4b); color:#2a1216; }
+    .boton-traduccion.traduciendo { color:#ffc07a; animation:latido-traduccion 1s ease-in-out infinite alternate; }
+    .boton-traduccion.error { color:#ff8f8f; }
+    @keyframes latido-traduccion { from { opacity:.45; } to { opacity:1; } }
+    .boton-traduccion[hidden], .estado-traduccion[hidden] { display:none; }
+    .estado-traduccion { flex:none; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+        font-size:12px; color:#ffd9b0; margin-right:2px; }
     #barraTraduccion { position:absolute; top:calc(108px + var(--alto-busqueda, 0px)); left:0; right:0; height:44px; display:flex;
         align-items:center; gap:10px; padding:5px 14px; font-size:13px; color:#eef7fc; background:rgba(8, 31, 49, .98);
         border-bottom:1px solid rgba(109, 172, 214, .25); }

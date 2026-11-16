@@ -53,7 +53,8 @@ test("portugués se baja una vez, verificado, y se traduce pasando por el inglé
     const red = servidor(["pten"]);
     const modelos = crearModelos({ carpetaIncluida: incluida, carpetaDescargas: descargas, pedir: red.pedir });
     assert.equal(modelos.soportado("pt"), true);
-    assert.equal(modelos.soportado("ru"), false);
+    assert.equal(modelos.soportado("ru"), true, "1.4.0: ruso, chino, japonés y otros también");
+    assert.equal(modelos.soportado("xx"), false);
     const progreso = [];
     assert.deepEqual(await modelos.preparar("pt", "es", p => progreso.push(p)), ["pten", "enes"]);
     assert.ok(progreso.length >= 1 && progreso.at(-1).hechos === progreso.at(-1).total);

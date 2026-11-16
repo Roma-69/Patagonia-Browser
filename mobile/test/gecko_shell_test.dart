@@ -474,9 +474,14 @@ void main() {
       'ready': false,
     });
     await tester.pumpAndSettle();
-    expect(find.text('Esta página está en inglés.'), findsOneWidget);
+    // 1.4.0: no hay barra encima de la página, solo un ícono chico en la dirección.
+    expect(find.text('Esta página está en inglés.'), findsNothing);
+    expect(find.byKey(const ValueKey('icono-traductor')), findsOneWidget);
 
-    await tester.tap(find.text('Traducir'));
+    await tester.tap(find.byKey(const ValueKey('icono-traductor')));
+    await tester.pumpAndSettle();
+    expect(find.text('Esta página está en inglés.'), findsOneWidget);
+    await tester.tap(find.text('Traducir al español'));
     await tester.pump();
     final call = gecko.calls[id]!.lastWhere((c) => c.method == 'translate');
     expect(call.arguments, {'from': 'en', 'to': 'es'});
@@ -488,6 +493,8 @@ void main() {
       'to': 'es',
       'ready': true,
     });
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('icono-traductor')));
     await tester.pumpAndSettle();
     expect(find.text('Traducida del inglés.'), findsOneWidget);
     await tester.tap(find.text('Mostrar original'));
@@ -504,7 +511,7 @@ void main() {
       'supported': true,
     });
     await tester.pumpAndSettle();
-    expect(find.text('Traducir'), findsNothing);
+    expect(find.byKey(const ValueKey('icono-traductor')), findsNothing);
   });
 
   testWidgets('con Siempre traducir, traduce sola', (tester) async {
@@ -522,7 +529,7 @@ void main() {
     final call = gecko.calls[id]!.lastWhere((c) => c.method == 'translate');
     expect(call.arguments, {'from': 'pt', 'to': 'es'});
     await tester.pump();
-    expect(find.text('Traduciendo del portugués…'), findsOneWidget);
+    expect(find.byTooltip('Traduciendo…'), findsOneWidget);
     // Termina de traducir: se va la ruedita.
     await gecko.emit(tester, id, 'translation', {
       'docLang': 'pt',
@@ -532,7 +539,7 @@ void main() {
       'ready': true,
     });
     await tester.pumpAndSettle();
-    expect(find.text('Traducida del portugués.'), findsOneWidget);
+    expect(find.byTooltip('Traducida. Tocá para ver el original'), findsOneWidget);
   });
 
   testWidgets('modo chicos y letra grande desde Configuración', (tester) async {

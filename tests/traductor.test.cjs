@@ -165,7 +165,8 @@ test("ofrece traducir una página en inglés y la traduce en el equipo", async (
     assert.equal(ultimo().estado, "ofrecer");
     assert.equal(ultimo().idioma, "en");
     assert.equal(ultimo().local, true);
-    assert.equal(gestor.visible(), true);
+    assert.equal(ultimo().detectado, true, "aparece el ícono del traductor");
+    assert.equal(gestor.visible(), false, "ya no hay barra encima de la página");
     await gestor.traducir();
     assert.equal(ultimo().estado, "traducida");
     assert.equal(ultimo().hechos, 2);

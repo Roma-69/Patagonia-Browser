@@ -12,8 +12,13 @@ const { leerModelo } = require("./motor");
 
 const REGISTROS = "https://firefox.settings.services.mozilla.com/v1/buckets/main/collections/translations-models-v2/records";
 const ADJUNTOS = "https://firefox-settings-attachments.cdn.mozilla.net/";
-// Idiomas que Patagonia sabe detectar (ver idioma.js) y puede traducir al español.
-const IDIOMAS = Object.freeze(["en", "pt", "fr", "de", "it"]);
+// Idiomas que Patagonia sabe detectar (ver idioma.js) y que tienen modelo en Firefox
+// (directo al español o pasando por el inglés). Si Mozilla no tiene alguno, se avisa
+// y se ofrece Google.
+const IDIOMAS = Object.freeze([
+    "en", "pt", "fr", "de", "it", "nl", "pl", "sv", "ro", "tr", "ru", "uk", "bg", "el", "ar", "fa", "zh", "ja", "ko",
+    "cs", "ca", "da", "fi", "hu", "id", "sk", "sl", "et", "lt", "lv", "vi"
+]);
 const TIPOS = Object.freeze(["model", "lex", "vocab", "srcvocab", "trgvocab"]);
 const ARQUITECTURAS = Object.freeze(["base-memory", "base", "tiny"]);
 const TOPE_ARCHIVO = 120 * 1024 * 1024;
