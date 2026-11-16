@@ -32,6 +32,13 @@ El bloqueador de anuncios puede usar listas públicas como EasyList y
 EasyPrivacy (https://easylist.to/), que tienen doble licencia:
 GPL-3.0 o CC BY-SA 3.0. Pertenecen a The EasyList authors.
 
+Desde la 1.4.0 también usa EasyList Cookie (misma licencia y autores) y
+la lista "annoyances-cookies" de uBlock Origin (GPL-3.0, Raymond Hill y
+colaboradores) para ocultar los avisos de cookies. En el celular, las
+reglas generales de EasyList Cookie van en
+`mobile/android/app/src/main/assets/patagonia_cuida/` (generadas con
+`scripts/generar-cookies-android.cjs`).
+
 ## Notas
 
 - Los avisos completos de Chromium y Electron vienen con el instalador,

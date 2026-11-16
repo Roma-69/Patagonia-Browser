@@ -36,3 +36,20 @@ test("el motor incluido bloquea publicidad y seguimiento conocidos sin bloquear 
     assert.equal(motor.match(solicitud("https://www.google-analytics.com/analytics.js")).match, true);
     assert.equal(motor.match(solicitud("https://example.com/app.js")).match, false);
 });
+
+test("el motor incluido oculta los avisos de cookies más comunes", () => {
+    const ruta = path.join(__dirname, "..", "assets", "patagonia-adblock.bin");
+    const motor = ElectronBlocker.deserialize(fs.readFileSync(ruta));
+    const { styles } = motor.getCosmeticsFilters({
+        url: "https://www.diario-de-prueba.com.ar/",
+        hostname: "www.diario-de-prueba.com.ar",
+        domain: "diario-de-prueba.com.ar",
+        ids: ["onetrust-banner-sdk"],
+        getBaseRules: false,
+        getInjectionRules: false,
+        getRulesFromHostname: false,
+        getRulesFromDOM: true,
+        getExtendedRules: false
+    });
+    assert.match(styles, /#onetrust-banner-sdk/);
+});

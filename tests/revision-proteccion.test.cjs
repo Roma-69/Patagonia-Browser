@@ -64,9 +64,9 @@ test('iniciar dos veces no duplica los manejadores de protección', async t => {
 
 test('una actualización que termina después del cierre no reconecta el bloqueador', async t => {
     let resolver;
-    const antes=ElectronBlocker.fromPrebuiltAdsAndTracking;
-    ElectronBlocker.fromPrebuiltAdsAndTracking=()=>new Promise(r=>{resolver=r;});
-    t.after(()=>{ElectronBlocker.fromPrebuiltAdsAndTracking=antes;});
+    const antes=ElectronBlocker.fromLists;
+    ElectronBlocker.fromLists=()=>new Promise(r=>{resolver=r;});
+    t.after(()=>{ElectronBlocker.fromLists=antes;});
     const {gestor,engine}=await entorno(t,{fetchImpl:()=>{}});
     await gestor.iniciar();
     const actualizando=gestor.actualizarSiHaceFalta();
@@ -79,10 +79,10 @@ test('una actualización que termina después del cierre no reconecta el bloquea
 });
 
 test('la descarga inicial no bloquea indefinidamente el arranque', async t => {
-    const antes = ElectronBlocker.fromPrebuiltAdsAndTracking;
+    const antes = ElectronBlocker.fromLists;
     let signal;
-    ElectronBlocker.fromPrebuiltAdsAndTracking = fetch => fetch('https://listas.example/');
-    t.after(() => { ElectronBlocker.fromPrebuiltAdsAndTracking = antes; });
+    ElectronBlocker.fromLists = fetch => fetch('https://listas.example/');
+    t.after(() => { ElectronBlocker.fromLists = antes; });
     const {archivo,gestor} = await entorno(t, {
         limiteDescargaMs: 15,
         fetchImpl: (_url, opciones) => { signal = opciones.signal; return new Promise(() => {}); }
@@ -94,15 +94,15 @@ test('la descarga inicial no bloquea indefinidamente el arranque', async t => {
 });
 
 test('rechazar una respuesta HTTP o HTML conserva el motor válido anterior', async t => {
-    const antes = ElectronBlocker.fromPrebuiltAdsAndTracking;
-    ElectronBlocker.fromPrebuiltAdsAndTracking = fetch => fetch('https://listas.example/');
-    t.after(() => { ElectronBlocker.fromPrebuiltAdsAndTracking = antes; });
+    const antes = ElectronBlocker.fromLists;
+    ElectronBlocker.fromLists = fetch => fetch('https://listas.example/');
+    t.after(() => { ElectronBlocker.fromLists = antes; });
     let respuesta = { ok: false, status: 503, text: async () => 'error' };
     const {dir,engine,gestor} = await entorno(t, {
         ahora: () => Date.now() + 8 * 24 * 60 * 60 * 1000,
         fetchImpl: async () => respuesta
     });
-    const archivo = path.join(dir, 'patagonia-adblock.bin');
+    const archivo = path.join(dir, 'patagonia-adblock-v2.bin');
     const original = engine.serialize(); await fs.writeFile(archivo, original);
     await gestor.iniciar();
     assert.equal(await gestor.actualizarSiHaceFalta(), false);
@@ -113,16 +113,16 @@ test('rechazar una respuesta HTTP o HTML conserva el motor válido anterior', as
 });
 
 test('guardar las listas descargadas permite el próximo arranque sin conexión', async t => {
-    const antes = ElectronBlocker.fromPrebuiltAdsAndTracking;
-    t.after(() => { ElectronBlocker.fromPrebuiltAdsAndTracking = antes; });
+    const antes = ElectronBlocker.fromLists;
+    t.after(() => { ElectronBlocker.fromLists = antes; });
     const {archivo,dir,engine,gestor} = await entorno(t, { fetchImpl: () => {} });
     await fs.rm(archivo);
-    ElectronBlocker.fromPrebuiltAdsAndTracking = async () => engine;
+    ElectronBlocker.fromLists = async () => engine;
     await gestor.iniciar();
-    assert.ok((await fs.stat(path.join(dir, 'patagonia-adblock.bin'))).size > 0);
+    assert.ok((await fs.stat(path.join(dir, 'patagonia-adblock-v2.bin'))).size > 0);
     assert.equal((await fs.readdir(dir)).some(nombre => nombre.endsWith('.tmp')), false);
     gestor.cerrar();
-    ElectronBlocker.fromPrebuiltAdsAndTracking = async () => assert.fail('no necesita volver a descargar');
+    ElectronBlocker.fromLists = async () => assert.fail('no necesita volver a descargar');
     const segunda = crearProteccion({
         sesion: { webRequest: { onBeforeRequest() {}, onHeadersReceived() {} },
             registerPreloadScript() { return 'prueba'; }, unregisterPreloadScript() {} },
@@ -131,4 +131,45 @@ test('guardar las listas descargadas permite el próximo arranque sin conexión'
     t.after(() => segunda.cerrar());
     await segunda.iniciar();
     assert.equal(segunda.estado(1, 'https://a.example/').activa, true);
+});
+
+test('las listas suman los avisos de cookies sin la lista de molestias variadas', () => {
+    const { LISTAS, LISTAS_COOKIES } = require('../src/main/listasProteccion');
+    for (const lista of LISTAS_COOKIES) assert.ok(LISTAS.includes(lista), lista);
+    assert.ok(LISTAS.some(lista => lista.endsWith('/easylist/easyprivacy.txt')));
+    assert.equal(LISTAS.some(lista => lista.includes('annoyances-others')), false);
+});
+
+test('al arrancar se borra el motor guardado con las listas viejas', async t => {
+    const {dir,gestor} = await entorno(t);
+    const viejo = path.join(dir, 'patagonia-adblock.bin');
+    await fs.writeFile(viejo, 'viejo');
+    await gestor.iniciar();
+    await assert.rejects(fs.stat(viejo), { code: 'ENOENT' });
+});
+
+test('las reglas de cookies del celu salen de EasyList Cookie y respetan sus excepciones', async t => {
+    const { procesar, generar } = require('../scripts/generar-cookies-android.cjs');
+    const texto = ['! comentario', '##.aviso-cookies', '###banner-cookies', '##.raro:has-text(cookies)',
+        'ejemplo.com.ar#@#.aviso-cookies', 'otro.com,~nada.com#@##banner-cookies'].join('\n');
+    const { generales, excepciones } = procesar(texto);
+    assert.deepEqual(generales, ['#banner-cookies', '.aviso-cookies']);
+    assert.deepEqual([...excepciones.get('ejemplo.com.ar')], ['.aviso-cookies']);
+    assert.deepEqual([...excepciones.get('otro.com')], ['#banner-cookies']);
+    assert.equal(excepciones.has('nada.com'), false);
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'patagonia-cookies-'));
+    t.after(() => fs.rm(dir, { recursive: true, force: true }));
+    await assert.rejects(generar({ texto, carpeta: dir }), /incompleta/);
+});
+
+test('el celu trae la extensión Patagonia Cuida con la hoja de cookies generada', async () => {
+    const carpeta = path.join(__dirname, '..', 'mobile', 'android', 'app', 'src', 'main', 'assets', 'patagonia_cuida');
+    const manifiesto = JSON.parse(await fs.readFile(path.join(carpeta, 'manifest.json'), 'utf8'));
+    assert.equal(manifiesto.browser_specific_settings.gecko.id, 'cuida@patagoniabrowser.com');
+    const css = await fs.readFile(path.join(carpeta, 'cookies.css'), 'utf8');
+    assert.match(css, /#onetrust-banner-sdk/);
+    assert.ok(css.split('display: none !important').length > 50);
+    const motor = await fs.readFile(path.join(__dirname, '..', 'mobile', 'android', 'app', 'src', 'main', 'kotlin',
+        'com', 'patagoniabrowser', 'patagonia_browser', 'gecko', 'GeckoEngine.kt'), 'utf8');
+    assert.match(motor, /ensureBuiltIn\(CUIDA_PATH, CUIDA_ID\)/);
 });
