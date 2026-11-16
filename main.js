@@ -347,6 +347,12 @@ function ajustarVista() {
     const [ancho, alto] =
         ventanaPrincipal.getContentSize();
 
+    // Pantalla completa de un video (YouTube, etc.): la página ocupa toda la ventana.
+    if (pestanaActiva.pantallaCompleta) {
+        pestanaActiva.vista.setBounds({ x: 0, y: 0, width: ancho, height: alto });
+        return;
+    }
+
     const anchoLateral = barraLateralAbierta
         ? ANCHO_BARRA_LATERAL
         : 0;
@@ -560,6 +566,38 @@ function vaciarIncognitoSiTermino() {
     });
 }
 
+// ---- Pantalla completa de videos ----
+// La página pide pantalla completa (botón ⛶ de YouTube): la ventana pasa a pantalla
+// completa y la pestaña tapa todo (barra de Patagonia y barra de tareas de Windows).
+let ventanaYaEstabaCompleta = false;
+let pantallaCompletaNuestra = false;
+
+function entrarPantallaCompleta(pestana) {
+    if (!ventanaPrincipal || ventanaPrincipal.isDestroyed() || pestana.id !== idPestanaActiva) return;
+    if (!pantallaCompletaNuestra) {
+        ventanaYaEstabaCompleta = ventanaPrincipal.isFullScreen();
+        pantallaCompletaNuestra = true;
+        if (!ventanaYaEstabaCompleta) ventanaPrincipal.setFullScreen(true);
+    }
+    ajustarVista();
+}
+
+function salirPantallaCompleta() {
+    if (!ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
+    if (pantallaCompletaNuestra) {
+        pantallaCompletaNuestra = false;
+        if (!ventanaYaEstabaCompleta && ventanaPrincipal.isFullScreen()) ventanaPrincipal.setFullScreen(false);
+    }
+    ajustarVista();
+}
+
+// Le pide a la página que salga de pantalla completa (por ejemplo, al cambiar de pestaña).
+function sacarDePantallaCompleta(pestana) {
+    const contenido = obtenerContenido(pestana);
+    if (!pestana?.pantallaCompleta || !contenido) return;
+    contenido.executeJavaScript("document.fullscreenElement && document.exitFullscreen()").catch(() => {});
+}
+
 function crearPestana(
     url = null,
     { vista: vistaExistente, activar = true, cargar = true, opcionesCarga, incognito = false } = {}
@@ -607,6 +645,14 @@ function crearPestana(
         traducida: () => gestorTraduccion.estado(vista.webContents).traducida,
         original: () => { gestorTraduccion.mostrarOriginal(vista.webContents); },
         leer: () => abrirModoLectura(vista.webContents)
+    });
+    vista.webContents.on("enter-html-full-screen", () => {
+        pestana.pantallaCompleta = true;
+        entrarPantallaCompleta(pestana);
+    });
+    vista.webContents.on("leave-html-full-screen", () => {
+        pestana.pantallaCompleta = false;
+        if (pestana.id === idPestanaActiva) salirPantallaCompleta();
     });
     vista.webContents.on("zoom-changed", (_evento, sentido) => {
         zoom.cambiarZoom(vista.webContents, sentido === "in" ? 1 : -1);
@@ -750,6 +796,14 @@ function activarPestana(id) {
 
     if (cerrandoVentana || !ventanaPrincipal || ventanaPrincipal.isDestroyed() || !obtenerContenido(pestana)) {
         return;
+    }
+
+    // Al cambiar de pestaña, el video que estaba en pantalla completa sale de ella.
+    const anterior = obtenerPestanaActiva();
+    if (anterior && anterior.id !== id && anterior.pantallaCompleta) {
+        sacarDePantallaCompleta(anterior);
+        anterior.pantallaCompleta = false;
+        salirPantallaCompleta();
     }
 
     pestanas.forEach(
@@ -978,6 +1032,13 @@ function crearVentana() {
         "resize",
         ajustarVista
     );
+    // Si la ventana sale de pantalla completa por otro lado (Windows, F11), el video también.
+    ventanaPrincipal.on("leave-full-screen", () => {
+        const activa = obtenerPestanaActiva();
+        if (!pantallaCompletaNuestra || !activa?.pantallaCompleta) return;
+        pantallaCompletaNuestra = false;
+        sacarDePantallaCompleta(activa);
+    });
 
     registrarCierre({
         ventana: ventanaPrincipal,

@@ -19,6 +19,10 @@ Esta versión es para cuidar a la familia en internet. Todo se hace **en tu equi
 - 🕶️ **Modo incógnito.** Sirve cuando le prestás la compu o el celu a alguien, o cuando querés buscar algo sin que quede guardado, como un regalo sorpresa. Al cerrar la última pestaña de incógnito se borra todo: historial, cuentas abiertas y lo que guardaron las páginas. Ojo: **no te hace invisible**; tu proveedor de internet y las páginas igual ven que entraste.
 - 🌐 **Traductor renovado.** Se terminó el cartel que aparecía arriba de cada página en otro idioma: ahora es un **ícono chiquito 文A** en la barra de direcciones que usás solo si querés. Ahí están *Traducir*, *Mostrar original*, *Siempre traducir* y *No traducir nunca este sitio*. En la PC traduce muchos más idiomas (ruso, chino, japonés, coreano, árabe, griego, neerlandés, polaco, turco y más).
 
+### Arreglado
+
+- **PC — pantalla completa de YouTube (y cualquier video):** al tocar ⛶ el video quedaba dentro de la pestaña, con la barra de Patagonia y la barra de tareas de Windows a la vista. Ahora ocupa toda la pantalla, como en Chrome; se sale con **Esc** o con el mismo botón. Tampoco pregunta permiso cada vez. Pasaba en todas las versiones de la PC; en el celu ya andaba bien.
+
 ### Cómo se usa
 
 - **Modo incógnito:** PC → botón 🕶️ al lado del **+**, **Ctrl+Shift+N**, menú *Archivo* o clic derecho en un enlace → *Abrir enlace en pestaña de incógnito*. Celular → Menú → *Nueva pestaña de incógnito*.
