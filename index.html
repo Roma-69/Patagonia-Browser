@@ -1088,6 +1088,35 @@ button{
         <button id="reintentarCarga" type="button">Volver a intentar</button>
     </div>
 </section>
+<section id="escudoPeligro" hidden role="alertdialog" aria-labelledby="tituloEscudo" aria-describedby="mensajeEscudo">
+    <div class="escudo-tarjeta">
+        <p class="escudo-marca">🛡️ PATAGONIA TE CUIDA</p>
+        <h1 id="tituloEscudo">Patagonia frenó esta página</h1>
+        <p id="mensajeEscudo"></p>
+        <p class="escudo-direccion">Dirección real: <strong id="sitioEscudo"></strong></p>
+        <p class="escudo-consejo">Así son las estafas que llegan por WhatsApp, mensaje o correo: una página igualita a la
+            original que te pide la clave, el código que te llega por SMS o los datos de la tarjeta. Las empresas y el
+            Estado nunca te piden eso por un link.</p>
+        <button id="escudoVolver" type="button">Volver a un lugar seguro</button>
+        <button id="escudoEntrar" type="button" class="escudo-entrar">Entrar igual (no recomendado)</button>
+    </div>
+</section>
+<style>
+    #escudoPeligro { position:absolute; top:calc(108px + var(--alto-busqueda, 0px) + var(--alto-traduccion, 0px)); bottom:0; left:0; right:0;
+        display:grid; place-items:center; padding:32px; overflow:auto; background:#8f1d1d; color:#fff; z-index:5; }
+    #escudoPeligro[hidden] { display:none; }
+    .escudo-tarjeta { width:100%; max-width:600px; }
+    .escudo-marca { font-size:12px; letter-spacing:2px; color:#ffd4d4; }
+    #tituloEscudo { font-size:30px; margin:16px 0; }
+    #mensajeEscudo { font-size:18px; line-height:1.5; }
+    .escudo-direccion { overflow-wrap:anywhere; color:#ffe3e3; }
+    .escudo-consejo { color:#ffe3e3; line-height:1.6; font-size:14px; margin:20px 0 28px; }
+    #escudoVolver { background:#fff; color:#8f1d1d; border:0; border-radius:10px; padding:14px 22px;
+        font:inherit; font-weight:700; cursor:pointer; }
+    .escudo-entrar { display:block; margin-top:22px; background:none; border:0; padding:4px 0; color:#ffd4d4;
+        font:inherit; font-size:13px; text-decoration:underline; cursor:pointer; }
+    #escudoVolver:focus-visible, .escudo-entrar:focus-visible { outline:3px solid #fff; outline-offset:4px; }
+</style>
 <style>
     #errorCarga { position:absolute; top:108px; bottom:0; left:0; right:0;
         display:grid; place-items:center; padding:32px; overflow:auto;

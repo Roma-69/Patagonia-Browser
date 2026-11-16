@@ -2,6 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { ElectronBlocker, Request } = require("@ghostery/adblocker-electron");
+const { LISTAS, ARCHIVO_MOTOR, ARCHIVOS_VIEJOS } = require("./listasProteccion");
 
 const TIPOS_RASTREADOR = new Set(["script", "xhr", "ping", "webSocket", "cspReport"]);
 const INTERVALO_ACTUALIZACION = 7 * 24 * 60 * 60 * 1000;
@@ -115,11 +116,12 @@ function crearProteccion({
     rutaMotorIncluido,
     obtenerURLPrincipal,
     notificar,
+    revisarNavegacion,
     fetchImpl = globalThis.fetch,
     ahora = () => Date.now(),
     limiteDescargaMs = LIMITE_DESCARGA_MS
 }) {
-    const archivoMotor = path.join(directorioDatos, "patagonia-adblock.bin");
+    const archivoMotor = path.join(directorioDatos, ARCHIVO_MOTOR);
     const archivoSitios = path.join(directorioDatos, "proteccion-sitios.json");
     const contadores = new Map();
     let sitiosPermitidos = new Set();
@@ -170,7 +172,9 @@ function crearProteccion({
         const alRecibirCabeceras = nuevoBloqueador.onHeadersReceived.bind(nuevoBloqueador);
 
         nuevoBloqueador.onBeforeRequest = (detalles, responder) => {
-            if (permitidoParaDetalle(detalles)) responder({});
+            // Escudo contra estafas: la página peligrosa no llega a cargar.
+            if (detalles.resourceType === "mainFrame" && revisarNavegacion?.(detalles)) responder({ cancel: true });
+            else if (permitidoParaDetalle(detalles)) responder({});
             else antesDeSolicitud(detalles, responder);
         };
         nuevoBloqueador.onHeadersReceived = (detalles, responder) => {
@@ -262,7 +266,7 @@ function crearProteccion({
             return { text: async () => texto };
         };
         try {
-            return await Promise.race([ElectronBlocker.fromPrebuiltAdsAndTracking(fetchValidado), cancelada]);
+            return await Promise.race([ElectronBlocker.fromLists(fetchValidado, LISTAS), cancelada]);
         } finally {
             clearTimeout(temporizador);
             controlador.signal.removeEventListener("abort", alAbortar);
@@ -272,6 +276,8 @@ function crearProteccion({
     }
 
     async function iniciarMotor() {
+        // Motores guardados con listas viejas (sin avisos de cookies): se borran.
+        await Promise.all(ARCHIVOS_VIEJOS.map(nombre => fs.rm(path.join(directorioDatos, nombre), { force: true }).catch(() => {})));
         sitiosPermitidos = await leerSitios(archivoSitios);
         let motor = await cargarMotor([archivoMotor, rutaMotorIncluido]);
         if (!motor && typeof fetchImpl === "function") {

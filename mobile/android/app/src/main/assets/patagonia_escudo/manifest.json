@@ -1,0 +1,14 @@
+{
+  "manifest_version": 2,
+  "name": "Patagonia Escudo",
+  "version": "1.0",
+  "description": "Escudo contra estafas de Patagonia: frena páginas truchas y peligrosas antes de que carguen. La revisión se hace en el teléfono; no envía a ningún lado qué páginas visitás.",
+  "browser_specific_settings": {
+    "gecko": { "id": "escudo@patagoniabrowser.com" }
+  },
+  "background": {
+    "scripts": ["escudo-reglas.js", "escudo.js"]
+  },
+  "web_accessible_resources": ["aviso.html", "aviso.js"],
+  "permissions": ["webRequest", "webRequestBlocking", "storage", "<all_urls>"]
+}

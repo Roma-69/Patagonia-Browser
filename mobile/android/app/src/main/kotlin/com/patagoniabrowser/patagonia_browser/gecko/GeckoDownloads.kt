@@ -12,6 +12,7 @@ import android.provider.MediaStore
 import android.util.Log
 import android.webkit.MimeTypeMap
 import android.webkit.URLUtil
+import com.patagoniabrowser.patagonia_browser.FotosLimpias
 import com.patagoniabrowser.patagonia_browser.DescargasPeligrosas
 import org.mozilla.geckoview.WebResponse
 import java.io.File
@@ -74,7 +75,13 @@ object GeckoDownloads {
         thread(name = "patagonia-descarga") {
             try {
                 val (output, uri) = open(context, name, mime)
-                body.use { input -> output.use { input.copyTo(it) } }
+                if (esFoto(name, mime, response)) {
+                    // Fotos limpias: se guardan sin los datos escondidos (ubicación, FBMD de Meta...).
+                    val bytes = body.use { it.readBytes() }
+                    output.use { it.write(FotosLimpias.limpiar(bytes) ?: bytes) }
+                } else {
+                    body.use { input -> output.use { input.copyTo(it) } }
+                }
                 uri?.let { finish(context, it) }
                 notify("done", name)
             } catch (error: Exception) {
@@ -82,6 +89,13 @@ object GeckoDownloads {
                 notify("error", name)
             }
         }
+    }
+
+    private fun esFoto(name: String, mime: String?, response: WebResponse): Boolean {
+        val largo = (response.headers["Content-Length"] ?: response.headers["content-length"])?.toLongOrNull()
+        if (largo != null && largo > FotosLimpias.LIMITE_BYTES) return false
+        return mime?.matches(Regex("image/(jpeg|png|webp)")) == true ||
+            name.contains(Regex("\\.(jpe?g|png|webp)$", RegexOption.IGNORE_CASE))
     }
 
     private fun open(context: Context, name: String, mime: String?): Pair<OutputStream, Uri?> {

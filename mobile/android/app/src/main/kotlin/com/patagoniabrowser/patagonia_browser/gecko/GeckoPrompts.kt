@@ -8,6 +8,10 @@ import android.app.TimePickerDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.provider.OpenableColumns
+import android.util.Log
 import android.text.InputType
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -20,8 +24,12 @@ import org.mozilla.geckoview.GeckoSession.PromptDelegate.ChoicePrompt
 import org.mozilla.geckoview.GeckoSession.PromptDelegate.DateTimePrompt
 import org.mozilla.geckoview.GeckoSession.PromptDelegate.FilePrompt
 import org.mozilla.geckoview.GeckoSession.PromptDelegate.PromptResponse
+import com.patagoniabrowser.patagonia_browser.FotosLimpias
+import java.io.File
 import java.util.Calendar
 import java.util.Locale
+import java.util.UUID
+import kotlin.concurrent.thread
 
 /**
  * Los cuadros que piden las páginas: alert/confirm/prompt, listas desplegables (<select>),
@@ -302,13 +310,23 @@ class GeckoPrompts : PromptDelegate {
                     for (i in 0 until clip.itemCount) clip.getItemAt(i).uri?.let { uris.add(it) }
                 } else data.data?.let { uris.add(it) }
             }
-            result.complete(
-                when {
-                    uris.isEmpty() -> prompt.dismiss()
-                    prompt.type == FilePrompt.Type.MULTIPLE -> prompt.confirm(activity, uris.toTypedArray())
-                    else -> prompt.confirm(activity, uris[0])
-                },
-            )
+            if (uris.isEmpty()) {
+                result.complete(prompt.dismiss())
+            } else {
+                // Fotos limpias: antes de dárselas a la página se les borran los datos escondidos.
+                thread(name = "patagonia-fotos-limpias") {
+                    val finales = uris.map { fotoLimpia(activity, it) ?: it }
+                    Handler(Looper.getMainLooper()).post {
+                        result.complete(
+                            if (prompt.type == FilePrompt.Type.MULTIPLE) {
+                                prompt.confirm(activity, finales.toTypedArray())
+                            } else {
+                                prompt.confirm(activity, finales[0])
+                            },
+                        )
+                    }
+                }
+            }
         }
         try {
             activity.startActivityForResult(Intent.createChooser(intent, "Elegir archivo"), REQUEST_FILE)
@@ -317,6 +335,42 @@ class GeckoPrompts : PromptDelegate {
             result.complete(prompt.dismiss())
         }
         return result
+    }
+
+    /** Copia limpia de la foto en la caché de la app, o null si no hace falta (o no es una foto). */
+    private fun fotoLimpia(activity: Activity, uri: Uri): Uri? = try {
+        val resolver = activity.contentResolver
+        val tamano = resolver.query(uri, arrayOf(OpenableColumns.SIZE, OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { c -> if (c.moveToFirst()) c.getLong(0) to c.getString(1) else null }
+        val mime = resolver.getType(uri).orEmpty()
+        val nombre = tamano?.second ?: uri.lastPathSegment ?: "foto"
+        val pareceFoto = mime.matches(Regex("image/(jpeg|png|webp)")) ||
+            nombre.contains(Regex("\\.(jpe?g|png|webp)$", RegexOption.IGNORE_CASE))
+        if (!pareceFoto || (tamano?.first ?: 0L) > FotosLimpias.LIMITE_BYTES) {
+            null
+        } else {
+            val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+            val limpia = bytes?.let { FotosLimpias.limpiar(it) }
+            if (limpia == null) {
+                null
+            } else {
+                val carpeta = File(carpetaFotos(activity), UUID.randomUUID().toString()).apply { mkdirs() }
+                val archivo = File(carpeta, nombre.replace(Regex("[\\\\/:*?\"<>|]"), "_"))
+                archivo.writeBytes(limpia)
+                Uri.fromFile(archivo)
+            }
+        }
+    } catch (error: Exception) {
+        Log.e("PatagoniaGecko", "No se pudo limpiar la foto", error)
+        null
+    }
+
+    /** Carpeta de fotos limpias para subir. Se vacía lo de más de un día. */
+    private fun carpetaFotos(activity: Activity): File {
+        val carpeta = File(activity.cacheDir, "fotos-limpias")
+        val viejo = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+        carpeta.listFiles()?.filter { it.lastModified() < viejo }?.forEach { it.deleteRecursively() }
+        return carpeta
     }
 
     private fun padded(activity: Activity, vararg views: android.view.View) =

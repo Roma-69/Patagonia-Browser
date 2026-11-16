@@ -1,8 +1,30 @@
 const { randomUUID } = require("node:crypto");
-const { stat } = require("node:fs/promises");
+const { stat, readFile, writeFile, rename, rm } = require("node:fs/promises");
 const path = require("node:path");
 
-function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaPropia, comprobarArchivo = stat, confirmarPeligrosa }) {
+const EXTENSIONES_FOTO = /\.(jpe?g|png|webp)$/i;
+
+// Fotos limpias: a las fotos que se bajan se les borran los datos escondidos
+// (ubicación, celular, la marca FBMD de Facebook/Instagram). Si algo falla, la
+// foto queda tal cual: nunca se pierde una descarga por esto.
+async function limpiarFotoDescargada(ruta, { limpiarFoto = require("./fotosLimpias").limpiarFoto } = {}) {
+    if (!ruta || !EXTENSIONES_FOTO.test(ruta)) return false;
+    const temporal = `${ruta}.${randomUUID()}.limpia`;
+    try {
+        const limpia = limpiarFoto(await readFile(ruta));
+        if (!limpia) return false;
+        await writeFile(temporal, limpia);
+        await rename(temporal, ruta);
+        return true;
+    } catch (error) {
+        console.error("No se pudo limpiar la foto descargada:", error.message);
+        return false;
+    } finally {
+        await rm(temporal, { force: true }).catch(() => {});
+    }
+}
+
+function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaPropia, comprobarArchivo = stat, limpiarFoto = limpiarFotoDescargada, confirmarPeligrosa }) {
     const registros = new Map();
     const activos = new Map();
     let revision = 0;
@@ -51,11 +73,17 @@ function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaP
         item.on("updated", progreso);
         item.once("done", (_evento, estado) => {
             leer();
-            dato.estado = estado === "completed" ? "completada" : estado === "cancelled" ? "cancelada" : "fallida";
-            activos.delete(id);
             item.removeListener("updated", progreso);
-            limitar();
-            actualizar(true);
+            const terminar = () => {
+                dato.estado = estado === "completed" ? "completada" : estado === "cancelled" ? "cancelada" : "fallida";
+                activos.delete(id);
+                limitar();
+                actualizar(true);
+            };
+            // Mientras se limpia la foto sigue figurando "descargando".
+            if (estado === "completed" && EXTENSIONES_FOTO.test(dato.ruta)) {
+                Promise.resolve().then(() => limpiarFoto(dato.ruta)).catch(() => {}).finally(terminar);
+            } else terminar();
         });
         // Electron conserva el diálogo Guardar como y la elección de ubicación del usuario.
         leer();
@@ -94,4 +122,4 @@ function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaP
     return { snapshot, contarActivas: () => activos.size };
 }
 
-module.exports = { registrarDescargas };
+module.exports = { registrarDescargas, limpiarFotoDescargada };

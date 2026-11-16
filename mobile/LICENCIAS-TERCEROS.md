@@ -41,6 +41,14 @@
   YouTube en modo restringido. Los sitios para adultos los bloquea el DNS familiar de Cloudflare
   (`family.cloudflare-dns.com`), que se usa únicamente mientras el modo chicos está prendido.
 
+## Patagonia Cuida (propio) y EasyList Cookie
+
+- Archivo: `android/app/src/main/assets/patagonia_cuida/`. Extensión de Patagonia (licencia MIT) que oculta
+  los avisos de cookies. No envía nada fuera del teléfono.
+- `cookies.css` y `cookies-excepciones.js` se generan con `scripts/generar-cookies-android.cjs` a partir de
+  **EasyList Cookie** (https://easylist.to/), de The EasyList authors, con doble licencia **GPL-3.0 o
+  CC BY-SA 3.0**. Se usan solo las reglas generales y sus excepciones por sitio, sin otros cambios.
+
 En la app, el menú **Acerca de y licencias** muestra estos créditos, el texto completo de la licencia
 de uBlock Origin (copiado sin cambios del `LICENSE.txt` del `.xpi` a `assets/licenses/`) y los enlaces
 al código fuente.
