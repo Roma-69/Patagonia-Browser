@@ -23,6 +23,9 @@ Esta versión es para cuidar a la familia en internet. Todo se hace **en tu equi
 
 - **PC — pantalla completa de YouTube (y cualquier video):** al tocar ⛶ el video quedaba dentro de la pestaña, con la barra de Patagonia y la barra de tareas de Windows a la vista. Ahora ocupa toda la pantalla, como en Chrome; se sale con **Esc** o con el mismo botón. Tampoco pregunta permiso cada vez. Pasaba en todas las versiones de la PC; en el celu ya andaba bien.
 
+- **PC — YouTube sin anuncios, con red de seguridad:** YouTube cambia seguido y cada tanto se colaba un anuncio al cambiar de tema. Ahora, si se cuela uno, Patagonia lo saltea sola y sigue la música.
+- **Celular — videos de YouTube:** las reglas de los carteles de cookies ya no se aplican en YouTube (ahí no hacen falta y hacían más pesada la página).
+
 ### Cómo se usa
 
 - **Modo incógnito:** PC → botón 🕶️ al lado del **+**, **Ctrl+Shift+N**, menú *Archivo* o clic derecho en un enlace → *Abrir enlace en pestaña de incógnito*. Celular → Menú → *Nueva pestaña de incógnito*.

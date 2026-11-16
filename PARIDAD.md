@@ -20,7 +20,7 @@ Patagonia es **un solo navegador** en dos equipos. La regla es simple:
 
 | Función | PC (Windows) | Android | Nota |
 |---|---|---|---|
-| Bloqueo de anuncios y rastreadores (incluye YouTube) | ✅ Ghostery | ✅ uBlock Origin | Motor distinto, mismo resultado |
+| Bloqueo de anuncios y rastreadores (incluye YouTube) | ✅ Ghostery; 1.4.0: si se cuela un anuncio de YouTube, se saltea solo | ✅ uBlock Origin | Motor distinto, mismo resultado. La red de seguridad de YouTube es solo de la PC: en el celu uBlock Origin no la necesitó |
 | Traductor privado (en el equipo) | ✅ 1.4.0: inglés incluido; 30 idiomas más se bajan la primera vez | ✅ todos los de Firefox | Mismo motor de Firefox |
 | "Mostrar original" desde el menú | ✅ 1.3.0 (clic derecho) | ✅ | |
 | Buscador: Brave Search por defecto, DuckDuckGo de respaldo | ✅ 1.3.0 Configuración → Buscador | ✅ 1.3.0 Configuración → Buscador | Sin depender de Google ni Microsoft para buscar |

@@ -665,6 +665,13 @@ function crearPestana(
         if (principal && !mismaPagina) gestorTraduccion.navego(vista.webContents);
     });
     vista.webContents.on("did-finish-load", () => { gestorTraduccion.paginaLista(vista.webContents); });
+    // YouTube: si se cuela un anuncio, se saltea solo (salvo que la persona haya apagado la protección ahí).
+    vista.webContents.on("dom-ready", () => {
+        const url = vista.webContents.getURL();
+        require("./src/main/youtubeAnuncios").protegerYouTube(vista.webContents, {
+            activa: gestorProteccion?.estado(idContenido, url).permitida !== true
+        });
+    });
     registrarAperturas({
         contenido: vista.webContents,
         // Lo que se abre desde una pestaña de incógnito también es de incógnito.

@@ -9,6 +9,7 @@
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
+      "exclude_matches": ["*://*.youtube.com/*", "*://*.youtube-nocookie.com/*", "*://*.googlevideo.com/*"],
       "css": ["cookies.css"],
       "js": ["cookies-excepciones.js"],
       "run_at": "document_start"
