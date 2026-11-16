@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { detectarIdioma, nombreIdioma } = require("../src/main/translator/idioma");
 const { crearMenuTraduccion } = require("../src/main/translator/menu");
+const FINES = 'Hallitus ilmoitti tänään uusista toimista perheiden ja työntekijöiden tukemiseksi koko maassa. Ministerin mukaan hinnat ovat nousseet nopeasti viime kuukausina, ja monet kotitaloudet ovat vaikeassa tilanteessa. Uudet toimet tulevat voimaan ensi vuoden alussa, ja niiden arvioidaan auttavan satojatuhansia ihmisiä eri puolilla Suomea. Opposition mielestä toimet ovat kuitenkin liian pieniä ja tulevat liian myöhään, koska kriisi on jo kestänyt pitkään.';
 
 test("detecta muchos más idiomas: por alfabeto, por palabras o por lo que declara la página", () => {
     const casos = {
@@ -19,7 +20,7 @@ test("detecta muchos más idiomas: por alfabeto, por palabras o por lo que decla
     };
     for (const [idioma, texto] of Object.entries(casos)) assert.equal(detectarIdioma({ texto }), idioma, idioma);
     assert.equal(detectarIdioma({ texto: casos.ru, lang: "bg" }), "bg");
-    assert.equal(detectarIdioma({ texto: "", lang: "fi-FI" }), "fi");
+    assert.equal(detectarIdioma({ texto: FINES, lang: "fi-FI" }), "fi");
     assert.equal(nombreIdioma("ja"), "japonés");
 });
 
@@ -42,6 +43,13 @@ test("el menú del ícono: traducir, mostrar original, siempre, nunca y Google",
     assert.ok(error.some(i => i.label === "Volver a intentar"));
 });
 
+test("apps con poco texto en castellano (como Meet) no muestran el traductor aunque digan lang=en", () => {
+    assert.equal(detectarIdioma({ texto: "Reunión lista Añadir a alguien Entendido Meet quiere protegerte", lang: "en" }), "");
+    const castellanoLargo = "La reunión está lista. Podés compartir este enlace con las personas que quieras que asistan a la reunión de hoy. " +
+        "Si se denuncia un abuso durante una llamada, puede que se envíe un fragmento solo de video para que lo verifiquemos con el equipo.";
+    assert.equal(detectarIdioma({ texto: castellanoLargo, lang: "en" }), "es");
+});
+
 test("ya no hay barra encima de la página: es un ícono en la barra de direcciones", () => {
     const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
     assert.doesNotMatch(html, /<section id="barraTraduccion"/);
@@ -53,7 +61,7 @@ test("un idioma que Mozilla no tiene avisa claro y ofrece Google", async () => {
     const { crearGestorTraduccion } = require("../src/main/translator/gestor");
     const avisos = [];
     const contenido = { id: 1, isDestroyed: () => false, getURL: () => "https://ejemplo.fi/",
-        executeJavaScriptInIsolatedWorld: async () => ({ texto: "", lang: "fi" }) };
+        executeJavaScriptInIsolatedWorld: async () => ({ texto: FINES, lang: "fi" }) };
     const gestor = crearGestorTraduccion({
         motor: { traducir: async () => [] }, pares: () => ["enes"],
         preferencias: { siempreTraducir: () => false, nuncaEn: () => false },

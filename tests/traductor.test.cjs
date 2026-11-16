@@ -18,7 +18,7 @@ const ESPANOL = "La NASA dará una actualización sobre el progreso de la agenci
 test("detecta el idioma por el texto aunque el atributo lang mienta", () => {
     assert.equal(detectarIdioma({ texto: INGLES, lang: "" }), "en");
     assert.equal(detectarIdioma({ texto: ESPANOL, lang: "en" }), "es");
-    assert.equal(detectarIdioma({ texto: "Hola", lang: "pt-BR" }), "pt");
+    assert.equal(detectarIdioma({ texto: "Hola", lang: "pt-BR" }), "", "con casi nada de texto no se ofrece traducir");
     assert.equal(detectarIdioma({ texto: "", lang: "" }), "");
     assert.equal(nombreIdioma("en"), "inglés");
 });
