@@ -22,6 +22,7 @@ const _navy = Color(0xFF071827);
 const _surface = Color(0xFF102B41);
 const _surfaceLight = Color(0xFF173B56);
 const _blue = Color(0xFF50A7D8);
+const _incognitoColor = Color(0xFFB79CE8);
 const _green = Color(0xFF35D35B);
 const _muted = Color(0xFFAEC0CF);
 const _privacyPolicyUrl =
@@ -344,10 +345,10 @@ class _BrowserShellState extends State<BrowserShell> {
     });
   }
 
-  void _addTab({Uri? url, int? windowId, String? title}) {
+  void _addTab({Uri? url, int? windowId, String? title, bool incognito = false}) {
     setState(() {
       _tabs.add(
-        _BrowserTab(id: _nextTabId++, url: url, windowId: windowId)
+        _BrowserTab(id: _nextTabId++, url: url, windowId: windowId, incognito: incognito)
           ..protectionEnabled =
               _gecko ||
               url == null ||
@@ -538,12 +539,15 @@ class _BrowserShellState extends State<BrowserShell> {
     final entry = _SavedPage(title: tab.title, url: url.toString());
     setState(() {
       tab.progress = 1;
-      _history.removeWhere((item) => item.url == entry.url);
-      _history.insert(0, entry);
-      if (_history.length > 100) _history.removeRange(100, _history.length);
+      // En incógnito no queda historial.
+      if (!tab.incognito) {
+        _history.removeWhere((item) => item.url == entry.url);
+        _history.insert(0, entry);
+        if (_history.length > 100) _history.removeRange(100, _history.length);
+      }
     });
     await _injectPageProtection(tab, url);
-    await _savePages('history', _history);
+    if (!tab.incognito) await _savePages('history', _history);
   }
 
   void _onBlockedResource(_BrowserTab tab, String value) {
@@ -872,12 +876,12 @@ class _BrowserShellState extends State<BrowserShell> {
                   ),
                 ),
                 const SizedBox(width: 9),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Patagonia Browser',
+                    _current.incognito ? '🕶️ Incógnito' : 'Patagonia Browser',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                   ),
                 ),
                 IconButton(
@@ -925,9 +929,15 @@ class _BrowserShellState extends State<BrowserShell> {
                   child: Container(
                     height: 46,
                     decoration: BoxDecoration(
-                      color: const Color(0xD90A1D2E),
+                      color: _current.incognito
+                          ? const Color(0xD9301E4C)
+                          : const Color(0xD90A1D2E),
                       borderRadius: BorderRadius.circular(23),
-                      border: Border.all(color: const Color(0x5550A7D8)),
+                      border: Border.all(
+                        color: _current.incognito
+                            ? _incognitoColor
+                            : const Color(0x5550A7D8),
+                      ),
                     ),
                     child: TextField(
                       controller: _address,
@@ -1222,7 +1232,9 @@ class _BrowserShellState extends State<BrowserShell> {
                             ? _surfaceLight
                             : _surface,
                         child: ListTile(
-                          leading: tab.url == null
+                          leading: tab.incognito
+                              ? const Icon(Icons.visibility_off, color: _incognitoColor)
+                              : tab.url == null
                               ? ClipOval(
                                   child: Image.asset(
                                     'assets/patagonia-emblema.png',
@@ -1232,7 +1244,7 @@ class _BrowserShellState extends State<BrowserShell> {
                                 )
                               : const Icon(Icons.public, color: _blue),
                           title: Text(
-                            tab.title,
+                            tab.incognito ? 'Incógnito · ${tab.title}' : tab.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1287,6 +1299,15 @@ class _BrowserShellState extends State<BrowserShell> {
                   _addTab();
                 },
               ),
+              if (_gecko)
+                _MenuTile(
+                  icon: Icons.visibility_off_outlined,
+                  label: 'Nueva pestaña de incógnito',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _addTab(incognito: true);
+                  },
+                ),
               _MenuTile(
                 icon: _isCurrentFavorite ? Icons.star : Icons.star_border,
                 label: _isCurrentFavorite
@@ -1939,8 +1960,9 @@ class _BrowserShellState extends State<BrowserShell> {
     );
   }
 
-  Widget _buildStartPage() => _StartPage(
+  Widget _buildStartPage({bool incognito = false}) => _StartPage(
     onNavigate: _navigate,
+    incognito: incognito,
     onWhatsApp: () async {
       if (!await GeckoEngineInfo.openWhatsApp()) {
         _showMessage('No encontramos WhatsApp instalado en este teléfono.');
@@ -2137,7 +2159,7 @@ class _BrowserShellState extends State<BrowserShell> {
   Widget _buildGeckoTab(_BrowserTab tab) {
     final key = ValueKey('${tab.id}:${tab.generation}');
     if (tab.url == null && tab.windowId == null) {
-      return KeyedSubtree(key: key, child: _buildStartPage());
+      return KeyedSubtree(key: key, child: _buildStartPage(incognito: tab.incognito));
     }
     final generation = tab.generation;
     return Stack(
@@ -2148,6 +2170,7 @@ class _BrowserShellState extends State<BrowserShell> {
             initialUrl: tab.windowId == null ? tab.url?.toString() : null,
             windowId: tab.windowId,
             desktop: tab.desktopMode,
+            incognito: tab.incognito,
             active: identical(tab, _current),
             events: _geckoEvents(tab, generation),
             onCreated: (controller) {
@@ -2246,7 +2269,8 @@ class _BrowserShellState extends State<BrowserShell> {
         final url = Uri.tryParse(value);
         final web = NavigationInput.isWebUri(url);
         if (value.isNotEmpty && value != 'about:blank' && !web) return false;
-        _addTab(url: web ? url : null, windowId: id);
+        // Lo que se abre desde una pestaña de incógnito también es de incógnito.
+        _addTab(url: web ? url : null, windowId: id, incognito: tab.incognito);
         return true;
       },
       onPermission: (origin, kinds) async =>
@@ -3238,6 +3262,7 @@ class _StartPage extends StatelessWidget {
   const _StartPage({
     required this.onNavigate,
     required this.onWhatsApp,
+    this.incognito = false,
     this.kidsMode = false,
     this.update,
     this.onUpdate,
@@ -3247,6 +3272,9 @@ class _StartPage extends StatelessWidget {
 
   /// null: sin acceso rápido de WhatsApp (iPhone).
   final VoidCallback? onWhatsApp;
+
+  /// Pestaña de incógnito: se explica qué hace y qué no.
+  final bool incognito;
   final bool kidsMode;
   final MobileRelease? update;
   final VoidCallback? onUpdate;
@@ -3313,6 +3341,41 @@ class _StartPage extends StatelessWidget {
                 'Navegá libre. Navegá seguro.',
                 style: TextStyle(fontSize: 17, color: Color(0xFFE2EDF5)),
               ),
+              if (incognito) ...[
+                const SizedBox(height: 18),
+                Container(
+                  key: const ValueKey('aviso-incognito'),
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xE6301E4C),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '🕶️ Estás en modo incógnito',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Patagonia no guarda lo que hagas en estas pestañas: ni el historial, ni las cuentas que '
+                        'abras, ni lo que escribas en las páginas. Al cerrar la última pestaña de incógnito se '
+                        'borra todo.',
+                        style: TextStyle(height: 1.4),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Ojo: no te hace invisible. Tu proveedor de internet, la red de la escuela o del trabajo y '
+                        'las páginas que visitás igual pueden ver que entraste. Las descargas y los favoritos que '
+                        'guardes sí quedan.',
+                        style: TextStyle(height: 1.4, color: Color(0xFFE6DCF5)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 28),
               Container(
                 constraints: const BoxConstraints(maxWidth: 560),
@@ -3546,7 +3609,10 @@ class _MenuTile extends StatelessWidget {
 }
 
 class _BrowserTab {
-  _BrowserTab({required this.id, this.url, this.windowId});
+  _BrowserTab({required this.id, this.url, this.windowId, this.incognito = false});
+
+  /// Modo incógnito: sesión privada de Gecko, sin historial; al cerrar la última se borra todo.
+  final bool incognito;
 
   int? windowId;
   int generation = 0;

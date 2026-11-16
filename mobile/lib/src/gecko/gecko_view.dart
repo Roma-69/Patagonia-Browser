@@ -415,6 +415,7 @@ class GeckoBrowserView extends StatelessWidget {
     this.initialUrl,
     this.windowId,
     this.desktop = false,
+    this.incognito = false,
     this.active = true,
     this.popup = false,
     required this.events,
@@ -427,6 +428,9 @@ class GeckoBrowserView extends StatelessWidget {
   final String? initialUrl;
   final int? windowId;
   final bool desktop;
+
+  /// Modo incógnito: sesión privada de Gecko (no guarda nada al cerrarse).
+  final bool incognito;
   final bool active;
 
   /// Panel de una extensión (uBO): se muestra, pero no cuenta como pestaña.
@@ -466,6 +470,7 @@ class GeckoBrowserView extends StatelessWidget {
             'url': initialUrl,
             'windowId': windowId,
             'desktop': desktop,
+            'private': incognito,
             'active': active,
             'popup': popup,
           },

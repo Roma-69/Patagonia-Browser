@@ -203,8 +203,9 @@ function crearElementoPestana(pestana) {
 }
 
 function actualizarElementoPestana(vista, pestana) {
-    const texto = pestana.titulo || "Nueva pestaña";
+    const texto = (pestana.incognito ? "🕶️ " : "") + (pestana.titulo || "Nueva pestaña");
     vista.elemento.classList.toggle("activa", Boolean(pestana.activa));
+    vista.elemento.classList.toggle("incognito", Boolean(pestana.incognito));
     vista.seleccionar.setAttribute("aria-pressed", String(Boolean(pestana.activa)));
     vista.seleccionar.setAttribute("aria-label", `Abrir pestaña: ${texto}`);
     vista.seleccionar.title = texto;
@@ -241,6 +242,8 @@ function mostrarPestanas(pestanas) {
         actualizarBarraDireccion();
     }
     cargandoActiva = Boolean(activa?.cargando && !activa.errorCarga);
+    document.body.classList.toggle("modo-incognito", Boolean(activa?.incognito));
+    marcaIncognito.hidden = !activa?.incognito;
     botonAtras.disabled = !activa?.puedeRetroceder;
     botonAdelante.disabled = !activa?.puedeAvanzar;
     botonRecargar.disabled = !activa;
@@ -333,6 +336,9 @@ botonNuevaPestana.addEventListener(
         window.patagonia.nuevaPestana();
     }
 );
+
+document.getElementById("nuevaIncognito").addEventListener("click", () => window.patagonia.nuevaPestanaIncognito());
+const marcaIncognito = document.getElementById("marcaIncognito");
 
 botonSidebar.addEventListener(
     "click",

@@ -48,7 +48,7 @@ function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaP
         const terminadas = [...registros.keys()].filter(id => !activos.has(id));
         for (const id of terminadas.slice(0, Math.max(0, terminadas.length - 100))) registros.delete(id);
     }
-    sesion.on("will-download", (evento, item, contenido) => {
+    function alDescargar(evento, item, contenido) {
         if (!esPestanaPropia(contenido)) return;
         // Aviso en descargas peligrosas: un programa de un sitio desconocido se pregunta antes de bajarlo.
         if (confirmarPeligrosa && !confirmarPeligrosa(item, contenido)) {
@@ -88,7 +88,14 @@ function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaP
         // Electron conserva el diálogo Guardar como y la elección de ubicación del usuario.
         leer();
         actualizar(true);
-    });
+    }
+    const sesionesEscuchadas = new Set();
+    function agregarSesion(otra) {
+        if (sesionesEscuchadas.has(otra)) return;
+        sesionesEscuchadas.add(otra);
+        otra.on("will-download", alDescargar);
+    }
+    agregarSesion(sesion);
 
     function registrar(canal, accion) {
         ipcMain.handle(canal, async (evento, id) => {
@@ -119,7 +126,8 @@ function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaP
         }
         shell.showItemInFolder(dato.ruta);
     });
-    return { snapshot, contarActivas: () => activos.size };
+    // agregarSesion: las descargas de las pestañas de incógnito van a la misma lista.
+    return { snapshot, contarActivas: () => activos.size, agregarSesion };
 }
 
 module.exports = { registrarDescargas, limpiarFotoDescargada };

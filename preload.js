@@ -65,6 +65,7 @@ contextBridge.exposeInMainWorld("patagonia", {
     inicio: () => ipcRenderer.send("inicio"),
 
     nuevaPestana: () => ipcRenderer.send("nueva-pestana"),
+    nuevaPestanaIncognito: () => ipcRenderer.send("nueva-pestana-incognito"),
 
     activarPestana: (id) =>
         ipcRenderer.send("activar-pestana", id),

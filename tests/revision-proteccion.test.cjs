@@ -6,11 +6,13 @@ const os = require('node:os');
 const Module = require('node:module');
 const cargar = Module._load;
 const handlers = new Map();
+// Como en Electron, ipcMain es uno solo para todos los módulos.
+const electronFalso = { ipcMain: {
+    handle(canal, handler) { assert.ok(!handlers.has(canal), 'no registrar dos veces el IPC'); handlers.set(canal, handler); },
+    removeHandler(canal) { handlers.delete(canal); }
+} };
 Module._load = function(id, ...args) {
-    if (id === 'electron') return { ipcMain: {
-        handle(canal, handler) { assert.ok(!handlers.has(canal), 'no registrar dos veces el IPC'); handlers.set(canal, handler); },
-        removeHandler(canal) { handlers.delete(canal); }
-    } };
+    if (id === 'electron') return electronFalso;
     return cargar.call(this, id, ...args);
 };
 let ElectronBlocker, crearProteccion;
@@ -191,4 +193,22 @@ test('escudo: el bloqueador corta la página peligrosa antes de que cargue', asy
     assert.deepEqual(await responder({ resourceType: 'mainFrame', url: 'https://estafa.top/' }), { cancel: true });
     assert.deepEqual(await responder({ resourceType: 'mainFrame', url: 'https://bien.example/' }), {});
     assert.notDeepEqual(await responder({ resourceType: 'subFrame', url: 'https://estafa.top/', referrer: 'https://bien.example/' }), { cancel: true });
+});
+
+test('incógnito: la misma protección cubre una segunda sesión sin registrar dos veces el IPC', async t => {
+    const {gestor} = await entorno(t);
+    await gestor.iniciar();
+    const registros = [];
+    const otra = {
+        webRequest: { onBeforeRequest(_f, fn) { registros.push(['antes', fn]); }, onHeadersReceived(_f, fn) { registros.push(['cabeceras', fn]); } },
+        registerPreloadScript() { registros.push(['preload']); return 'otra'; }, unregisterPreloadScript() { registros.push(['sacar']); }
+    };
+    const canales = handlers.size;
+    gestor.agregarSesion(otra);
+    gestor.agregarSesion(otra);
+    assert.deepEqual(registros.map(r => r[0]).sort(), ['antes', 'cabeceras', 'preload']);
+    assert.equal(handlers.size, canales);
+    gestor.cerrar();
+    assert.ok(registros.some(r => r[0] === 'sacar'));
+    assert.equal(handlers.size, 0);
 });

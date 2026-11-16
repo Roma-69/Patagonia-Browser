@@ -77,7 +77,8 @@ test("tab order remains correct and closing the focused tab transfers focus to t
     assert.equal(f.tab(2), null);
     assert.equal(f.document.activeElement, f.tab(1).querySelector(".seleccionar-pestana"));
     assert.deepEqual(f.desplazamientos, ["1", "2", "1"]);
-    assert.equal(f.document.querySelector(".tabs").lastElementChild.id, "nuevaPestana");
+    assert.equal(f.document.querySelector(".tabs").lastElementChild.id, "nuevaIncognito");
+    assert.equal(f.document.querySelector(".tabs").lastElementChild.previousElementSibling.id, "nuevaPestana");
 });
 
 test("navigation buttons follow the active tab and loading switches reload to stop", t => {

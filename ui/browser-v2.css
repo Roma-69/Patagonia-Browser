@@ -51,6 +51,7 @@ body {
 
 .tab,
 #nuevaPestana,
+#nuevaIncognito,
 .seleccionar-pestana,
 .cerrar-pestana { -webkit-app-region: no-drag; }
 
@@ -89,6 +90,32 @@ body {
 }
 
 #nuevaPestana:hover { background: rgba(116, 170, 207, .16); }
+
+/* Modo incógnito */
+#nuevaIncognito {
+    width: 34px;
+    height: 34px;
+    margin: 0 0 2px 0;
+    border-radius: 10px;
+    background: transparent;
+    font-size: 17px;
+}
+#nuevaIncognito:hover { background: rgba(170, 140, 220, .2); }
+.tab.incognito { background: rgba(52, 33, 80, .8); }
+.tab.incognito:hover { background: rgba(70, 45, 105, .85); }
+.tab.incognito.activa { background: linear-gradient(135deg, rgba(76, 48, 116, .96), rgba(48, 30, 76, .96)); }
+body.modo-incognito .barra { background: linear-gradient(135deg, #2a1d40, #1d1530); }
+.marca-incognito {
+    flex: none;
+    margin-right: 6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(170, 140, 220, .25);
+    color: #efe6ff;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.marca-incognito[hidden] { display: none; }
 
 .barra {
     height: 64px;

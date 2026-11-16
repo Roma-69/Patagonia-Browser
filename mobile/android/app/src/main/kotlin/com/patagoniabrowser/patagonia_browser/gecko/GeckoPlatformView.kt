@@ -64,6 +64,8 @@ class GeckoPlatformView(
     /** Dirección de la página abierta (para el aviso de descargas peligrosas). */
     private var pagina: String? = null
     private var desktop = params["desktop"] == true
+    /** Pestaña de incógnito: sesión privada de Gecko. */
+    private val privado = params["private"] == true
     private val popup = params["popup"] == true
 
     // Lector de texto para el asistente (extensión patagonia_lector).
@@ -85,7 +87,7 @@ class GeckoPlatformView(
         val runtime = GeckoEngine.runtime(context)
         val windowId = (params["windowId"] as? Number)?.toInt()
         val adopted = windowId?.let { GeckoEngine.takePending(it) }
-        session = adopted ?: GeckoEngine.newSession(desktop)
+        session = adopted ?: GeckoEngine.newSession(desktop, privado)
         installDelegates()
         // Las ventanas nuevas las abre Gecko solo, apenas Patagonia acepta: se espera a que estén listas.
         if (adopted == null) session.open(runtime)
@@ -171,7 +173,8 @@ class GeckoPlatformView(
                 session: GeckoSession,
                 uri: String,
             ): GeckoResult<GeckoSession> {
-                val newSession = GeckoEngine.newSession(desktop)
+                // Desde incógnito, la ventana nueva también es privada (Gecko lo exige).
+                val newSession = GeckoEngine.newSession(desktop, privado)
                 val pendingId = GeckoEngine.putPending(newSession)
                 val result = GeckoResult<GeckoSession>()
                 if (closed) {
