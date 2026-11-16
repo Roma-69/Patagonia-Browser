@@ -32,6 +32,22 @@ import org.mozilla.geckoview.WebRequest
 import org.mozilla.geckoview.WebRequestError
 import org.mozilla.geckoview.WebResponse
 
+// La misma decisión que toma la PC (src/shared/protocolosExternos.js) y Flutter
+// (lib/src/protocolos_externos.dart). Acá es la última revisión antes de abrir la app.
+private val INTERNOS = setOf(
+    "http", "https", "about", "blob", "data", "file", "filesystem",
+    "javascript", "view-source", "ws", "wss",
+    "chrome", "chrome-extension", "devtools", "moz-extension", "resource",
+)
+private val PELIGROSOS = setOf(
+    "ms-msdt", "search-ms", "ms-officecmd", "ms-cxh", "ms-cxh-full",
+    "ms-appinstaller", "ms-availablenetworks", "ms-settings",
+    "shell", "vbscript", "vnd.ms-cmd", "cmd", "powershell",
+    "ldap", "ldaps", "smb", "nfs", "res", "mk", "cid", "help", "afp", "jar",
+    "intent", "android-app", "content", "package",
+)
+private const val LARGO_MAXIMO = 2048
+
 /** Crea una vista GeckoView cada vez que Flutter pide un "patagonia/gecko_view". */
 class GeckoViewFactory(private val messenger: BinaryMessenger) :
     PlatformViewFactory(StandardMessageCodec.INSTANCE) {
@@ -580,21 +596,5 @@ private class PatagoniaSelection(
 
     companion object {
         const val ACTION_SEARCH = "com.patagoniabrowser.BUSCAR"
-
-        // La misma decisión que toma la PC (src/shared/protocolosExternos.js) y
-        // Flutter (lib/src/protocolos_externos.dart). Acá es la última revisión.
-        val INTERNOS = setOf(
-            "http", "https", "about", "blob", "data", "file", "filesystem",
-            "javascript", "view-source", "ws", "wss",
-            "chrome", "chrome-extension", "devtools", "moz-extension", "resource",
-        )
-        val PELIGROSOS = setOf(
-            "ms-msdt", "search-ms", "ms-officecmd", "ms-cxh", "ms-cxh-full",
-            "ms-appinstaller", "ms-availablenetworks", "ms-settings",
-            "shell", "vbscript", "vnd.ms-cmd", "cmd", "powershell",
-            "ldap", "ldaps", "smb", "nfs", "res", "mk", "cid", "help", "afp", "jar",
-            "intent", "android-app", "content", "package",
-        )
-        const val LARGO_MAXIMO = 2048
     }
 }
