@@ -1,8 +1,30 @@
 const { randomUUID } = require("node:crypto");
-const { stat } = require("node:fs/promises");
+const { stat, readFile, writeFile, rename, rm } = require("node:fs/promises");
 const path = require("node:path");
 
-function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaPropia, comprobarArchivo = stat }) {
+const EXTENSIONES_FOTO = /\.(jpe?g|png|webp)$/i;
+
+// Fotos limpias: a las fotos que se bajan se les borran los datos escondidos
+// (ubicación, celular, la marca FBMD de Facebook/Instagram). Si algo falla, la
+// foto queda tal cual: nunca se pierde una descarga por esto.
+async function limpiarFotoDescargada(ruta, { limpiarFoto = require("./fotosLimpias").limpiarFoto } = {}) {
+    if (!ruta || !EXTENSIONES_FOTO.test(ruta)) return false;
+    const temporal = `${ruta}.${randomUUID()}.limpia`;
+    try {
+        const limpia = limpiarFoto(await readFile(ruta));
+        if (!limpia) return false;
+        await writeFile(temporal, limpia);
+        await rename(temporal, ruta);
+        return true;
+    } catch (error) {
+        console.error("No se pudo limpiar la foto descargada:", error.message);
+        return false;
+    } finally {
+        await rm(temporal, { force: true }).catch(() => {});
+    }
+}
+
+function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaPropia, comprobarArchivo = stat, limpiarFoto = limpiarFotoDescargada, confirmarPeligrosa }) {
     const registros = new Map();
     const activos = new Map();
     let revision = 0;
@@ -26,8 +48,13 @@ function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaP
         const terminadas = [...registros.keys()].filter(id => !activos.has(id));
         for (const id of terminadas.slice(0, Math.max(0, terminadas.length - 100))) registros.delete(id);
     }
-    sesion.on("will-download", (_evento, item, contenido) => {
+    function alDescargar(evento, item, contenido) {
         if (!esPestanaPropia(contenido)) return;
+        // Aviso en descargas peligrosas: un programa de un sitio desconocido se pregunta antes de bajarlo.
+        if (confirmarPeligrosa && !confirmarPeligrosa(item, contenido)) {
+            evento.preventDefault();
+            return;
+        }
         const id = randomUUID();
         const dato = { id, nombre: item.getFilename(), estado: "descargando", recibidos: 0, total: 0, ruta: "" };
         registros.set(id, dato);
@@ -46,16 +73,29 @@ function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaP
         item.on("updated", progreso);
         item.once("done", (_evento, estado) => {
             leer();
-            dato.estado = estado === "completed" ? "completada" : estado === "cancelled" ? "cancelada" : "fallida";
-            activos.delete(id);
             item.removeListener("updated", progreso);
-            limitar();
-            actualizar(true);
+            const terminar = () => {
+                dato.estado = estado === "completed" ? "completada" : estado === "cancelled" ? "cancelada" : "fallida";
+                activos.delete(id);
+                limitar();
+                actualizar(true);
+            };
+            // Mientras se limpia la foto sigue figurando "descargando".
+            if (estado === "completed" && EXTENSIONES_FOTO.test(dato.ruta)) {
+                Promise.resolve().then(() => limpiarFoto(dato.ruta)).catch(() => {}).finally(terminar);
+            } else terminar();
         });
         // Electron conserva el diálogo Guardar como y la elección de ubicación del usuario.
         leer();
         actualizar(true);
-    });
+    }
+    const sesionesEscuchadas = new Set();
+    function agregarSesion(otra) {
+        if (sesionesEscuchadas.has(otra)) return;
+        sesionesEscuchadas.add(otra);
+        otra.on("will-download", alDescargar);
+    }
+    agregarSesion(sesion);
 
     function registrar(canal, accion) {
         ipcMain.handle(canal, async (evento, id) => {
@@ -86,7 +126,8 @@ function registrarDescargas({ ipcMain, sesion, shell, obtenerVentana, esPestanaP
         }
         shell.showItemInFolder(dato.ruta);
     });
-    return { snapshot, contarActivas: () => activos.size };
+    // agregarSesion: las descargas de las pestañas de incógnito van a la misma lista.
+    return { snapshot, contarActivas: () => activos.size, agregarSesion };
 }
 
-module.exports = { registrarDescargas };
+module.exports = { registrarDescargas, limpiarFotoDescargada };

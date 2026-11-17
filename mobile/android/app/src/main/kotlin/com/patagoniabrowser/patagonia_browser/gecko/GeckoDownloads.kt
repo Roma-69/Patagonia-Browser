@@ -1,14 +1,19 @@
 package com.patagoniabrowser.patagonia_browser.gecko
 
+import android.app.AlertDialog
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
 import android.webkit.MimeTypeMap
 import android.webkit.URLUtil
+import com.patagoniabrowser.patagonia_browser.FotosLimpias
+import com.patagoniabrowser.patagonia_browser.DescargasPeligrosas
 import org.mozilla.geckoview.WebResponse
 import java.io.File
 import java.io.OutputStream
@@ -21,8 +26,11 @@ import kotlin.concurrent.thread
 object GeckoDownloads {
     private const val TAG = "PatagoniaGecko"
 
-    /** [notify] recibe ("start" | "done" | "error", nombre del archivo). */
-    fun save(context: Context, response: WebResponse, notify: (String, String) -> Unit) {
+    /**
+     * [notify] recibe ("start" | "done" | "error", nombre del archivo). [pagina] es la dirección de la página
+     * desde donde se bajó (para el aviso de descargas peligrosas).
+     */
+    fun save(context: Context, response: WebResponse, pagina: String? = null, notify: (String, String) -> Unit) {
         val body = response.body
         val disposition = response.headers["Content-Disposition"] ?: response.headers["content-disposition"]
         val mime = (response.headers["Content-Type"] ?: response.headers["content-type"])
@@ -33,11 +41,47 @@ object GeckoDownloads {
             notify("error", name)
             return
         }
+        // Aviso en descargas peligrosas: un programa de un sitio desconocido se pregunta antes de bajarlo.
+        val aviso = DescargasPeligrosas.revisar(name, response.uri, pagina)
+        if (aviso != null) {
+            Handler(Looper.getMainLooper()).post {
+                val activity = GeckoEngine.activity
+                if (activity == null || activity.isFinishing) {
+                    try { body.close() } catch (_: Exception) {}
+                    return@post
+                }
+                AlertDialog.Builder(activity)
+                    .setTitle("¿Bajar este programa?")
+                    .setMessage(DescargasPeligrosas.texto(name, aviso))
+                    .setNegativeButton("Bajar igual") { _, _ -> guardar(context, body, name, mime, response, notify) }
+                    .setPositiveButton("No bajar") { _, _ -> try { body.close() } catch (_: Exception) {} }
+                    .setOnCancelListener { try { body.close() } catch (_: Exception) {} }
+                    .show()
+            }
+            return
+        }
+        guardar(context, body, name, mime, response, notify)
+    }
+
+    private fun guardar(
+        context: Context,
+        body: java.io.InputStream,
+        name: String,
+        mime: String?,
+        response: WebResponse,
+        notify: (String, String) -> Unit,
+    ) {
         notify("start", name)
         thread(name = "patagonia-descarga") {
             try {
                 val (output, uri) = open(context, name, mime)
-                body.use { input -> output.use { input.copyTo(it) } }
+                if (esFoto(name, mime, response)) {
+                    // Fotos limpias: se guardan sin los datos escondidos (ubicación, FBMD de Meta...).
+                    val bytes = body.use { it.readBytes() }
+                    output.use { it.write(FotosLimpias.limpiar(bytes) ?: bytes) }
+                } else {
+                    body.use { input -> output.use { input.copyTo(it) } }
+                }
                 uri?.let { finish(context, it) }
                 notify("done", name)
             } catch (error: Exception) {
@@ -45,6 +89,13 @@ object GeckoDownloads {
                 notify("error", name)
             }
         }
+    }
+
+    private fun esFoto(name: String, mime: String?, response: WebResponse): Boolean {
+        val largo = (response.headers["Content-Length"] ?: response.headers["content-length"])?.toLongOrNull()
+        if (largo != null && largo > FotosLimpias.LIMITE_BYTES) return false
+        return mime?.matches(Regex("image/(jpeg|png|webp)")) == true ||
+            name.contains(Regex("\\.(jpe?g|png|webp)$", RegexOption.IGNORE_CASE))
     }
 
     private fun open(context: Context, name: String, mime: String?): Pair<OutputStream, Uri?> {

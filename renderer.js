@@ -24,6 +24,22 @@ const direccionCarga = document.getElementById("direccionErrorCarga");
 document.getElementById("reintentarCarga").addEventListener("click", () => {
     window.patagonia.recargar();
 });
+const avisoEscudo = document.getElementById("escudoPeligro");
+const mensajeEscudo = document.getElementById("mensajeEscudo");
+const sitioEscudo = document.getElementById("sitioEscudo");
+document.getElementById("escudoVolver").addEventListener("click", () => window.patagonia.escudoVolver());
+document.getElementById("escudoEntrar").addEventListener("click", () => window.patagonia.escudoEntrar());
+
+function mostrarEscudo(peligro) {
+    const antes = !avisoEscudo.hidden;
+    avisoEscudo.hidden = !peligro;
+    if (!peligro) return;
+    mensajeEscudo.textContent = peligro.motivo === "imitacion"
+        ? `Esta página se hace pasar por ${peligro.marca}, pero su dirección no es la oficial.`
+        : "Esta página está marcada como peligrosa: es conocida por robar claves, datos de tarjetas o meter virus.";
+    sitioEscudo.textContent = peligro.sitio || "";
+    if (!antes) document.getElementById("escudoVolver").focus();
+}
 
 let urlActual = "";
 let editandoDireccion = false;
@@ -189,6 +205,7 @@ function crearElementoPestana(pestana) {
 function actualizarElementoPestana(vista, pestana) {
     const texto = pestana.titulo || "Nueva pestaña";
     vista.elemento.classList.toggle("activa", Boolean(pestana.activa));
+    vista.elemento.classList.toggle("incognito", Boolean(pestana.incognito));
     vista.seleccionar.setAttribute("aria-pressed", String(Boolean(pestana.activa)));
     vista.seleccionar.setAttribute("aria-label", `Abrir pestaña: ${texto}`);
     vista.seleccionar.title = texto;
@@ -225,6 +242,8 @@ function mostrarPestanas(pestanas) {
         actualizarBarraDireccion();
     }
     cargandoActiva = Boolean(activa?.cargando && !activa.errorCarga);
+    document.body.classList.toggle("modo-incognito", Boolean(activa?.incognito));
+    marcaIncognito.hidden = !activa?.incognito;
     botonAtras.disabled = !activa?.puedeRetroceder;
     botonAdelante.disabled = !activa?.puedeAvanzar;
     botonRecargar.disabled = !activa;
@@ -234,7 +253,8 @@ function mostrarPestanas(pestanas) {
     window.PatagoniaFavorites.actualizarPagina(activa);
     window.PatagoniaApps?.actualizarPagina(activa);
     const error = pestanas.find((pestana) => pestana.activa)?.errorCarga;
-    avisoCarga.hidden = !error;
+    mostrarEscudo(activa?.peligro || null);
+    avisoCarga.hidden = !error || Boolean(activa?.peligro);
     mensajeCarga.textContent = error?.mensaje || "";
     direccionCarga.textContent = error?.url || "";
     const focoAnterior = document.activeElement;
@@ -316,6 +336,9 @@ botonNuevaPestana.addEventListener(
         window.patagonia.nuevaPestana();
     }
 );
+
+document.getElementById("nuevaIncognito").addEventListener("click", () => window.patagonia.nuevaPestanaIncognito());
+const marcaIncognito = document.getElementById("marcaIncognito");
 
 botonSidebar.addEventListener(
     "click",

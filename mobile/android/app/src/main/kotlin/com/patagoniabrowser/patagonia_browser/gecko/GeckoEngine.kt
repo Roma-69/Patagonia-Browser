@@ -32,6 +32,10 @@ object GeckoEngine {
     private const val LECTOR_PATH = "resource://android/assets/patagonia_lector/"
     const val CHICOS_ID = "chicos@patagoniabrowser.com"
     private const val CHICOS_PATH = "resource://android/assets/patagonia_chicos/"
+    const val CUIDA_ID = "cuida@patagoniabrowser.com"
+    private const val CUIDA_PATH = "resource://android/assets/patagonia_cuida/"
+    const val ESCUDO_ID = "escudo@patagoniabrowser.com"
+    private const val ESCUDO_PATH = "resource://android/assets/patagonia_escudo/"
 
     /** DNS familiar de Cloudflare (1.1.1.3): bloquea sitios para adultos y de malware. */
     const val DNS_FAMILIAR = "https://family.cloudflare-dns.com/dns-query"
@@ -46,6 +50,8 @@ object GeckoEngine {
     private const val PREF_LETRA = "flutter.largeText"
 
     private var chicos: GeckoResult<WebExtension>? = null
+    private var cuida: GeckoResult<WebExtension>? = null
+    private var escudo: GeckoResult<WebExtension>? = null
     private val chicosPorts = mutableListOf<WebExtension.Port>()
     var kidsMode = false
         private set
@@ -88,8 +94,10 @@ object GeckoEngine {
         applyFontSize(settings)
         return GeckoRuntime.create(context.applicationContext, settings).also {
             runtime = it
-            // El modo chicos tiene que estar listo antes de la primera página.
+            // El modo chicos y las protecciones propias tienen que estar listos antes de la primera página.
             chicos(context)
+            cuida(context)
+            escudo(context)
         }
     }
 
@@ -129,7 +137,7 @@ object GeckoEngine {
     /** Extensión propia del modo chicos. Siempre instalada; solo actúa con el modo prendido. */
     fun chicos(context: Context): GeckoResult<WebExtension> {
         chicos?.let { return it }
-        val result = runtime(context).webExtensionController.ensureBuiltIn(CHICOS_PATH, CHICOS_ID)
+        val result = conIncognito(context, runtime(context).webExtensionController.ensureBuiltIn(CHICOS_PATH, CHICOS_ID))
         result.accept({ extension ->
             extension?.setMessageDelegate(chicosDelegate, "patagonia")
         }, { error ->
@@ -154,8 +162,10 @@ object GeckoEngine {
         }
     }
 
-    fun newSession(desktop: Boolean): GeckoSession {
+    /** [privado]: modo incógnito. Gecko borra todo lo de las sesiones privadas cuando se cierra la última. */
+    fun newSession(desktop: Boolean, privado: Boolean = false): GeckoSession {
         val settings = GeckoSessionSettings.Builder()
+            .usePrivateMode(privado)
             .userAgentMode(
                 if (desktop) GeckoSessionSettings.USER_AGENT_MODE_DESKTOP
                 else GeckoSessionSettings.USER_AGENT_MODE_MOBILE,
@@ -240,7 +250,10 @@ object GeckoEngine {
                 else -> GeckoResult.fromValue(existing)
             }
         }.map { extension ->
-            extension?.let { attachUBlock(context, it) }
+            extension?.let {
+                attachUBlock(context, it)
+                permitirEnIncognito(context, it)
+            }
             extension?.metaData?.version ?: UBO_VERSION
         }
         // Si falla, la próxima pestaña lo vuelve a intentar.
@@ -328,10 +341,51 @@ object GeckoEngine {
         override fun notImplemented() = success(false)
     }
 
+    /** Extensión propia (assets/patagonia_cuida): oculta los avisos de cookies. */
+    fun cuida(context: Context): GeckoResult<WebExtension> {
+        cuida?.let { return it }
+        val result = conIncognito(context, runtime(context).webExtensionController.ensureBuiltIn(CUIDA_PATH, CUIDA_ID))
+        result.exceptionally<WebExtension> { error ->
+            Log.e(TAG, "No se pudo preparar Patagonia Cuida", error)
+            cuida = null
+            GeckoResult.fromException(error)
+        }
+        cuida = result
+        return result
+    }
+
+    /** Extensión propia (assets/patagonia_escudo): escudo contra estafas. */
+    fun escudo(context: Context): GeckoResult<WebExtension> {
+        escudo?.let { return it }
+        val result = conIncognito(context, runtime(context).webExtensionController.ensureBuiltIn(ESCUDO_PATH, ESCUDO_ID))
+        result.exceptionally<WebExtension> { error ->
+            Log.e(TAG, "No se pudo preparar el escudo contra estafas", error)
+            escudo = null
+            GeckoResult.fromException(error)
+        }
+        escudo = result
+        return result
+    }
+
+    /** Las extensiones (uBlock Origin y las propias) también tienen que cuidar las pestañas de incógnito. */
+    private fun permitirEnIncognito(context: Context, extension: WebExtension) {
+        if (extension.metaData.allowedInPrivateBrowsing) return
+        runtime(context).webExtensionController.setAllowedInPrivateBrowsing(extension, true)
+            .exceptionally<WebExtension> { error ->
+                Log.e(TAG, "No se pudo activar ${extension.id} en incógnito", error)
+                GeckoResult.fromValue<WebExtension>(null)
+            }
+    }
+
+    private fun conIncognito(context: Context, result: GeckoResult<WebExtension>): GeckoResult<WebExtension> {
+        result.accept({ extension -> extension?.let { permitirEnIncognito(context, it) } }, { _ -> })
+        return result
+    }
+
     /** Extensión propia (assets/patagonia_lector) para que el asistente lea el texto de la página. */
     fun lector(context: Context): GeckoResult<WebExtension> {
         lector?.let { return it }
-        val result = runtime(context).webExtensionController.ensureBuiltIn(LECTOR_PATH, LECTOR_ID)
+        val result = conIncognito(context, runtime(context).webExtensionController.ensureBuiltIn(LECTOR_PATH, LECTOR_ID))
         result.exceptionally<WebExtension> { error ->
             Log.e(TAG, "No se pudo preparar el lector de páginas", error)
             lector = null

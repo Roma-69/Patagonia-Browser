@@ -5,7 +5,7 @@ La **identidad visual y el nombre no lo son**: la licencia MIT no da permiso par
 
 ## Qué está reservado
 
-Todos los derechos reservados © 2026 Roma.69 sobre:
+Todos los derechos reservados © 2026 Christian Ariel Williams (Patagonia Labs) sobre:
 
 - El nombre **"Patagonia Browser"** y **"Patagonia Labs"**.
 - El ícono **"Árbol bandera"** (el árbol torcido por el viento sobre el atardecer) en todas sus versiones y tamaños.
@@ -23,7 +23,7 @@ Esto incluye, entre otros, estos archivos:
 - Nombrar el proyecto para hablar de él (por ejemplo, en una reseña o un artículo).
 - Distribuir copias **sin modificar** de los instaladores oficiales publicados en este repositorio.
 
-## Qué no podés hacer sin permiso por escrito de Roma.69
+## Qué no podés hacer sin permiso por escrito de Patagonia Labs (Christian Ariel Williams)
 
 - Usar el nombre o el ícono en otra app, navegador, sitio o producto.
 - Publicar una versión modificada (un "fork") con el nombre o el ícono de Patagonia Browser. Si hacés un fork, cambiale el nombre y los íconos.

@@ -1,0 +1,38 @@
+name: Escudo - actualizar listas de páginas peligrosas
+
+# Baja las listas públicas de estafas y virus (phishing-filter y urlhaus-filter)
+# y las guarda en la rama: assets/escudo-lista.txt (PC) y la extensión del celu.
+# Correrlo antes de armar una versión: Actions → este flujo → Run workflow → elegir la rama.
+on:
+  workflow_dispatch:
+  push:
+    branches: [escudo/listas]
+    paths: ['.github/workflows/escudo-listas.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  bajar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Obtener el código
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+
+      - name: Bajar las listas
+        run: node scripts/actualizar-listas-escudo.cjs
+
+      - name: Guardar en la rama
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/escudo-lista.txt mobile/android/app/src/main/assets/patagonia_escudo/escudo-lista.txt
+          git diff --cached --quiet && { echo "Sin cambios"; exit 0; }
+          git commit -m "Escudo: listas de páginas peligrosas actualizadas"
+          git push

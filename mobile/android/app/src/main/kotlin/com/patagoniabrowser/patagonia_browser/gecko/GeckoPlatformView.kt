@@ -61,7 +61,11 @@ class GeckoPlatformView(
     private val session: GeckoSession
     private val main = Handler(Looper.getMainLooper())
     private var closed = false
+    /** Dirección de la página abierta (para el aviso de descargas peligrosas). */
+    private var pagina: String? = null
     private var desktop = params["desktop"] == true
+    /** Pestaña de incógnito: sesión privada de Gecko. */
+    private val privado = params["private"] == true
     private val popup = params["popup"] == true
 
     // Lector de texto para el asistente (extensión patagonia_lector).
@@ -83,7 +87,7 @@ class GeckoPlatformView(
         val runtime = GeckoEngine.runtime(context)
         val windowId = (params["windowId"] as? Number)?.toInt()
         val adopted = windowId?.let { GeckoEngine.takePending(it) }
-        session = adopted ?: GeckoEngine.newSession(desktop)
+        session = adopted ?: GeckoEngine.newSession(desktop, privado)
         installDelegates()
         // Las ventanas nuevas las abre Gecko solo, apenas Patagonia acepta: se espera a que estén listas.
         if (adopted == null) session.open(runtime)
@@ -138,7 +142,10 @@ class GeckoPlatformView(
                 url: String?,
                 perms: MutableList<PermissionDelegate.ContentPermission>,
                 hasUserGesture: Boolean,
-            ) = send("location", url)
+            ) {
+                pagina = url
+                send("location", url)
+            }
 
             override fun onCanGoBack(session: GeckoSession, canGoBack: Boolean) =
                 send("canGoBack", canGoBack)
@@ -166,7 +173,8 @@ class GeckoPlatformView(
                 session: GeckoSession,
                 uri: String,
             ): GeckoResult<GeckoSession> {
-                val newSession = GeckoEngine.newSession(desktop)
+                // Desde incógnito, la ventana nueva también es privada (Gecko lo exige).
+                val newSession = GeckoEngine.newSession(desktop, privado)
                 val pendingId = GeckoEngine.putPending(newSession)
                 val result = GeckoResult<GeckoSession>()
                 if (closed) {
@@ -236,7 +244,7 @@ class GeckoPlatformView(
             override fun onCrash(session: GeckoSession) = send("crash", null)
             override fun onKill(session: GeckoSession) = send("crash", null)
             override fun onExternalResponse(session: GeckoSession, response: WebResponse) {
-                GeckoDownloads.save(appContext, response) { status, name ->
+                GeckoDownloads.save(appContext, response, pagina) { status, name ->
                     main.post { send("download", mapOf("status" to status, "name" to name)) }
                 }
             }
@@ -414,7 +422,7 @@ class GeckoPlatformView(
         }
         GeckoWebExecutor(GeckoEngine.runtime(appContext)).fetch(WebRequest(url)).accept({ response ->
             if (response == null) return@accept
-            GeckoDownloads.save(appContext, response) { status, name ->
+            GeckoDownloads.save(appContext, response, pagina) { status, name ->
                 main.post { send("download", mapOf("status" to status, "name" to name)) }
             }
         }, {

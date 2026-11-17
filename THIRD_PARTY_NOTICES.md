@@ -1,7 +1,7 @@
 # Avisos de terceros / Third-Party Notices
 
 Patagonia Browser es software libre bajo licencia MIT.
-Copyright (c) 2026 Roma.69
+Copyright (c) 2026 Christian Ariel Williams (Patagonia Labs)
 
 Este proyecto incluye o usa componentes de terceros. Cada uno conserva
 su propia licencia y sus avisos de copyright, que se detallan abajo.
@@ -31,6 +31,24 @@ su propia licencia y sus avisos de copyright, que se detallan abajo.
 El bloqueador de anuncios puede usar listas públicas como EasyList y
 EasyPrivacy (https://easylist.to/), que tienen doble licencia:
 GPL-3.0 o CC BY-SA 3.0. Pertenecen a The EasyList authors.
+
+Desde la 1.4.0 también usa EasyList Cookie (misma licencia y autores) y
+la lista "annoyances-cookies" de uBlock Origin (GPL-3.0, Raymond Hill y
+colaboradores) para ocultar los avisos de cookies. En el celular, las
+reglas generales de EasyList Cookie van en
+`mobile/android/app/src/main/assets/patagonia_cuida/` (generadas con
+`scripts/generar-cookies-android.cjs`).
+
+## Escudo contra estafas
+
+Desde la 1.4.0, el escudo contra estafas usa las listas públicas
+`phishing-filter` y `urlhaus-filter` del proyecto malware-filter
+(https://gitlab.com/malware-filter, de curbengh), que reúnen datos de
+OpenPhish, PhishTank (Cisco Talos), PhishStats y URLhaus (abuse.ch).
+Cada fuente conserva su licencia y sus condiciones de uso. La lista se
+guarda y se revisa en el equipo: Patagonia no manda a ningún lado qué
+páginas se visitan. Copia incluida: `assets/escudo-lista.txt` (y la misma
+en el celular), generada con `scripts/actualizar-listas-escudo.cjs`.
 
 ## Notas
 

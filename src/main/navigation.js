@@ -81,6 +81,8 @@ function recargar(pestana) {
     if (pestana?.errorCarga) {
         return navegar(pestana, pestana.errorCarga.url);
     }
+    // Pantalla del escudo: recargar vuelve a revisar la dirección (y la vuelve a frenar).
+    if (pestana?.peligro) return navegar(pestana, pestana.peligro.url);
     obtenerContenido(pestana)?.reload();
 }
 

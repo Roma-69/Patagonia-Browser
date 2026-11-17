@@ -43,6 +43,8 @@ function crearGestorTraduccion({ motor, preferencias, pares, modelos, obtenerCon
     function publico(d) {
         return {
             estado: d.barraCerrada ? "oculta" : d.estado,
+            // El ícono del traductor (en la barra de direcciones) aparece si la página está en otro idioma.
+            detectado: Boolean(d.idioma) && d.estado !== "oculta",
             traducida: d.estado === "traducida" || d.estado === "traduciendo",
             idioma: d.idioma,
             nombreIdioma: nombreIdioma(d.idioma),
@@ -141,10 +143,13 @@ function crearGestorTraduccion({ motor, preferencias, pares, modelos, obtenerCon
             }, 2500);
         } catch (error) {
             if (contenido.isDestroyed() || d.generacion !== generacion) return;
+            const noDisponible = error?.message === "Idioma no disponible.";
             const sinRed = Boolean(d.descarga) || (!d.ruta && modelos);
-            Object.assign(d, { estado: "error", descarga: null, error: sinRed
-                ? `No se pudo bajar el idioma ${nombreIdioma(d.idioma)}. Revisá la conexión y probá de nuevo.`
-                : "No se pudo traducir esta página." });
+            Object.assign(d, { estado: "error", descarga: null, error: noDisponible
+                ? `El ${nombreIdioma(d.idioma)} todavía no se puede traducir en tu equipo. Podés usar Google desde el ícono del traductor.`
+                : sinRed
+                    ? `No se pudo bajar el idioma ${nombreIdioma(d.idioma)}. Revisá la conexión y probá de nuevo.`
+                    : "No se pudo traducir esta página." });
             avisar(contenido);
         }
     }
@@ -193,7 +198,7 @@ function crearGestorTraduccion({ motor, preferencias, pares, modelos, obtenerCon
         return sitioDe(url) ? urlGoogle(url) : null;
     }
 
-    // Para el clic derecho o el botón: ofrecer traducir aunque la detección no haya saltado.
+    // Clic derecho → "Traducir página": traduce aunque la detección no haya saltado.
     async function abrir(idiomaManual = "en") {
         const contenido = obtenerContenido();
         if (!contenido || contenido.isDestroyed() || !sitioDe(contenido.getURL())) return;
@@ -201,13 +206,13 @@ function crearGestorTraduccion({ motor, preferencias, pares, modelos, obtenerCon
         d.barraCerrada = false;
         if (!d.idioma) Object.assign(d, { idioma: idiomaManual, sitio: sitioDe(contenido.getURL()), estado: "ofrecer" });
         avisar(contenido);
+        if (d.estado === "ofrecer" || d.estado === "error") return traducir(contenido);
     }
 
+    // Desde la 1.4.0 el traductor es un ícono en la barra de direcciones: ya no ocupa
+    // una barra encima de la página.
     function visible() {
-        const contenido = obtenerContenido();
-        if (!contenido || contenido.isDestroyed()) return false;
-        const d = datos.get(contenido.id);
-        return Boolean(d) && publico(d).estado !== "oculta";
+        return false;
     }
 
     return { paginaLista, navego, olvidar, traducir, mostrarOriginal, siempre, nunca, cerrar, google, abrir, reenviar, visible, estado: c => publico(de(c)) };

@@ -70,6 +70,7 @@ const { registrarHistorial } = require("./src/main/history");
 const { registrarFavoritos } = require("./src/main/bookmarks");
 const { registrarErroresCarga } = require("./src/main/loadErrors");
 const { crearProteccion } = require("./src/main/adblocker");
+const { crearEscudoPC } = require("./src/main/escudo");
 const { obtenerHTMLPagina, MAX_ELEMENTOS } = require("./src/main/pageSnapshot");
 const {
     extraerURLApp,
@@ -115,6 +116,13 @@ let gestorDescargas;
 let gestorPermisos;
 let gestorFavoritos;
 let gestorProteccion;
+let modoChicos;
+// Modo incógnito: una sesión en memoria, aparte de la normal. Se crea con la primera
+// pestaña de incógnito y se vacía cuando se cierra la última.
+const PARTICION_INCOGNITO = "patagonia-incognito";
+let sesionIncognito = null;
+let gestorPermisosIncognito = null;
+let escudo;
 let actualizador;
 const enlacesPendientes = [];
 const ventanasApp = new Set();
@@ -181,8 +189,8 @@ function esNuevaPestanaPatagonia(url) {
     return typeof url === "string" && url.split(/[?#]/)[0] === URL_NUEVA_PESTANA;
 }
 
-function direccionNuevaPestana() {
-    return `${URL_NUEVA_PESTANA}?buscador=${encodeURIComponent(buscadorActual())}`;
+function direccionNuevaPestana(incognito = false) {
+    return `${URL_NUEVA_PESTANA}?buscador=${encodeURIComponent(buscadorActual())}${incognito ? "&incognito=1" : ""}`;
 }
 
 function irAInicio() {
@@ -213,6 +221,7 @@ function accionesNavegacion() {
             ventanaPrincipal.webContents.send("enfocar-direccion");
         },
         nueva: () => crearPestana(),
+        nuevaIncognito: () => crearPestana(null, { incognito: true }),
         reabrir: reabrirUltimaPestana,
         cerrar: () => cerrarPestana(idPestanaActiva),
         recargar: () => recargar(obtenerPestanaActiva()),
@@ -310,7 +319,8 @@ function conectarAtajos(contenido) {
 }
 
 function recordarSesion() {
-    if (!restaurandoSesion && !cerrandoVentana) gestorSesion?.actualizar(pestanas, idPestanaActiva);
+    // Las pestañas de incógnito no se guardan para la próxima vez.
+    if (!restaurandoSesion && !cerrandoVentana) gestorSesion?.actualizar(pestanas.filter(pestana => !pestana.incognito), idPestanaActiva);
 }
 
 function obtenerPestanaActiva() {
@@ -336,6 +346,12 @@ function ajustarVista() {
 
     const [ancho, alto] =
         ventanaPrincipal.getContentSize();
+
+    // Pantalla completa de un video (YouTube, etc.): la página ocupa toda la ventana.
+    if (pestanaActiva.pantallaCompleta) {
+        pestanaActiva.vista.setBounds({ x: 0, y: 0, width: ancho, height: alto });
+        return;
+    }
 
     const anchoLateral = barraLateralAbierta
         ? ANCHO_BARRA_LATERAL
@@ -403,6 +419,10 @@ function enviarPestanas() {
             cargando: pestana.cargando,
             ...estadoNavegacion(pestana),
             errorCarga: pestana.errorCarga || null,
+            incognito: Boolean(pestana.incognito),
+            peligro: pestana.peligro
+                ? { url: pestana.peligro.url, motivo: pestana.peligro.motivo, marca: pestana.peligro.marca || "", sitio: pestana.peligro.sitio }
+                : null,
             activa:
                 pestana.id === idPestanaActiva
         })
@@ -484,17 +504,111 @@ async function obtenerContextoPestanaActiva() {
     }
 }
 
+// Todo lo que necesita una sesión de páginas: permisos, compartir pantalla, fotos
+// limpias y el arreglo del login de Google (con el modo chicos).
+function prepararSesionPaginas(sesion) {
+    const permisos = registrarPermisos({
+        sesion,
+        dialog,
+        obtenerVentana: () => ventanaPrincipal,
+        esPestanaPropia: contenido => pestanas.some(pestana => pestana.vista.webContents === contenido),
+        esPestanaActiva: contenido => obtenerPestanaActiva()?.vista.webContents === contenido
+    });
+    require("./src/main/compartirPantalla").registrarCompartirPantalla({
+        sesion,
+        desktopCapturer,
+        dialog,
+        webContents,
+        obtenerVentana: () => ventanaPrincipal,
+        esPestanaPropia: contenido => pestanas.some(pestana => pestana.vista.webContents === contenido),
+        esPestanaActiva: contenido => obtenerPestanaActiva()?.vista.webContents === contenido,
+        origenSeguro: require("./src/main/permissions").origenSeguro
+    });
+    // Fotos limpias: las fotos que se suben pierden los datos escondidos (GPS, FBMD...).
+    sesion.registerPreloadScript?.({
+        id: "patagonia-fotos-limpias",
+        type: "frame",
+        filePath: path.join(__dirname, "src", "main", "fotosLimpias.js")
+    });
+    require("./src/main/googleLogin").instalarLoginGoogle({
+        app,
+        sesion,
+        userAgentNormal: () => app.userAgentFallback,
+        extras: [modoChicos.ajustarCabeceras]
+    });
+    return permisos;
+}
+
+function obtenerSesionIncognito() {
+    if (sesionIncognito) return sesionIncognito;
+    // Sin "persist:": nada se guarda en el disco.
+    sesionIncognito = session.fromPartition(PARTICION_INCOGNITO, { cache: false });
+    gestorPermisosIncognito = prepararSesionPaginas(sesionIncognito);
+    gestorDescargas?.agregarSesion?.(sesionIncognito);
+    gestorProteccion?.agregarSesion?.(sesionIncognito);
+    return sesionIncognito;
+}
+
+// Al cerrar la última pestaña de incógnito se borra todo: cuentas abiertas,
+// cookies, lo guardado por las páginas, caché y permisos dados.
+function vaciarIncognitoSiTermino() {
+    if (!sesionIncognito || pestanas.some(pestana => pestana.incognito)) return;
+    const sesion = sesionIncognito;
+    Promise.allSettled([
+        sesion.clearStorageData(),
+        sesion.clearCache(),
+        sesion.clearAuthCache?.(),
+        sesion.clearHostResolverCache?.()
+    ]).then(resultados => {
+        for (const resultado of resultados) {
+            if (resultado.status === "rejected") console.error("No se pudo vaciar el modo incógnito:", resultado.reason?.message);
+        }
+    });
+}
+
+// ---- Pantalla completa de videos ----
+// La página pide pantalla completa (botón ⛶ de YouTube): la ventana pasa a pantalla
+// completa y la pestaña tapa todo (barra de Patagonia y barra de tareas de Windows).
+let ventanaYaEstabaCompleta = false;
+let pantallaCompletaNuestra = false;
+
+function entrarPantallaCompleta(pestana) {
+    if (!ventanaPrincipal || ventanaPrincipal.isDestroyed() || pestana.id !== idPestanaActiva) return;
+    if (!pantallaCompletaNuestra) {
+        ventanaYaEstabaCompleta = ventanaPrincipal.isFullScreen();
+        pantallaCompletaNuestra = true;
+        if (!ventanaYaEstabaCompleta) ventanaPrincipal.setFullScreen(true);
+    }
+    ajustarVista();
+}
+
+function salirPantallaCompleta() {
+    if (!ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
+    if (pantallaCompletaNuestra) {
+        pantallaCompletaNuestra = false;
+        if (!ventanaYaEstabaCompleta && ventanaPrincipal.isFullScreen()) ventanaPrincipal.setFullScreen(false);
+    }
+    ajustarVista();
+}
+
+// Le pide a la página que salga de pantalla completa (por ejemplo, al cambiar de pestaña).
+function sacarDePantallaCompleta(pestana) {
+    const contenido = obtenerContenido(pestana);
+    if (!pestana?.pantallaCompleta || !contenido) return;
+    contenido.executeJavaScript("document.fullscreenElement && document.exitFullscreen()").catch(() => {});
+}
+
 function crearPestana(
     url = null,
-    { vista: vistaExistente, activar = true, cargar = true, opcionesCarga } = {}
+    { vista: vistaExistente, activar = true, cargar = true, opcionesCarga, incognito = false } = {}
 ) {
     if (cerrandoVentana || !ventanaPrincipal || ventanaPrincipal.isDestroyed()) return null;
     const id = siguienteId++;
     const esNuevaPestana = url === null;
-    const destino = esNuevaPestana ? direccionNuevaPestana() : url;
+    const destino = esNuevaPestana ? direccionNuevaPestana(incognito) : url;
 
     const vista = vistaExistente || new WebContentsView({
-        webPreferences: PREFERENCIAS_WEB
+        webPreferences: incognito ? { ...PREFERENCIAS_WEB, session: obtenerSesionIncognito() } : PREFERENCIAS_WEB
     });
     const idContenido = vista.webContents.id;
 
@@ -504,6 +618,7 @@ function crearPestana(
         titulo: "Nueva pestaña",
         url: esNuevaPestana ? "" : url,
         interna: esNuevaPestana,
+        incognito: Boolean(incognito),
         favicon: "",
         cargando: false
     };
@@ -516,7 +631,8 @@ function crearPestana(
         Menu,
         clipboard,
         obtenerVentana: () => ventanaPrincipal,
-        abrirEnPestana: destinoNuevo => crearPestana(destinoNuevo),
+        abrirEnPestana: destinoNuevo => crearPestana(destinoNuevo, { incognito }),
+        abrirEnIncognito: destinoNuevo => crearPestana(destinoNuevo, { incognito: true }),
         zoom: direccion => {
             zoom.cambiarZoom(vista.webContents, direccion);
             if (pestana.id === idPestanaActiva) enviarZoom();
@@ -530,24 +646,44 @@ function crearPestana(
         original: () => { gestorTraduccion.mostrarOriginal(vista.webContents); },
         leer: () => abrirModoLectura(vista.webContents)
     });
+    vista.webContents.on("enter-html-full-screen", () => {
+        pestana.pantallaCompleta = true;
+        entrarPantallaCompleta(pestana);
+    });
+    vista.webContents.on("leave-html-full-screen", () => {
+        pestana.pantallaCompleta = false;
+        if (pestana.id === idPestanaActiva) salirPantallaCompleta();
+    });
     vista.webContents.on("zoom-changed", (_evento, sentido) => {
         zoom.cambiarZoom(vista.webContents, sentido === "in" ? 1 : -1);
         if (pestana.id === idPestanaActiva) enviarZoom();
     });
-    observarVisitas(vista.webContents);
+    // En incógnito no queda historial.
+    if (!incognito) observarVisitas(vista.webContents);
     gestorBusqueda.observar(vista.webContents);
     vista.webContents.on("did-start-navigation", (_evento, _url, mismaPagina, principal) => {
         if (principal && !mismaPagina) gestorTraduccion.navego(vista.webContents);
     });
     vista.webContents.on("did-finish-load", () => { gestorTraduccion.paginaLista(vista.webContents); });
+    // YouTube: si se cuela un anuncio, se saltea solo (salvo que la persona haya apagado la protección ahí).
+    vista.webContents.on("dom-ready", () => {
+        const url = vista.webContents.getURL();
+        require("./src/main/youtubeAnuncios").protegerYouTube(vista.webContents, {
+            activa: gestorProteccion?.estado(idContenido, url).permitida !== true
+        });
+    });
     registrarAperturas({
         contenido: vista.webContents,
-        crearVista: opciones => new WebContentsView(opciones),
-        agregarPestana: crearPestana,
+        // Lo que se abre desde una pestaña de incógnito también es de incógnito.
+        crearVista: opciones => new WebContentsView(incognito && !opciones.webContents
+            ? { ...opciones, webPreferences: { ...opciones.webPreferences, session: obtenerSesionIncognito() } }
+            : opciones),
+        agregarPestana: (destinoNuevo, opciones) => crearPestana(destinoNuevo, { ...opciones, incognito }),
         puedeAbrir: () => Boolean(ventanaPrincipal && !ventanaPrincipal.isDestroyed() && !cerrandoVentana)
     });
     vista.webContents.once("destroyed", () => {
         gestorProteccion?.olvidarPestana(idContenido);
+        escudo?.olvidarPestana(idContenido);
         gestorTraduccion.olvidar(idContenido);
         const recordar = cierresSolicitados.delete(id);
         if (!cerrandoVentana && ventanaPrincipal && !ventanaPrincipal.isDestroyed()) quitarPestana(id, recordar);
@@ -669,6 +805,14 @@ function activarPestana(id) {
         return;
     }
 
+    // Al cambiar de pestaña, el video que estaba en pantalla completa sale de ella.
+    const anterior = obtenerPestanaActiva();
+    if (anterior && anterior.id !== id && anterior.pantallaCompleta) {
+        sacarDePantallaCompleta(anterior);
+        anterior.pantallaCompleta = false;
+        salirPantallaCompleta();
+    }
+
     pestanas.forEach(
         (elemento) => {
             ventanaPrincipal.contentView
@@ -680,6 +824,7 @@ function activarPestana(id) {
 
     idPestanaActiva = id;
     gestorPermisos?.cambiarPestana();
+    gestorPermisosIncognito?.cambiarPestana();
     gestorBusqueda.cambiarPestana();
     gestorTraduccion.reenviar();
 
@@ -709,7 +854,7 @@ function cerrarPestana(id) {
 // La sesión es la misma, así que sigue logueada; la pestaña original se cierra.
 function separarPestana(id, posicion) {
     const pestana = pestanas.find(elemento => elemento.id === id);
-    if (!pestana || cerrandoVentana || !ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
+    if (!pestana || pestana.incognito || cerrandoVentana || !ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
     const url = urlAppValida(obtenerContenido(pestana)?.getURL());
     if (!url) return;
     const [ancho, alto] = ventanaPrincipal.getSize();
@@ -727,7 +872,8 @@ function mostrarMenuPestana(id) {
     if (!pestana || !ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
     const separable = Boolean(urlAppValida(obtenerContenido(pestana)?.getURL()));
     Menu.buildFromTemplate([
-        { label: "Mover a ventana nueva", enabled: separable, click: () => separarPestana(id) },
+        // Una ventana aparte usa la sesión normal: en incógnito no se separa.
+        { label: "Mover a ventana nueva", enabled: separable && !pestana.incognito, click: () => separarPestana(id) },
         { type: "separator" },
         { label: "Cerrar pestaña", click: () => cerrarPestana(id) }
     ]).popup({ window: ventanaPrincipal });
@@ -755,7 +901,8 @@ function quitarPestana(id, recordar = false) {
     const pestanaCerrada =
         pestanas[indice];
 
-    if (recordar) pestañasCerradas.guardar(pestanaCerrada);
+    // Las pestañas de incógnito no se pueden reabrir: no queda rastro.
+    if (recordar && !pestanaCerrada.incognito) pestañasCerradas.guardar(pestanaCerrada);
 
     ventanaPrincipal.contentView
         .removeChildView(
@@ -763,6 +910,7 @@ function quitarPestana(id, recordar = false) {
         );
 
     pestanas.splice(indice, 1);
+    if (pestanaCerrada.incognito) vaciarIncognitoSiTermino();
 
     if (pestanas.length === 0) {
         crearPestana();
@@ -891,6 +1039,13 @@ function crearVentana() {
         "resize",
         ajustarVista
     );
+    // Si la ventana sale de pantalla completa por otro lado (Windows, F11), el video también.
+    ventanaPrincipal.on("leave-full-screen", () => {
+        const activa = obtenerPestanaActiva();
+        if (!pantallaCompletaNuestra || !activa?.pantallaCompleta) return;
+        pantallaCompletaNuestra = false;
+        sacarDePantallaCompleta(activa);
+    });
 
     registrarCierre({
         ventana: ventanaPrincipal,
@@ -1082,6 +1237,111 @@ ipcInterfaz.handle("usar-como-predeterminado", async () => {
     }
 });
 
+// ---- Escudo contra estafas ----
+const TEXTO_ESCUDO = {
+    lista: "Esta página está marcada como peligrosa: es conocida por robar claves, datos de tarjetas o meter virus.",
+    imitacion: marca => `Esta página se hace pasar por ${marca}, pero su dirección no es la oficial.`
+};
+
+// Frena una página peligrosa. En una pestaña se muestra la pantalla roja; en una
+// ventana de app (sin pestañas) se avisa con un cuadro.
+function frenarPorEscudo(idContenido, url, resultado) {
+    const pestana = pestanas.find(p => !p.vista.webContents.isDestroyed() && p.vista.webContents.id === idContenido);
+    if (pestana) {
+        pestana.peligro = { url, ...resultado };
+        pestana.url = url;
+        pestana.titulo = "Página peligrosa";
+        pestana.favicon = "";
+        pestana.cargando = false;
+        pestana.vista.setVisible(false);
+        if (pestana.id === idPestanaActiva) enviarURLActual();
+        enviarPestanas();
+        return;
+    }
+    const contenido = webContents.fromId(idContenido);
+    if (!contenido || contenido.isDestroyed()) return;
+    const ventana = BrowserWindow.fromWebContents(contenido);
+    const mensaje = resultado.motivo === "imitacion" ? TEXTO_ESCUDO.imitacion(resultado.marca) : TEXTO_ESCUDO.lista;
+    void dialog.showMessageBox(ventana || undefined, {
+        type: "warning",
+        title: "Patagonia te cuida",
+        message: "Patagonia frenó esta página",
+        detail: `${mensaje}\n\n${resultado.sitio}`,
+        buttons: ["Volver", "Entrar igual (no recomendado)"],
+        defaultId: 0,
+        cancelId: 0
+    }).then(({ response }) => {
+        if (response !== 1 || contenido.isDestroyed()) return;
+        escudo.permitir(idContenido, url);
+        contenido.loadURL(url);
+    });
+}
+
+function pestanaConPeligro() {
+    const pestana = obtenerPestanaActiva();
+    return pestana?.peligro && obtenerContenido(pestana) ? pestana : null;
+}
+
+ipcInterfaz.on("escudo-volver", () => {
+    const pestana = pestanaConPeligro();
+    if (!pestana) return;
+    const contenido = obtenerContenido(pestana);
+    const frenada = pestana.peligro.url;
+    pestana.peligro = null;
+    pestana.errorCarga = null;
+    const actual = contenido.getURL();
+    // Chromium deja una página de error en la dirección frenada: se vuelve a la anterior.
+    if (!actual || actual === "about:blank" || actual === frenada) {
+        if (actual === frenada && contenido.navigationHistory.canGoBack()) {
+            contenido.navigationHistory.goBack();
+        } else {
+            // No hay a dónde volver (por ejemplo, un link de WhatsApp en una pestaña nueva): al inicio de Patagonia.
+            pestana.interna = true;
+            pestana.url = "";
+            contenido.loadURL(direccionNuevaPestana(pestana.incognito)).catch(() => {});
+        }
+        pestana.vista.setVisible(true);
+        enviarURLActual();
+        enviarPestanas();
+        return;
+    }
+    // La página anterior sigue cargada: se vuelve a mostrar.
+    pestana.interna = esNuevaPestanaPatagonia(actual);
+    pestana.url = pestana.interna ? "" : actual;
+    pestana.titulo = contenido.getTitle() || pestana.titulo;
+    pestana.vista.setVisible(true);
+    enviarURLActual();
+    enviarPestanas();
+});
+
+ipcInterfaz.on("escudo-entrar", () => {
+    const pestana = pestanaConPeligro();
+    if (!pestana) return;
+    const { url } = pestana.peligro;
+    escudo.permitir(obtenerContenido(pestana).id, url);
+    navegar(pestana, url);
+});
+
+// ---- Aviso en descargas peligrosas ----
+function confirmarDescargaPeligrosa(item, contenido) {
+    const { revisarDescarga, textoAviso } = require("./src/shared/descargasPeligrosas");
+    const nombre = item.getFilename();
+    const aviso = revisarDescarga({ nombre, url: item.getURL(), pagina: contenido.getURL() });
+    if (!aviso) return true;
+    // Cuadro modal: hasta que la persona elija, la descarga no arranca.
+    const respuesta = dialog.showMessageBoxSync(ventanaPrincipal && !ventanaPrincipal.isDestroyed() ? ventanaPrincipal : undefined, {
+        type: "warning",
+        title: "Patagonia te cuida",
+        message: "¿Bajar este programa?",
+        detail: textoAviso({ nombre, ...aviso }),
+        buttons: ["No bajar", "Bajar igual"],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true
+    });
+    return respuesta === 1;
+}
+
 ipcInterfaz.on("zoom-normal", () => zoomActiva(0));
 ipcInterfaz.handle("reiniciar-para-actualizar", () => {
     if (!actualizador?.reiniciar()) return { correcto: false, error: "Todavía no hay una actualización lista." };
@@ -1093,6 +1353,25 @@ ipcInterfaz.on("traduccion-original", () => { gestorTraduccion.mostrarOriginal()
 ipcInterfaz.on("traduccion-siempre", (_evento, activo) => { if (typeof activo === "boolean") gestorTraduccion.siempre(activo); });
 ipcInterfaz.on("traduccion-nunca", () => { gestorTraduccion.nunca(); });
 ipcInterfaz.on("traduccion-cerrar", () => gestorTraduccion.cerrar());
+// Menú del ícono del traductor (barra de direcciones).
+ipcInterfaz.on("traduccion-menu", (_evento, posicion) => {
+    const contenido = obtenerContenido(obtenerPestanaActiva());
+    if (!contenido || !ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
+    const { crearMenuTraduccion } = require("./src/main/translator/menu");
+    const plantilla = crearMenuTraduccion(gestorTraduccion.estado(contenido), {
+        traducir: () => { gestorTraduccion.traducir(contenido); },
+        original: () => { gestorTraduccion.mostrarOriginal(contenido); },
+        siempre: activo => { gestorTraduccion.siempre(activo); },
+        nunca: () => { gestorTraduccion.nunca(); },
+        google: () => {
+            const destino = gestorTraduccion.google();
+            if (destino) navegar(obtenerPestanaActiva(), destino);
+        }
+    });
+    const x = Number.isFinite(posicion?.x) ? Math.max(0, Math.round(posicion.x)) : undefined;
+    const y = Number.isFinite(posicion?.y) ? Math.max(0, Math.round(posicion.y)) : undefined;
+    Menu.buildFromTemplate(plantilla).popup({ window: ventanaPrincipal, x, y });
+});
 ipcInterfaz.on("traduccion-google", () => {
     const destino = gestorTraduccion.google();
     if (destino) navegar(obtenerPestanaActiva(), destino);
@@ -1113,6 +1392,8 @@ ipcInterfaz.on(
         crearPestana();
     }
 );
+
+ipcInterfaz.on("nueva-pestana-incognito", () => crearPestana(null, { incognito: true }));
 
 ipcInterfaz.on(
     "activar-pestana",
@@ -1322,7 +1603,7 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
                 version: app.getVersion()
             });
         }
-        const modoChicos = require("./src/main/modoChicos").crearModoChicos({ app, sesion: session.defaultSession });
+        modoChicos = require("./src/main/modoChicos").crearModoChicos({ app, sesion: session.defaultSession });
         gestorConfiguracion = registrarConfiguracion({
             ipcMain,
             archivo: path.join(app.getPath("userData"), "configuracion.json"),
@@ -1347,37 +1628,24 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             sesion: session.defaultSession,
             shell,
             obtenerVentana: () => ventanaPrincipal,
-            esPestanaPropia: contenido => pestanas.some(pestana => pestana.vista.webContents === contenido)
-        });
-        gestorPermisos = registrarPermisos({
-            sesion: session.defaultSession,
-            dialog,
-            obtenerVentana: () => ventanaPrincipal,
             esPestanaPropia: contenido => pestanas.some(pestana => pestana.vista.webContents === contenido),
-            esPestanaActiva: contenido => obtenerPestanaActiva()?.vista.webContents === contenido
+            confirmarPeligrosa: confirmarDescargaPeligrosa
         });
-        require("./src/main/compartirPantalla").registrarCompartirPantalla({
-            sesion: session.defaultSession,
-            desktopCapturer,
-            dialog,
-            webContents,
-            obtenerVentana: () => ventanaPrincipal,
-            esPestanaPropia: contenido => pestanas.some(pestana => pestana.vista.webContents === contenido),
-            esPestanaActiva: contenido => obtenerPestanaActiva()?.vista.webContents === contenido,
-            origenSeguro: require("./src/main/permissions").origenSeguro
+        gestorPermisos = prepararSesionPaginas(session.defaultSession);
+        escudo = crearEscudoPC({
+            directorioDatos: app.getPath("userData"),
+            rutaListaIncluida: path.join(__dirname, "assets", "escudo-lista.txt"),
+            fetchImpl: (...args) => net.fetch(...args),
+            alBloquear: frenarPorEscudo
         });
-        require("./src/main/googleLogin").instalarLoginGoogle({
-            app,
-            sesion: session.defaultSession,
-            userAgentNormal: () => app.userAgentFallback,
-            extras: [modoChicos.ajustarCabeceras]
-        });
+        await escudo.iniciar().catch(error => console.error("El escudo contra estafas no pudo leer su lista:", error.message));
         gestorProteccion = crearProteccion({
             sesion: session.defaultSession,
             directorioDatos: app.getPath("userData"),
             rutaMotorIncluido: path.join(__dirname, "assets", "patagonia-adblock.bin"),
             obtenerURLPrincipal,
-            notificar: enviarEstadoProteccion
+            notificar: enviarEstadoProteccion,
+            revisarNavegacion: detalles => escudo.revisarNavegacion(detalles)
         });
         await gestorProteccion.iniciar().catch(error => {
             console.error("La protección contra anuncios no pudo iniciarse:", error.message);
@@ -1421,6 +1689,7 @@ if (registrarInstanciaUnica(app, () => ventanaPrincipal, atenderLanzamiento)) ap
             );
         }
         gestorProteccion.actualizarSiHaceFalta();
+        escudo.actualizarSiHaceFalta();
     })
     .catch((error) => {
         console.error(

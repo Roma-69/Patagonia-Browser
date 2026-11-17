@@ -2,6 +2,7 @@ function registrarMenu(Menu, acciones, plataforma = process.platform) {
     const plantilla = [
         { label: "Archivo", submenu: [
             { label: "Nueva pestaña", accelerator: "CmdOrCtrl+T", click: acciones.nueva },
+            { label: "Nueva pestaña de incógnito", accelerator: "CmdOrCtrl+Shift+N", click: acciones.nuevaIncognito },
             { label: "Reabrir pestaña cerrada", accelerator: "CmdOrCtrl+Shift+T", click: acciones.reabrir },
             { label: "Cerrar pestaña", accelerator: "CmdOrCtrl+W", click: acciones.cerrar },
             { type: "separator" },

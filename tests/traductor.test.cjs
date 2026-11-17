@@ -18,7 +18,7 @@ const ESPANOL = "La NASA dará una actualización sobre el progreso de la agenci
 test("detecta el idioma por el texto aunque el atributo lang mienta", () => {
     assert.equal(detectarIdioma({ texto: INGLES, lang: "" }), "en");
     assert.equal(detectarIdioma({ texto: ESPANOL, lang: "en" }), "es");
-    assert.equal(detectarIdioma({ texto: "Hola", lang: "pt-BR" }), "pt");
+    assert.equal(detectarIdioma({ texto: "Hola", lang: "pt-BR" }), "", "con casi nada de texto no se ofrece traducir");
     assert.equal(detectarIdioma({ texto: "", lang: "" }), "");
     assert.equal(nombreIdioma("en"), "inglés");
 });
@@ -165,7 +165,8 @@ test("ofrece traducir una página en inglés y la traduce en el equipo", async (
     assert.equal(ultimo().estado, "ofrecer");
     assert.equal(ultimo().idioma, "en");
     assert.equal(ultimo().local, true);
-    assert.equal(gestor.visible(), true);
+    assert.equal(ultimo().detectado, true, "aparece el ícono del traductor");
+    assert.equal(gestor.visible(), false, "ya no hay barra encima de la página");
     await gestor.traducir();
     assert.equal(ultimo().estado, "traducida");
     assert.equal(ultimo().hechos, 2);

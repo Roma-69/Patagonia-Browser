@@ -20,6 +20,7 @@ function registrarAtajos(contenido, acciones) {
             accion = { l: "direccion", t: "nueva", w: "cerrar", r: "recargar", f: "buscar" }[tecla];
         }
         if (modificador && !entrada.alt && entrada.shift && tecla === "t") accion = "reabrir";
+        if (modificador && !entrada.alt && entrada.shift && tecla === "n") accion = "nuevaIncognito";
         if (modificador && !entrada.alt && tecla === "tab") {
             accion = entrada.shift ? "anterior" : "siguiente";
         }

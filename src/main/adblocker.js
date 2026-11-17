@@ -2,6 +2,25 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { ElectronBlocker, Request } = require("@ghostery/adblocker-electron");
+const { LISTAS, ARCHIVO_MOTOR, ARCHIVOS_VIEJOS } = require("./listasProteccion");
+
+// Ghostery registra sus canales de IPC por cada sesión y Electron no deja
+// registrar dos veces el mismo canal. Con el modo incógnito hay dos sesiones
+// (normal e incógnito) con el mismo bloqueador: la segunda usa los canales ya
+// registrados por la primera (llaman al mismo bloqueador).
+let ipcMainElectron = null;
+try { ({ ipcMain: ipcMainElectron } = require("electron")); } catch { /* fuera de Electron */ }
+
+function sinRegistrarIPC(accion) {
+    if (!ipcMainElectron) return accion();
+    const { handle, removeHandler } = ipcMainElectron;
+    ipcMainElectron.handle = () => {};
+    ipcMainElectron.removeHandler = () => {};
+    try { return accion(); } finally {
+        ipcMainElectron.handle = handle;
+        ipcMainElectron.removeHandler = removeHandler;
+    }
+}
 
 const TIPOS_RASTREADOR = new Set(["script", "xhr", "ping", "webSocket", "cspReport"]);
 const INTERVALO_ACTUALIZACION = 7 * 24 * 60 * 60 * 1000;
@@ -115,11 +134,13 @@ function crearProteccion({
     rutaMotorIncluido,
     obtenerURLPrincipal,
     notificar,
+    revisarNavegacion,
     fetchImpl = globalThis.fetch,
     ahora = () => Date.now(),
     limiteDescargaMs = LIMITE_DESCARGA_MS
 }) {
-    const archivoMotor = path.join(directorioDatos, "patagonia-adblock.bin");
+    const archivoMotor = path.join(directorioDatos, ARCHIVO_MOTOR);
+    const sesiones = [sesion];
     const archivoSitios = path.join(directorioDatos, "proteccion-sitios.json");
     const contadores = new Map();
     let sitiosPermitidos = new Set();
@@ -170,7 +191,9 @@ function crearProteccion({
         const alRecibirCabeceras = nuevoBloqueador.onHeadersReceived.bind(nuevoBloqueador);
 
         nuevoBloqueador.onBeforeRequest = (detalles, responder) => {
-            if (permitidoParaDetalle(detalles)) responder({});
+            // Escudo contra estafas: la página peligrosa no llega a cargar.
+            if (detalles.resourceType === "mainFrame" && revisarNavegacion?.(detalles)) responder({ cancel: true });
+            else if (permitidoParaDetalle(detalles)) responder({});
             else antesDeSolicitud(detalles, responder);
         };
         nuevoBloqueador.onHeadersReceived = (detalles, responder) => {
@@ -181,7 +204,7 @@ function crearProteccion({
             try {
                 const contenido = evento.sender;
                 const marco = evento.senderFrame;
-                if (!contenido || contenido.isDestroyed() || contenido.session !== sesion ||
+                if (!contenido || contenido.isDestroyed() || !sesiones.includes(contenido.session) ||
                     !marco || marco.isDestroyed() || marco.detached || marco !== contenido.mainFrame) return;
 
                 // La URL del marco es autoritativa. Nunca aplicar filtros de un
@@ -234,9 +257,22 @@ function crearProteccion({
         };
         nuevoBloqueador.on("request-blocked", registrar);
         nuevoBloqueador.on("request-redirected", registrar);
-        nuevoBloqueador.enableBlockingInSession(sesion);
+        sesiones.forEach((cadaSesion, indice) => habilitarEn(nuevoBloqueador, cadaSesion, indice > 0));
         bloqueador = nuevoBloqueador;
         disponible = true;
+    }
+
+    function habilitarEn(motor, cadaSesion, extra) {
+        if (motor.isBlockingEnabled(cadaSesion)) return;
+        if (extra) sinRegistrarIPC(() => motor.enableBlockingInSession(cadaSesion));
+        else motor.enableBlockingInSession(cadaSesion);
+    }
+
+    // Otra sesión con la misma protección (por ejemplo, las pestañas de incógnito).
+    function agregarSesion(otra) {
+        if (cerrada || sesiones.includes(otra)) return;
+        sesiones.push(otra);
+        if (bloqueador) habilitarEn(bloqueador, otra, true);
     }
 
     async function descargarMotor() {
@@ -262,7 +298,7 @@ function crearProteccion({
             return { text: async () => texto };
         };
         try {
-            return await Promise.race([ElectronBlocker.fromPrebuiltAdsAndTracking(fetchValidado), cancelada]);
+            return await Promise.race([ElectronBlocker.fromLists(fetchValidado, LISTAS), cancelada]);
         } finally {
             clearTimeout(temporizador);
             controlador.signal.removeEventListener("abort", alAbortar);
@@ -272,6 +308,8 @@ function crearProteccion({
     }
 
     async function iniciarMotor() {
+        // Motores guardados con listas viejas (sin avisos de cookies): se borran.
+        await Promise.all(ARCHIVOS_VIEJOS.map(nombre => fs.rm(path.join(directorioDatos, nombre), { force: true }).catch(() => {})));
         sitiosPermitidos = await leerSitios(archivoSitios);
         let motor = await cargarMotor([archivoMotor, rutaMotorIncluido]);
         if (!motor && typeof fetchImpl === "function") {
@@ -379,12 +417,16 @@ function crearProteccion({
         descargaActiva?.abort(new Error("La protección está cerrada."));
         if (avisoPendiente) clearTimeout(avisoPendiente);
         avisoPendiente = null;
+        // Las sesiones extra primero (sin tocar el IPC); la principal al final saca los canales.
+        for (const cadaSesion of sesiones.slice(1)) {
+            if (bloqueador?.isBlockingEnabled(cadaSesion)) sinRegistrarIPC(() => bloqueador.disableBlockingInSession(cadaSesion));
+        }
         if (bloqueador?.isBlockingEnabled(sesion)) bloqueador.disableBlockingInSession(sesion);
         bloqueador = null;
         disponible = false;
     }
 
-    return { iniciar, estado, reiniciarPestana, olvidarPestana, alternarSitio, actualizarSiHaceFalta, esperar, cerrar };
+    return { iniciar, estado, reiniciarPestana, olvidarPestana, alternarSitio, actualizarSiHaceFalta, esperar, cerrar, agregarSesion };
 }
 
 module.exports = { crearProteccion, crearLoteScriptlets, dominioWeb, encontrarSitioPermitido, sitioEstaPermitido, clasificarBloqueo };

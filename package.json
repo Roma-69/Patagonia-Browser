@@ -1,7 +1,7 @@
 {
   "name": "patagonia-browser",
   "productName": "Patagonia Browser",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "Navegador de escritorio rápido, privado y sencillo.",
   "main": "bootstrap.js",
   "scripts": {
@@ -17,7 +17,7 @@
     "make:msix:test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-msix.ps1 -Test"
   },
   "keywords": [],
-  "author": "Roma.69",
+  "author": "Christian Ariel Williams (Patagonia Labs)",
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {

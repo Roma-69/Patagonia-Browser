@@ -18,7 +18,7 @@ module.exports = {
             name: "@electron-forge/maker-squirrel",
             config: {
                 name: "PatagoniaBrowser",
-                authors: "Patagonia Browser Project",
+                authors: "Patagonia Labs",
                 description: "Navegador de escritorio rápido, privado y sencillo.",
                 setupExe: "Patagonia-Browser-Setup.exe",
                 setupIcon: path.join(__dirname, "assets", "patagonia-oficial.ico")

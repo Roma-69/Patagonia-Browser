@@ -191,12 +191,17 @@ function registrarPermisos({ sesion, dialog, obtenerVentana, esPestanaPropia, es
     }
 
     sesion.setPermissionCheckHandler((contenido, permiso, origen, detalles) => {
+        if (permiso === "fullscreen") return Boolean(contenido && esPestanaPropia(contenido));
         if (permiso === "media") return comprobarMedia(contenido, origen, detalles);
         const contexto = contextoValido(contenido, permiso, detalles, origen);
         return contexto ? decisionGuardada(contexto) === true : false;
     });
 
     sesion.setPermissionRequestHandler((contenido, permiso, callback, detalles = {}) => {
+        // Pantalla completa de videos, como en Chrome: sin preguntar (la página solo la
+        // puede pedir cuando la persona toca el botón, y se sale con Esc). También para
+        // videos metidos en otra página (YouTube dentro de un diario).
+        if (permiso === "fullscreen") { responder(callback, Boolean(contenido && esPestanaPropia(contenido))); return; }
         if (!contenido || detalles?.isMainFrame !== true) { responder(callback, false); return; }
         const contexto = contextoValido(contenido, permiso, detalles);
         if (!contexto) { responder(callback, false); return; }

@@ -236,7 +236,7 @@ test("flooded requests are bounded and a bad callback cannot stop another respon
     const detalles = { isMainFrame: true, requestingUrl: pagina.contenido.getURL() };
     f.sesion.solicitar(pagina.contenido, "notifications", () => { throw new Error("renderer gone"); }, detalles);
     const solicitudes = Array.from({ length: 20 }, () => f.solicitar(pagina.contenido, "notifications", detalles));
-    const otras = ["geolocation", "fullscreen", "pointerLock", "keyboardLock", "midi", "midiSysex", "idle-detection", "window-management"]
+    const otras = ["geolocation", "pointerLock", "keyboardLock", "midi", "midiSysex", "idle-detection", "window-management"]
         .map(permiso => f.solicitar(pagina.contenido, permiso, detalles));
     assert.equal(f.preguntas.length, 1);
     f.preguntas[0].resolve({ response: 1 });
@@ -247,4 +247,12 @@ test("flooded requests are bounded and a bad callback cannot stop another respon
     pagina.navegar("https://example.com/otra");
     assert.ok((await Promise.all(otras)).every(valor => valor === false));
     assert.equal(pagina.contenido.listenerCount("did-start-navigation"), 0);
+});
+
+test("la pantalla completa de videos se da sin preguntar, también en videos metidos en otra página", async () => {
+    const f = fixture();
+    const pagina = f.pagina("https://www.youtube.com/watch?v=1");
+    assert.equal(await f.solicitar(pagina.contenido, "fullscreen", { isMainFrame: true, requestingUrl: pagina.contenido.getURL() }), true);
+    assert.equal(await f.solicitar(pagina.contenido, "fullscreen", { isMainFrame: false, requestingUrl: "https://www.youtube.com/embed/1" }), true);
+    assert.equal(f.preguntas.length, 0);
 });

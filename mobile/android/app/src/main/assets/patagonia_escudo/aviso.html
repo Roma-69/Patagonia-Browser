@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Página peligrosa</title>
+<style>
+  html, body { margin: 0; min-height: 100%; background: #8f1d1d; color: #fff;
+    font-family: system-ui, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 32px 22px 40px; }
+  .marca { font-size: 12px; letter-spacing: 2px; color: #ffd4d4; }
+  h1 { font-size: 26px; margin: 14px 0; }
+  #mensaje { font-size: 18px; line-height: 1.45; }
+  .direccion { overflow-wrap: anywhere; color: #ffe3e3; }
+  .consejo { color: #ffe3e3; line-height: 1.55; font-size: 15px; margin: 18px 0 26px; }
+  #volver { width: 100%; background: #fff; color: #8f1d1d; border: 0; border-radius: 12px; padding: 16px;
+    font: inherit; font-weight: 700; font-size: 17px; }
+  #entrar { display: block; margin: 26px auto 0; background: none; border: 0; color: #ffd4d4;
+    font: inherit; font-size: 14px; text-decoration: underline; padding: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <p class="marca">🛡️ PATAGONIA TE CUIDA</p>
+  <h1>Patagonia frenó esta página</h1>
+  <p id="mensaje"></p>
+  <p class="direccion">Dirección real: <strong id="sitio"></strong></p>
+  <p class="consejo">Así son las estafas que llegan por WhatsApp, mensaje o correo: una página igualita a la original
+    que te pide la clave, el código que te llega por SMS o los datos de la tarjeta. Las empresas y el Estado nunca te
+    piden eso por un link.</p>
+  <button id="volver" type="button">Volver a un lugar seguro</button>
+  <button id="entrar" type="button">Entrar igual (no recomendado)</button>
+</main>
+<script src="aviso.js"></script>
+</body>
+</html>

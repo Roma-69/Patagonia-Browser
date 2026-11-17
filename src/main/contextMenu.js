@@ -17,7 +17,7 @@ function resumir(texto, maximo = 30) {
     return limpio.length > maximo ? `${limpio.slice(0, maximo - 1)}…` : limpio;
 }
 
-function crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, zoom, imprimir, traducir, traducida, original, leer }) {
+function crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, abrirEnIncognito, zoom, imprimir, traducir, traducida, original, leer }) {
     const grupos = [];
     const flags = params.editFlags || {};
     const historial = contenido.navigationHistory;
@@ -25,6 +25,7 @@ function crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, zoom
     if (esWeb(params.linkURL)) {
         grupos.push([
             { label: "Abrir enlace en pestaña nueva", click: () => abrirEnPestana(params.linkURL) },
+            ...(abrirEnIncognito ? [{ label: "Abrir enlace en pestaña de incógnito", click: () => abrirEnIncognito(params.linkURL) }] : []),
             { label: "Copiar dirección del enlace", click: () => clipboard.writeText(params.linkURL) }
         ]);
     }
@@ -94,11 +95,11 @@ function crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, zoom
     return grupos.flatMap((grupo, indice) => (indice ? [{ type: "separator" }, ...grupo] : grupo));
 }
 
-function registrarMenuContextual({ contenido, Menu, clipboard, obtenerVentana, abrirEnPestana, zoom, imprimir, traducir, traducida, original, leer }) {
+function registrarMenuContextual({ contenido, Menu, clipboard, obtenerVentana, abrirEnPestana, abrirEnIncognito, zoom, imprimir, traducir, traducida, original, leer }) {
     contenido.on("context-menu", (_evento, params) => {
         const ventana = obtenerVentana();
         if (!ventana || ventana.isDestroyed() || contenido.isDestroyed()) return;
-        const plantilla = crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, zoom, imprimir, traducir, traducida, original, leer });
+        const plantilla = crearPlantillaMenu(params, { contenido, clipboard, abrirEnPestana, abrirEnIncognito, zoom, imprimir, traducir, traducida, original, leer });
         if (plantilla.length) Menu.buildFromTemplate(plantilla).popup({ window: ventana });
     });
 }

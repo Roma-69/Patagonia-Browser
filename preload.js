@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld("patagonia", {
     cerrarTraduccion: () => ipcRenderer.send("traduccion-cerrar"),
     traducirConGoogle: () => ipcRenderer.send("traduccion-google"),
     recibirTraduccion: callback => suscribir("estado-traduccion", callback),
+    menuTraduccion: posicion => ipcRenderer.send("traduccion-menu", posicion),
     obtenerConfiguracion: () => ipcRenderer.invoke("obtener-configuracion"),
     guardarConfiguracion: datos => ipcRenderer.invoke("guardar-configuracion", datos),
     recibirEnfoqueDireccion: callback => suscribir("enfocar-direccion", callback),
@@ -52,6 +53,8 @@ contextBridge.exposeInMainWorld("patagonia", {
     reiniciarParaActualizar: () => ipcRenderer.invoke("reiniciar-para-actualizar"),
 
     navegar: (url) => ipcRenderer.send("navegar", url),
+    escudoVolver: () => ipcRenderer.send("escudo-volver"),
+    escudoEntrar: () => ipcRenderer.send("escudo-entrar"),
 
     atras: () => ipcRenderer.send("atras"),
 
@@ -63,6 +66,7 @@ contextBridge.exposeInMainWorld("patagonia", {
     inicio: () => ipcRenderer.send("inicio"),
 
     nuevaPestana: () => ipcRenderer.send("nueva-pestana"),
+    nuevaPestanaIncognito: () => ipcRenderer.send("nueva-pestana-incognito"),
 
     activarPestana: (id) =>
         ipcRenderer.send("activar-pestana", id),

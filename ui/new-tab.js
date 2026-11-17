@@ -154,6 +154,16 @@
         renderizarAccesos();
     });
 
+    // Modo incógnito: aviso de qué hace y qué no.
+    try {
+        if (new URLSearchParams(window.location.search).get("incognito") === "1") {
+            document.getElementById("avisoIncognito").hidden = false;
+            document.body.classList.add("incognito");
+            document.title = "Nueva pestaña de incógnito";
+            document.getElementById("estadoDatos").textContent = "Incógnito: se borra todo al cerrar";
+        }
+    } catch { /* sin aviso */ }
+
     window.PatagoniaNewTab = { prepararDireccion, normalizarAcceso };
     renderizarAccesos();
 })();
