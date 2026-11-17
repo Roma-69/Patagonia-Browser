@@ -8,7 +8,7 @@ Los instaladores actuales de Windows siguen sin firma de un proveedor reconocido
 
 ## Responsable propuesto
 
-Roma.69, propietario del repositorio [Roma-69/Patagonia-Browser](https://github.com/Roma-69/Patagonia-Browser), será el autor, revisor y aprobador de las solicitudes de firma. Las contribuciones de terceros deberán ser revisadas por el mantenedor antes de incorporarse a una versión firmada.
+Christian Ariel Williams (Patagonia Labs; usuario Roma-69 en GitHub), propietario del repositorio [Roma-69/Patagonia-Browser](https://github.com/Roma-69/Patagonia-Browser), será el autor, revisor y aprobador de las solicitudes de firma. Las contribuciones de terceros deberán ser revisadas por el mantenedor antes de incorporarse a una versión firmada.
 
 Antes de habilitar firmas se deberá verificar la autenticación multifactor del responsable en GitHub y SignPath. Este documento no acredita que ese requisito ya esté configurado.
 

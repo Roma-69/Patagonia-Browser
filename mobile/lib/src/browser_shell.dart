@@ -2564,6 +2564,11 @@ class _BrowserShellState extends State<BrowserShell> {
                 'Acerca de Patagonia Browser',
                 style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 6),
+              const Text(
+                'Patagonia Labs · Hecho por Christian Ariel Williams',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 10),
               const Text(
                 'Patagonia Browser es software libre con licencia MIT.',

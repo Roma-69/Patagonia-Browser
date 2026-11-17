@@ -17,7 +17,7 @@
     "make:msix:test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-msix.ps1 -Test"
   },
   "keywords": [],
-  "author": "Roma.69",
+  "author": "Christian Ariel Williams (Patagonia Labs)",
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
