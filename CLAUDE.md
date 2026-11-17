@@ -12,5 +12,6 @@ Proyecto serio: la imagen de Patagonia es de compromiso y lealtad con quien lo u
 - Nada se publica sin probar en la PC y en el celular (lista de prueba en `PARIDAD.md`).
 - El dueño trabaja con PRs: rama → PR → él prueba el EXE/APK de prueba que arma GitHub Actions → merge.
   Explicale los pasos de GitHub uno por uno, sin dar nada por sabido.
-- Autoría y copyright: "Roma.69". No escribir el nombre real del dueño en ningún archivo.
+- Autoría y copyright: "Christian Ariel Williams (Patagonia Labs)". Marca: Patagonia Labs. El usuario de GitHub sigue siendo Roma-69 (no cambiar los links ni el actualizador).
+- Microsoft Store: `config/microsoft-store-identity.json` tiene que coincidir con Partner Center. No tocar `identityName` ni `publisher`; `publisherDisplayName` se cambia solo después de cambiarlo en Partner Center.
 - Pruebas: `npm test` (escritorio) y `flutter analyze` + `flutter test` en `mobile/` (las corre GitHub en cada PR).

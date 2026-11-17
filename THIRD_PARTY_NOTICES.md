@@ -1,7 +1,7 @@
 # Avisos de terceros / Third-Party Notices
 
 Patagonia Browser es software libre bajo licencia MIT.
-Copyright (c) 2026 Roma.69
+Copyright (c) 2026 Christian Ariel Williams (Patagonia Labs)
 
 Este proyecto incluye o usa componentes de terceros. Cada uno conserva
 su propia licencia y sus avisos de copyright, que se detallan abajo.
