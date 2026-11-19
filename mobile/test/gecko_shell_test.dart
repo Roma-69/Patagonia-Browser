@@ -22,6 +22,7 @@ class FakeGecko {
   String? appVersion;
   String installResult = 'instalando';
   bool isDefaultBrowser = false;
+  List<Map<String, Object?>> downloads = [];
 
   int get lastId => views.keys.last;
   List<String> methods(int id) => (calls[id] ?? []).map((c) => c.method).toList();
@@ -71,6 +72,9 @@ class FakeGecko {
         if (call.method == 'isDefaultBrowser') return isDefaultBrowser;
         if (call.method == 'makeDefaultBrowser') return true;
         if (call.method == 'share') return true;
+        if (call.method == 'downloads') return downloads;
+        if (call.method == 'openDownload') return 'ok';
+        if (call.method == 'openDownloadsFolder') return true;
         return null;
       },
     );
@@ -80,6 +84,16 @@ class FakeGecko {
         permissionRequests.add(call.arguments as List<Object?>);
         return true;
       },
+    );
+  }
+
+  /// El motor avisa algo a Dart (canal general, ej. la lista de descargas).
+  Future<void> emitEngine(WidgetTester tester, String method, Object? arguments) async {
+    const codec = StandardMethodCodec();
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+      'patagonia/gecko_engine',
+      codec.encodeMethodCall(MethodCall(method, arguments)),
+      (_) {},
     );
   }
 
@@ -440,9 +454,13 @@ void main() {
 
   testWidgets('avisa las descargas', (tester) async {
     final id = await open(tester, 'https://example.com');
-    await gecko.emit(tester, id, 'download', {'status': 'done', 'name': 'boleta.pdf'});
+    await gecko.emit(tester, id, 'download', {'status': 'done', 'name': 'boleta.pdf', 'id': 7});
     await tester.pump();
-    expect(find.text('Descarga lista: boleta.pdf (carpeta Descargas).'), findsOneWidget);
+    expect(find.text('Descarga lista: boleta.pdf'), findsOneWidget);
+    await tester.tap(find.text('Abrir'));
+    await tester.pump();
+    final call = gecko.engineCalls.lastWhere((c) => c.method == 'openDownload');
+    expect(call.arguments, 7);
   });
 
   test('con TalkBack la página usa vista nativa para que el lector la pueda recorrer', () {
@@ -461,6 +479,46 @@ void main() {
     await tester.tap(find.text(label));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('Menú → Descargas muestra el progreso, abre y cancela', (tester) async {
+    gecko.downloads = [
+      {'id': 2, 'nombre': 'manual.pdf', 'estado': 'descargando', 'recibidos': 512 * 1024, 'total': 1024 * 1024},
+      {'id': 1, 'nombre': 'foto.jpg', 'estado': 'completada', 'recibidos': 2048, 'total': 2048},
+    ];
+    await open(tester, 'https://example.com');
+    await openMenuItem(tester, 'Descargas (1 en curso)');
+    expect(find.text('manual.pdf'), findsOneWidget);
+    expect(find.textContaining('50 %'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.text('Lista · 2,0 KB'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Cancelar descarga'));
+    await tester.pump();
+    expect(gecko.engineCalls.lastWhere((c) => c.method == 'cancelDownload').arguments, 2);
+
+    await tester.tap(find.text('foto.jpg'));
+    await tester.pump();
+    expect(gecko.engineCalls.lastWhere((c) => c.method == 'openDownload').arguments, 1);
+
+    await tester.tap(find.byTooltip('Abrir la carpeta Descargas'));
+    await tester.pump();
+    expect(gecko.engineCalls.map((c) => c.method), contains('openDownloadsFolder'));
+
+    // El motor avisa que terminó: la lista se actualiza sola.
+    await gecko.emitEngine(tester, 'descargas', [
+      {'id': 2, 'nombre': 'manual.pdf', 'estado': 'completada', 'recibidos': 1024 * 1024, 'total': 1024 * 1024},
+      {'id': 1, 'nombre': 'foto.jpg', 'estado': 'completada', 'recibidos': 2048, 'total': 2048},
+    ]);
+    await tester.pump();
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.text('Lista · 1,0 MB'), findsOneWidget);
+  });
+
+  testWidgets('Descargas vacía explica dónde quedan los archivos', (tester) async {
+    await open(tester, 'https://example.com');
+    await openMenuItem(tester, 'Descargas');
+    expect(find.textContaining('Todavía no bajaste nada.'), findsOneWidget);
+  });
 
   testWidgets('ofrece traducir una página en inglés y muestra el original', (
     tester,
