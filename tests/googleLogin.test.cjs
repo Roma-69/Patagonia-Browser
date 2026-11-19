@@ -56,7 +56,7 @@ test("lo que pide la página de login también sale como Firefox (sin cortar Gma
     assert.equal(pedidoDelLogin({}), false);
 });
 
-test("el disfraz también alcanza a los iframes del mismo origen", () => {
+test("el disfraz también alcanza a los iframes del mismo origen", async () => {
     const { disfrazFirefox } = require("../src/main/googleLoginPreload");
     const nuevoNavigator = () => {
         function Navigator() {}
@@ -67,7 +67,8 @@ test("el disfraz también alcanza a los iframes del mismo origen", () => {
     const iframeVentana = { Navigator: nuevoNavigator(), NavigatorUAData: function () {}, chrome: {} };
     function HTMLIFrameElement() {}
     Object.defineProperty(HTMLIFrameElement.prototype, "contentWindow", { get: () => iframeVentana, configurable: true });
-    const ventana = { Navigator: nuevoNavigator(), NavigatorUAData: function () {}, chrome: {} };
+    const ventana = { Navigator: nuevoNavigator(), NavigatorUAData: function () {}, chrome: {},
+        PublicKeyCredential: { isConditionalMediationAvailable: () => Promise.resolve(true) } };
     global.window = ventana;
     global.HTMLIFrameElement = HTMLIFrameElement;
     try {
@@ -80,6 +81,8 @@ test("el disfraz también alcanza a los iframes del mismo origen", () => {
         const dentro = new HTMLIFrameElement().contentWindow;
         assert.match(new dentro.Navigator().userAgent, /Firefox\/157\.0$/);
         assert.equal("chrome" in dentro, false);
+        // Sin ventana de clave de paso apenas se abre el login.
+        await ventana.PublicKeyCredential.isConditionalMediationAvailable().then(v => assert.equal(v, false));
     } finally {
         delete global.window;
         delete global.HTMLIFrameElement;

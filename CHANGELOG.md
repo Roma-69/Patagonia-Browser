@@ -11,6 +11,7 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 ### ¿Por qué se actualiza?
 
 - 🔑 **Entrar a Google al primer intento.** A veces, al entrar a tu cuenta de Google (por ejemplo desde YouTube), Google mostraba "No puedes acceder: es posible que este navegador no sea seguro" y había que tocar "Volver a intentar". Pasaba porque una parte de la página de inicio de sesión todavía se presentaba como otro navegador y Google notaba la diferencia. Ahora toda la página habla igual y entrás de una. Gmail, YouTube y el resto de los sitios siguen funcionando como siempre.
+- 🪟 **Sin la ventana "Elige una clave de paso" de golpe.** Al abrir el login, Windows mostraba esa ventana encima de todo antes de que escribieras el mail. Ya no aparece sola: si usás clave de paso, Google te la pide después del mail, como corresponde.
 - 📱 **Android:** no cambia nada. En el celular Patagonia usa el motor de Firefox y Google nunca lo bloqueó.
 
 ---

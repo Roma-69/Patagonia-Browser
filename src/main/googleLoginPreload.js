@@ -40,6 +40,20 @@ function disfrazFirefox(version) {
         } catch { /* ventana de otro origen: no se puede tocar */ }
     };
     disfrazar(window);
+    // Google pide la clave de paso apenas abre el login ("autocompletar" de claves de
+    // paso). Chrome lo muestra como una sugerencia chiquita bajo el campo del mail, pero
+    // Electron no la tiene y Windows tira la ventana "Elige una clave de paso" encima de
+    // todo. Decimos que esa sugerencia no está: la clave de paso se sigue pudiendo usar
+    // cuando Google la pide después del mail.
+    try {
+        if (window.PublicKeyCredential) {
+            Object.defineProperty(window.PublicKeyCredential, "isConditionalMediationAvailable", {
+                configurable: true,
+                writable: true,
+                value: () => Promise.resolve(false)
+            });
+        }
+    } catch { /* sin cambios */ }
     // Truco conocido para descubrir disfraces: crear un iframe vacío y leer ahí el
     // navigator "limpio". Disfrazamos también cada iframe del mismo origen.
     try {
