@@ -1,8 +1,8 @@
 // Corre en cada página antes que sus scripts. En el login de Google, Patagonia
 // se presenta como Firefox: las cabeceras se cambian en googleLogin.js y acá se
 // cambia lo que lee la página (navigator.userAgent y compañía). Además se borran
-// dos huellas de Chrome que Firefox no tiene: navigator.userAgentData y
-// window.chrome. Si Google nota la contradicción responde "el navegador no es
+// huellas de Chrome que Firefox no tiene (navigator.userAgentData, NavigatorUAData,
+// window.chrome), también en los iframes del mismo origen. Si Google nota la contradicción responde "el navegador no es
 // seguro". Fuera de las páginas de login no se toca nada.
 //
 // Ojo: NO usar webContents.setUserAgent para esto. Si se llama mientras una
@@ -20,17 +20,41 @@ function versionFirefox(ahora = Date.now()) {
 
 function disfrazFirefox(version) {
     const ua = `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${version}.0) Gecko/20100101 Firefox/${version}.0`;
-    const fijar = (nombre, valor) => {
+    const disfrazar = ventana => {
         try {
-            Object.defineProperty(Navigator.prototype, nombre, { get: () => valor, configurable: true });
-        } catch { /* sin cambios */ }
+            if (!ventana || ventana.__patagoniaFirefox) return;
+            Object.defineProperty(ventana, "__patagoniaFirefox", { value: true });
+            const proto = ventana.Navigator && ventana.Navigator.prototype;
+            const fijar = (nombre, valor) => {
+                try {
+                    Object.defineProperty(proto, nombre, { get: () => valor, configurable: true });
+                } catch { /* sin cambios */ }
+            };
+            fijar("userAgent", ua);
+            fijar("appVersion", "5.0 (Windows)");
+            fijar("vendor", "");
+            fijar("productSub", "20100101");
+            try { delete proto.userAgentData; } catch { /* sin cambios */ }
+            try { delete ventana.NavigatorUAData; } catch { /* sin cambios */ }
+            try { delete ventana.chrome; } catch { /* sin cambios */ }
+        } catch { /* ventana de otro origen: no se puede tocar */ }
     };
-    fijar("userAgent", ua);
-    fijar("appVersion", "5.0 (Windows)");
-    fijar("vendor", "");
-    fijar("productSub", "20100101");
-    try { delete Navigator.prototype.userAgentData; } catch { /* sin cambios */ }
-    try { delete window.chrome; } catch { /* sin cambios */ }
+    disfrazar(window);
+    // Truco conocido para descubrir disfraces: crear un iframe vacío y leer ahí el
+    // navigator "limpio". Disfrazamos también cada iframe del mismo origen.
+    try {
+        const marco = HTMLIFrameElement.prototype;
+        const original = Object.getOwnPropertyDescriptor(marco, "contentWindow");
+        Object.defineProperty(marco, "contentWindow", {
+            configurable: true,
+            enumerable: original.enumerable,
+            get() {
+                const ventana = original.get.call(this);
+                disfrazar(ventana);
+                return ventana;
+            }
+        });
+    } catch { /* sin cambios */ }
 }
 
 if (typeof location !== "undefined" && location.protocol === "https:" && DOMINIOS_LOGIN.includes(location.hostname)) {
