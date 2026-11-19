@@ -243,6 +243,8 @@ void main() {
     final id = await open(tester, 'https://example.com');
     await tester.tap(find.byTooltip('Menú'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Sitio de escritorio'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sitio de escritorio'));
     await tester.pumpAndSettle();
     final call = gecko.calls[id]!.lastWhere((c) => c.method == 'setDesktop');
@@ -457,6 +459,7 @@ void main() {
     await gecko.emit(tester, id, 'download', {'status': 'done', 'name': 'boleta.pdf', 'id': 7});
     await tester.pump();
     expect(find.text('Descarga lista: boleta.pdf'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 500)); // termina de aparecer el cartel
     await tester.tap(find.text('Abrir'));
     await tester.pump();
     final call = gecko.engineCalls.lastWhere((c) => c.method == 'openDownload');
