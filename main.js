@@ -57,6 +57,7 @@ const { registrarAtajos } = require("./src/main/shortcuts");
 const { registrarConfiguracion } = require("./src/main/settings");
 const { registrarInstanciaUnica, registrarCierre, cerrarContenido } = require("./src/main/lifecycle");
 const { registrarAperturas, PREFERENCIAS_WEB } = require("./src/main/newWindows");
+const { crearEnlacesExternos } = require("./src/main/enlacesExternos");
 const { crearBusqueda } = require("./src/main/find");
 const { crearMotor: crearMotorTraductor, paresDisponibles } = require("./src/main/translator/motor");
 const { crearPreferencias: crearPreferenciasTraductor } = require("./src/main/translator/preferencias");
@@ -183,6 +184,13 @@ const gestorTraduccion = crearGestorTraduccion({
 function paginaInicio() {
     return gestorConfiguracion?.estado().inicio || PAGINA_INICIO;
 }
+
+// Enlaces que abren una aplicación del equipo (claude://, zoommtg://, mailto:…).
+const enlacesExternos = crearEnlacesExternos({
+    shell,
+    dialog,
+    obtenerVentana: () => ventanaPrincipal
+});
 
 function esNuevaPestanaPatagonia(url) {
     // La pestaña nueva lleva el buscador elegido en la dirección (?buscador=brave).
@@ -672,6 +680,7 @@ function crearPestana(
             activa: gestorProteccion?.estado(idContenido, url).permitida !== true
         });
     });
+    enlacesExternos.observar(vista.webContents);
     registrarAperturas({
         contenido: vista.webContents,
         // Lo que se abre desde una pestaña de incógnito también es de incógnito.
@@ -679,7 +688,8 @@ function crearPestana(
             ? { ...opciones, webPreferences: { ...opciones.webPreferences, session: obtenerSesionIncognito() } }
             : opciones),
         agregarPestana: (destinoNuevo, opciones) => crearPestana(destinoNuevo, { ...opciones, incognito }),
-        puedeAbrir: () => Boolean(ventanaPrincipal && !ventanaPrincipal.isDestroyed() && !cerrandoVentana)
+        puedeAbrir: () => Boolean(ventanaPrincipal && !ventanaPrincipal.isDestroyed() && !cerrandoVentana),
+        abrirExterno: destino => enlacesExternos.desdeVentanaNueva(vista.webContents, destino)
     });
     vista.webContents.once("destroyed", () => {
         gestorProteccion?.olvidarPestana(idContenido);
@@ -1134,6 +1144,7 @@ function abrirVentanaApp(url, { soloMismoSitio = true, limites } = {}) {
         icono: RUTA_ICONO,
         preferencias: PREFERENCIAS_WEB,
         abrirEnNavegador,
+        abrirExterno: (contenido, destino) => enlacesExternos.desdeVentanaNueva(contenido, destino),
         soloMismoSitio,
         limites
     });

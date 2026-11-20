@@ -14,6 +14,7 @@ import 'navigation_input.dart';
 import 'favoritos_archivo.dart';
 import 'local_assistant.dart';
 import 'privacy_protection.dart';
+import 'protocolos_externos.dart';
 import 'reader_view.dart';
 import 'translation.dart';
 import 'update_check.dart';
@@ -73,6 +74,9 @@ class _BrowserShellState extends State<BrowserShell> {
   String _youtubeDocumentStartSource = '';
 
   // Configuración (igual que en la PC): modo chicos, letra grande, traductor y aviso de versión.
+  /// Sitios que ya dijeron "Permitir siempre" para abrir otra app, hasta cerrar Patagonia.
+  final Set<String> _allowedExternal = {};
+  bool _askingExternal = false;
   bool _kidsMode = false;
   bool _largeText = false;
   SearchEngine _searchEngine = SearchEngine.fallback;
@@ -1701,6 +1705,79 @@ class _BrowserShellState extends State<BrowserShell> {
     );
   }
 
+  /// Un enlace que abre otra app del celular (WhatsApp, Spotify, "Abrir Claude"…).
+  /// La página pide, el usuario decide: igual que en la PC.
+  Future<void> _openExternalLink(_BrowserTab tab, String url) async {
+    final link = ProtocolosExternos.clasificar(url);
+    if (link.tipo != TipoEnlace.externo) return;
+    final site = tab.url?.host ?? '';
+    final key = '$site|${link.esquema}';
+    final app = ProtocolosExternos.nombreDe(link.esquema);
+    if (!_allowedExternal.contains(key)) {
+      // Un solo aviso por vez: si no, una página puede llenar la pantalla.
+      if (_askingExternal) return;
+      _askingExternal = true;
+      var always = false;
+      bool? allowed;
+      try {
+        allowed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => StatefulBuilder(
+            builder: (builderContext, setDialogState) => AlertDialog(
+              icon: const Icon(Icons.open_in_new, color: _blue),
+              title: const Text('Abrir otra aplicación'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    site.isEmpty
+                        ? 'Esta página quiere abrir $app.'
+                        : '$site quiere abrir $app.',
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Enlace: ${link.resumen}',
+                    style: Theme.of(builderContext).textTheme.bodySmall,
+                  ),
+                  if (site.isNotEmpty)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: always,
+                      onChanged: (value) =>
+                          setDialogState(() => always = value ?? false),
+                      title: Text('Permitir siempre a $site'),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Abrir'),
+                ),
+              ],
+            ),
+          ),
+        );
+      } finally {
+        _askingExternal = false;
+      }
+      if (allowed != true || !mounted) return;
+      if (always && site.isNotEmpty) _allowedExternal.add(key);
+    }
+    final gecko = tab.gecko;
+    if (gecko == null) return;
+    final opened = await gecko.openExternal(url);
+    if (!opened && mounted) {
+      _showMessage('No encontramos una aplicación para abrir $app.');
+    }
+  }
+
   Future<void> _shareCurrent() async {
     final url = _current.url;
     if (!NavigationInput.isWebUri(url)) {
@@ -2348,6 +2425,9 @@ class _BrowserShellState extends State<BrowserShell> {
         if (!alive()) return;
         setState(() => tab.translating = false);
         _showMessage('No se pudo traducir la página. Revisá la conexión e intentá otra vez.');
+      },
+      onExternalLink: (url) {
+        if (alive()) _openExternalLink(tab, url);
       },
       onDownload: (status, name, id) {
         if (!alive()) return;
