@@ -29,6 +29,24 @@ function esLoginGoogle(url) {
     }
 }
 
+// La página de login pide cosas a otros servidores de Google (gstatic, play.google.com,
+// apis.google.com, recaptcha...). Si esos pedidos salen como Chrome mientras la página
+// dice ser Firefox, Google ve la contradicción y a veces corta con "No puedes acceder"
+// (pasaba en el primer intento y andaba al reintentar). Por eso todo lo que pide la
+// página de login también sale como Firefox.
+// Ojo: las navegaciones de pestaña se deciden solo por su propia dirección. Si no, al
+// terminar el login Gmail recibiría cabeceras de Firefox y no abriría.
+function pedidoDelLogin(detalles = {}) {
+    if (esLoginGoogle(detalles.url)) return true;
+    if (detalles.resourceType === "mainFrame") return false;
+    if (esLoginGoogle(detalles.referrer)) return true;
+    try {
+        const marco = detalles.frame;
+        if (marco && (esLoginGoogle(marco.url) || esLoginGoogle(marco.top?.url))) return true;
+    } catch { /* el marco ya no existe */ }
+    return false;
+}
+
 // Cabeceras como las mandaría Firefox: otro user agent y sin "client hints"
 // (Sec-CH-UA*), que solo existen en Chrome y delatan al motor.
 function cabecerasFirefox(cabeceras, ahora) {
@@ -55,7 +73,7 @@ function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
     }
 
     sesion.webRequest.onBeforeSendHeaders((detalles, responder) => {
-        let cabeceras = esLoginGoogle(detalles.url)
+        let cabeceras = pedidoDelLogin(detalles)
             ? cabecerasFirefox(detalles.requestHeaders)
             : detalles.requestHeaders;
         for (const ajustar of extras) cabeceras = ajustar(detalles.url, cabeceras);
@@ -64,4 +82,4 @@ function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
     // Lo que lee la página (navigator.userAgent, etc.) lo cambia googleLoginPreload.js.
 }
 
-module.exports = { esLoginGoogle, userAgentFirefox, versionFirefox, cabecerasFirefox, instalarLoginGoogle };
+module.exports = { esLoginGoogle, pedidoDelLogin, userAgentFirefox, versionFirefox, cabecerasFirefox, instalarLoginGoogle };

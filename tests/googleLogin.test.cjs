@@ -40,3 +40,51 @@ test("el login no cambia el user agent de la pestaña (Chromium recargaría y co
     const fuente = require("node:fs").readFileSync(require.resolve("../src/main/googleLogin"), "utf8");
     assert.doesNotMatch(fuente, /setUserAgent\(/);
 });
+
+test("lo que pide la página de login también sale como Firefox (sin cortar Gmail)", () => {
+    const { pedidoDelLogin } = require("../src/main/googleLogin");
+    const login = "https://accounts.google.com/v3/signin/identifier?continue=x";
+    // Recursos de otros servidores de Google pedidos desde el login.
+    assert.equal(pedidoDelLogin({ url: "https://ssl.gstatic.com/accounts/a.js", resourceType: "script", referrer: "https://accounts.google.com/" }), true);
+    assert.equal(pedidoDelLogin({ url: "https://play.google.com/log", resourceType: "xhr", referrer: "", frame: { url: login, top: { url: login } } }), true);
+    assert.equal(pedidoDelLogin({ url: "https://www.google.com/recaptcha/api.js", resourceType: "subFrame", referrer: login }), true);
+    // Al terminar el login, la pestaña va a Gmail o YouTube como Chrome normal.
+    assert.equal(pedidoDelLogin({ url: "https://mail.google.com/mail/u/0/", resourceType: "mainFrame", referrer: login }), false);
+    // Fuera del login no se toca nada.
+    assert.equal(pedidoDelLogin({ url: "https://www.gstatic.com/x.js", resourceType: "script", referrer: "https://www.youtube.com/" }), false);
+    assert.equal(pedidoDelLogin({ url: "https://www.gstatic.com/x.js", resourceType: "script", frame: { get url() { throw new Error("muerto"); } } }), false);
+    assert.equal(pedidoDelLogin({}), false);
+});
+
+test("el disfraz también alcanza a los iframes del mismo origen", async () => {
+    const { disfrazFirefox } = require("../src/main/googleLoginPreload");
+    const nuevoNavigator = () => {
+        function Navigator() {}
+        Object.defineProperty(Navigator.prototype, "userAgent", { get: () => "Chrome/156", configurable: true });
+        Navigator.prototype.userAgentData = { brands: [] };
+        return Navigator;
+    };
+    const iframeVentana = { Navigator: nuevoNavigator(), NavigatorUAData: function () {}, chrome: {} };
+    function HTMLIFrameElement() {}
+    Object.defineProperty(HTMLIFrameElement.prototype, "contentWindow", { get: () => iframeVentana, configurable: true });
+    const ventana = { Navigator: nuevoNavigator(), NavigatorUAData: function () {}, chrome: {},
+        PublicKeyCredential: { isConditionalMediationAvailable: () => Promise.resolve(true) } };
+    global.window = ventana;
+    global.HTMLIFrameElement = HTMLIFrameElement;
+    try {
+        disfrazFirefox(157);
+        const nav = new ventana.Navigator();
+        assert.match(nav.userAgent, /Firefox\/157\.0$/);
+        assert.equal("userAgentData" in nav, false);
+        assert.equal("NavigatorUAData" in ventana, false);
+        assert.equal("chrome" in ventana, false);
+        const dentro = new HTMLIFrameElement().contentWindow;
+        assert.match(new dentro.Navigator().userAgent, /Firefox\/157\.0$/);
+        assert.equal("chrome" in dentro, false);
+        // Sin ventana de clave de paso apenas se abre el login.
+        await ventana.PublicKeyCredential.isConditionalMediationAvailable().then(v => assert.equal(v, false));
+    } finally {
+        delete global.window;
+        delete global.HTMLIFrameElement;
+    }
+});

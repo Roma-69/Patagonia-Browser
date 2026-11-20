@@ -19,6 +19,7 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Bundle
 import com.patagoniabrowser.patagonia_browser.gecko.AndroidPermissionRequester
+import com.patagoniabrowser.patagonia_browser.gecko.Descargas
 import com.patagoniabrowser.patagonia_browser.gecko.GeckoEngine
 import com.patagoniabrowser.patagonia_browser.gecko.GeckoPrompts
 import com.patagoniabrowser.patagonia_browser.gecko.GeckoViewFactory
@@ -87,6 +88,25 @@ class MainActivity : FlutterActivity(), AndroidPermissionRequester {
                     saveTextFile(args?.get("name") as? String, args?.get("text") as? String, result)
                 }
                 "openTextFile" -> openTextFile(result)
+                // Menú → Descargas (ver gecko/Descargas.kt).
+                "downloads" -> Thread {
+                    val lista = Descargas.lista(this)
+                    runOnUiThread { result.success(lista) }
+                }.start()
+                "openDownload" -> result.success(Descargas.abrir(this, (call.arguments as? Number)?.toInt() ?: -1))
+                "openDownloadsFolder" -> result.success(Descargas.abrirCarpeta(this))
+                "cancelDownload" -> {
+                    (call.arguments as? Number)?.toInt()?.let { Descargas.cancelar(it) }
+                    result.success(null)
+                }
+                "clearDownloads" -> {
+                    Descargas.limpiar(this)
+                    result.success(null)
+                }
+                "forgetPrivateDownloads" -> {
+                    Descargas.olvidarPrivadas(this)
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }

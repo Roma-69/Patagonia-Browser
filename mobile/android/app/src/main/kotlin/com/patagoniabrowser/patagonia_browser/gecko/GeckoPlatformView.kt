@@ -244,8 +244,8 @@ class GeckoPlatformView(
             override fun onCrash(session: GeckoSession) = send("crash", null)
             override fun onKill(session: GeckoSession) = send("crash", null)
             override fun onExternalResponse(session: GeckoSession, response: WebResponse) {
-                GeckoDownloads.save(appContext, response, pagina) { status, name ->
-                    main.post { send("download", mapOf("status" to status, "name" to name)) }
+                GeckoDownloads.save(appContext, response, pagina, privado) { status, name, id ->
+                    main.post { send("download", mapOf("status" to status, "name" to name, "id" to id)) }
                 }
             }
         }
@@ -422,8 +422,8 @@ class GeckoPlatformView(
         }
         GeckoWebExecutor(GeckoEngine.runtime(appContext)).fetch(WebRequest(url)).accept({ response ->
             if (response == null) return@accept
-            GeckoDownloads.save(appContext, response, pagina) { status, name ->
-                main.post { send("download", mapOf("status" to status, "name" to name)) }
+            GeckoDownloads.save(appContext, response, pagina, privado) { status, name, id ->
+                main.post { send("download", mapOf("status" to status, "name" to name, "id" to id)) }
             }
         }, {
             main.post {

@@ -2,4 +2,6 @@
 <!-- Carpeta donde se baja la versión nueva de Patagonia antes de instalarla. -->
 <paths>
     <cache-path name="actualizacion" path="actualizacion/" />
+    <!-- Android 8 y 9: descargas guardadas en la carpeta propia de Patagonia, para poder abrirlas. -->
+    <external-files-path name="descargas" path="Download/" />
 </paths>

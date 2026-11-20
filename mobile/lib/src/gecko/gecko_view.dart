@@ -4,6 +4,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../descargas.dart';
+
 /// Lo que avisa una pestaña Gecko (ver GeckoPlatformView.kt). Todo es opcional.
 class GeckoEvents {
   const GeckoEvents({
@@ -46,8 +48,9 @@ class GeckoEvents {
   /// La página pide `kinds` ('camera', 'microphone', 'location') para `origin`.
   final Future<bool> Function(String origin, List<String> kinds)? onPermission;
 
-  /// status: 'start' | 'done' | 'error'.
-  final void Function(String status, String name)? onDownload;
+  /// status: 'start' | 'done' | 'error' | 'cancel'. [id] sirve para abrir el archivo
+  /// (GeckoEngineInfo.openDownload); 0 si la descarga ni llegó a empezar.
+  final void Function(String status, String name, int id)? onDownload;
 
   /// Mantener apretado un enlace o una imagen.
   final ValueChanged<GeckoContextMenu>? onContextMenu;
@@ -195,7 +198,12 @@ class GeckoController {
             false;
       case 'download':
         final map = value is Map ? value : const {};
-        events.onDownload?.call(_text(map['status']), _text(map['name']));
+        final id = map['id'];
+        events.onDownload?.call(
+          _text(map['status']),
+          _text(map['name']),
+          id is int ? id : 0,
+        );
       case 'contextMenu':
         if (value is Map) {
           events.onContextMenu?.call(GeckoContextMenu.fromMap(value));
@@ -299,12 +307,15 @@ class GeckoEngineInfo {
     required ValueChanged<int> onPanel,
     required Future<bool> Function(int id, String url) onExtensionTab,
     ValueChanged<String>? onOpenUrl,
+    ValueChanged<List<Descarga>>? onDownloads,
   }) {
     channel.setMethodCallHandler((call) async {
       final value = call.arguments;
       switch (call.method) {
         case 'openUrl':
           if (value is String) onOpenUrl?.call(value);
+        case 'descargas':
+          onDownloads?.call(Descarga.desdeLista(value));
         case 'uboPanel':
           if (value is int) onPanel(value);
         case 'extensionTab':
@@ -388,6 +399,27 @@ class GeckoEngineInfo {
   /// Pide a Android que Patagonia sea el navegador predeterminado. false si no se pudo.
   static Future<bool> makeDefaultBrowser() async =>
       await _engine<bool>('makeDefaultBrowser') ?? false;
+
+  /// Menú → Descargas: lo bajado, lo que se está bajando y lo que falló (lo más nuevo primero).
+  static Future<List<Descarga>> downloads() async =>
+      Descarga.desdeLista(await _engine<List<Object?>>('downloads'));
+
+  /// Abre el archivo bajado. 'ok', 'sinapp' (no hay app para ese tipo) o 'noexiste'.
+  static Future<String> openDownload(int id) async =>
+      await _engine<String>('openDownload', id) ?? 'noexiste';
+
+  /// Abre la carpeta Descargas del teléfono. false si no se pudo.
+  static Future<bool> openDownloadsFolder() async =>
+      await _engine<bool>('openDownloadsFolder') ?? false;
+
+  static Future<void> cancelDownload(int id) => _engine<void>('cancelDownload', id);
+
+  /// Saca de la lista las terminadas (los archivos quedan en Descargas).
+  static Future<void> clearDownloads() => _engine<void>('clearDownloads');
+
+  /// Se cerró la última pestaña de incógnito: lo bajado ahí sale de la lista.
+  static Future<void> forgetPrivateDownloads() =>
+      _engine<void>('forgetPrivateDownloads');
 
   /// Versión instalada de Patagonia (ej. '1.2.0'), o null si no se sabe.
   static Future<String?> appVersion() => _engine<String>('appVersion');
