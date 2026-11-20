@@ -6,13 +6,19 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
-## [Próxima versión] - Sin publicar (solo PC)
+## [Próxima versión] - Sin publicar (PC y Android)
 
 ### ¿Por qué se actualiza?
 
 - 🔑 **Entrar a Google al primer intento.** A veces, al entrar a tu cuenta de Google (por ejemplo desde YouTube), Google mostraba "No puedes acceder: es posible que este navegador no sea seguro" y había que tocar "Volver a intentar". Pasaba porque una parte de la página de inicio de sesión todavía se presentaba como otro navegador y Google notaba la diferencia. Ahora toda la página habla igual y entrás de una. Gmail, YouTube y el resto de los sitios siguen funcionando como siempre.
 - 🪟 **Sin la ventana "Elige una clave de paso" de golpe.** Al abrir el login, Windows mostraba esa ventana encima de todo antes de que escribieras el mail. Ya no aparece sola: si usás clave de paso, Google te la pide después del mail, como corresponde.
-- 📱 **Android:** no cambia nada. En el celular Patagonia usa el motor de Firefox y Google nunca lo bloqueó.
+- 📱 **Android, login de Google:** no cambia nada. En el celular Patagonia usa el motor de Firefox y Google nunca lo bloqueó.
+- 📥 **Celular — Descargas a la vista.** Hasta ahora, al bajar algo en el celu salía un cartelito que se iba enseguida y después no había forma de saber si se estaba bajando, cuánto faltaba ni dónde quedó. Ahora:
+  - **Menú → Descargas**: la lista de lo que bajaste, con la barra de cuánto va (por ejemplo "Descargando… 45 % · 3,2 MB de 7,1 MB"). Tocás un archivo y se abre; con la ✕ cancelás uno que se está bajando; con el ícono de carpeta abrís la carpeta Descargas del teléfono.
+  - **Notificación arriba** con el porcentaje mientras baja, como en Chrome. Cuando termina dice "Descarga lista. Tocá para abrir". La primera vez Android te pregunta si Patagonia puede mostrar notificaciones: decile que sí.
+  - **Cartel con "Abrir"** al terminar, para abrir el PDF, la foto o lo que sea al toque.
+  - "Limpiar lista" saca los nombres de la lista pero **no borra los archivos**: siguen en Descargas. Lo bajado en incógnito sale de la lista al cerrar la última pestaña de incógnito.
+  - En la PC esto ya estaba (el panel de descargas). Ahora el celu hace lo mismo.
 
 ---
 

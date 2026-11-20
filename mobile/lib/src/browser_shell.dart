@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'descargas.dart';
 import 'gecko/gecko_view.dart';
 import 'navigation_input.dart';
 import 'favoritos_archivo.dart';
@@ -58,6 +59,9 @@ class _BrowserShellState extends State<BrowserShell> {
   final List<_BrowserTab> _tabs = [];
   final List<_SavedPage> _favorites = [];
   final List<_SavedPage> _history = [];
+
+  /// Menú → Descargas (solo Android): la lista la lleva el motor y avisa cada cambio.
+  final ValueNotifier<List<Descarga>> _downloads = ValueNotifier(const []);
   final Set<String> _unprotectedHosts = {};
   int _currentIndex = 0;
   int _nextTabId = 1;
@@ -111,7 +115,11 @@ class _BrowserShellState extends State<BrowserShell> {
         onPanel: _showUBlockPanel,
         onExtensionTab: _openExtensionTab,
         onOpenUrl: _openFromShortcut,
+        onDownloads: (lista) => _downloads.value = lista,
       );
+      GeckoEngineInfo.downloads().then((lista) {
+        if (mounted) _downloads.value = lista;
+      });
       // Si Patagonia se abrió desde un acceso directo de la pantalla de inicio.
       GeckoEngineInfo.takeLaunchUrl().then((url) {
         if (url != null && mounted) _navigate(url);
@@ -130,6 +138,7 @@ class _BrowserShellState extends State<BrowserShell> {
         tab.disposeGecko();
       }
     }
+    _downloads.dispose();
     _address.dispose();
     _addressFocus.dispose();
     super.dispose();
@@ -391,6 +400,7 @@ class _BrowserShellState extends State<BrowserShell> {
 
   void _closeTabAt(int index) {
     if (index < 0 || index >= _tabs.length) return;
+    final closingIncognito = _tabs[index].incognito;
     setState(() {
       _tabs[index].disposeGecko();
       _tabs[index].generation++;
@@ -407,6 +417,10 @@ class _BrowserShellState extends State<BrowserShell> {
       _syncAddress();
     });
     _syncActiveTab();
+    // Se cerró la última de incógnito: lo que se bajó ahí no queda en la lista.
+    if (_gecko && closingIncognito && !_tabs.any((t) => t.incognito)) {
+      GeckoEngineInfo.forgetPrivateDownloads();
+    }
   }
 
   Future<void> _goBack() async {
@@ -1338,6 +1352,23 @@ class _BrowserShellState extends State<BrowserShell> {
                   _showSavedPages('Historial', _history);
                 },
               ),
+              if (_gecko)
+                ValueListenableBuilder<List<Descarga>>(
+                  valueListenable: _downloads,
+                  builder: (context, lista, _) {
+                    final bajando = lista.where((d) => d.bajando).length;
+                    return _MenuTile(
+                      icon: Icons.download_outlined,
+                      label: bajando == 0
+                          ? 'Descargas'
+                          : 'Descargas ($bajando en curso)',
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        _showDownloads();
+                      },
+                    );
+                  },
+                ),
               SwitchListTile(
                 secondary: const Icon(Icons.desktop_windows_outlined),
                 title: const Text('Sitio de escritorio'),
@@ -2318,13 +2349,18 @@ class _BrowserShellState extends State<BrowserShell> {
         setState(() => tab.translating = false);
         _showMessage('No se pudo traducir la página. Revisá la conexión e intentá otra vez.');
       },
-      onDownload: (status, name) {
+      onDownload: (status, name, id) {
         if (!alive()) return;
-        _showMessage(switch (status) {
-          'start' => 'Descargando $name…',
-          'done' => 'Descarga lista: $name (carpeta Descargas).',
-          _ => 'No se pudo descargar $name.',
-        });
+        switch (status) {
+          case 'start':
+            _showMessage('Descargando $name… Lo ves en Menú → Descargas.');
+          case 'done':
+            _showDownloadReady(name, id);
+          case 'cancel':
+            _showMessage('Descarga cancelada: $name.');
+          default:
+            _showMessage('No se pudo descargar $name.');
+        }
       },
     );
   }
@@ -2684,6 +2720,155 @@ class _BrowserShellState extends State<BrowserShell> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Cartel al terminar una descarga, con "Abrir" para no tener que buscar el archivo.
+  void _showDownloadReady(String name, int id) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Descarga lista: $name'),
+          duration: const Duration(seconds: 6),
+          action: id > 0
+              ? SnackBarAction(label: 'Abrir', onPressed: () => _openDownload(id))
+              : null,
+        ),
+      );
+  }
+
+  Future<void> _openDownload(int id) async {
+    final result = await GeckoEngineInfo.openDownload(id);
+    if (result == 'sinapp') {
+      _showMessage('No hay una app en el celular para abrir este tipo de archivo.');
+    } else if (result == 'noexiste') {
+      _showMessage('El archivo ya no está en la carpeta Descargas.');
+      _downloads.value = await GeckoEngineInfo.downloads();
+    }
+  }
+
+  Future<void> _openDownloadsFolder() async {
+    if (!await GeckoEngineInfo.openDownloadsFolder()) {
+      _showMessage('Abrí la app Archivos del celular y entrá a la carpeta Descargas.');
+    }
+  }
+
+  /// Menú → Descargas: lo mismo que el panel de descargas de la PC.
+  void _showDownloads() {
+    // Al abrir se vuelve a pedir la lista: si borraste un archivo, ya no aparece.
+    GeckoEngineInfo.downloads().then((lista) {
+      if (mounted) _downloads.value = lista;
+    });
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _navy,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(sheetContext).height * .7,
+          child: ValueListenableBuilder<List<Descarga>>(
+            valueListenable: _downloads,
+            builder: (context, lista, _) => Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 12, 8),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Descargas',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Abrir la carpeta Descargas',
+                        icon: const Icon(Icons.folder_open_outlined),
+                        onPressed: _openDownloadsFolder,
+                      ),
+                      if (lista.any((d) => !d.bajando))
+                        TextButton(
+                          onPressed: GeckoEngineInfo.clearDownloads,
+                          child: const Text('Limpiar lista'),
+                        ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: lista.isEmpty
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              'Todavía no bajaste nada.\nLo que bajes queda en la carpeta Descargas del celular.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: _muted, height: 1.4),
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: lista.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1),
+                          itemBuilder: (context, index) =>
+                              _downloadTile(lista[index]),
+                        ),
+                ),
+                if (lista.isNotEmpty)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+                    child: Text(
+                      '"Limpiar lista" no borra los archivos: siguen en la carpeta Descargas.',
+                      style: TextStyle(color: _muted, fontSize: 12.5),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _downloadTile(Descarga d) {
+    final icon = switch (d.estado) {
+      'descargando' => Icons.downloading,
+      'completada' => Icons.insert_drive_file_outlined,
+      'cancelada' => Icons.block,
+      _ => Icons.error_outline,
+    };
+    return ListTile(
+      leading: Icon(icon, color: d.lista || d.bajando ? _blue : _muted),
+      title: Text(d.nombre, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (d.bajando)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: LinearProgressIndicator(
+                value: d.avance,
+                color: _blue,
+                backgroundColor: _surfaceLight,
+              ),
+            ),
+          Text(d.detalle, style: const TextStyle(color: _muted, fontSize: 12.5)),
+        ],
+      ),
+      trailing: d.bajando
+          ? IconButton(
+              tooltip: 'Cancelar descarga',
+              icon: const Icon(Icons.close),
+              onPressed: () => GeckoEngineInfo.cancelDownload(d.id),
+            )
+          : null,
+      onTap: d.lista ? () => _openDownload(d.id) : null,
     );
   }
 
