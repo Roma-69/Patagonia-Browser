@@ -203,3 +203,34 @@ test('una operación de Squirrel termina antes de cargar servicios o crear venta
     });
     assert.equal(salidas, 1);
 });
+
+test('cerrar la última pestaña cierra Patagonia como la X y al volver abre la última página', async t => {
+    const p = await entorno(t);
+    const inicial = p.principal.pestanas()[0].id;
+    const ultima = p.principal.crearPestana('https://ultima.example/');
+    p.principal.cerrarPestana(inicial); await turno();
+    assert.equal(p.principal.pestanas().length, 1, 'con dos pestañas, cerrar una no cierra la ventana');
+    const ventana = p.principal.ventana();
+    assert.equal(ventana.isDestroyed(), false);
+    p.principal.cerrarPestana(ultima);
+    for (let i = 0; i < 100 && !ventana.isDestroyed(); i++) await turno();
+    assert.equal(ventana.isDestroyed(), true, 'la última pestaña cierra la ventana');
+    assert.deepEqual(JSON.parse(await fs.readFile(p.archivoSesion, 'utf8')).pestanas, [{ url: 'https://ultima.example/' }]);
+    p.app.emit('activate'); await turno();
+    assert.equal(JSON.stringify(p.principal.pestanas().map(tab => tab.url)), JSON.stringify(['https://ultima.example/']));
+    assert.deepEqual(p.errores, []);
+});
+
+test('si la última pestaña tiene cambios sin guardar y el usuario vuelve, Patagonia sigue abierto', async t => {
+    const p = await entorno(t);
+    const inicial = p.principal.pestanas()[0].id;
+    const id = p.principal.crearPestana('https://formulario.example/');
+    p.principal.cerrarPestana(inicial); await turno();
+    p.principal.pestanas().find(tab => tab.id === id).vista.webContents.sinGuardar = true;
+    const ventana = p.principal.ventana();
+    p.principal.cerrarPestana(id);
+    for (let i = 0; i < 20; i++) await turno();
+    assert.equal(ventana.isDestroyed(), false);
+    assert.equal(p.principal.pestanas().length, 1);
+    assert.deepEqual(p.errores, []);
+});

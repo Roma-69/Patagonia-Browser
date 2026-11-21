@@ -850,9 +850,16 @@ function activarPestana(id) {
     enviarZoom();
 }
 
-function cerrarPestana(id) {
+function cerrarPestana(id, { cerrarVentanaSiEsLaUltima = true } = {}) {
     const pestana = pestanas.find(elemento => elemento.id === id);
     if (!pestana || cerrandoVentana || cierresSolicitados.has(id)) return;
+    // Cerrar la última pestaña cierra Patagonia, igual que la X de la ventana:
+    // se guarda la sesión y la próxima vez se abre donde estabas.
+    // (Si esa última pestaña era de incógnito, no queda nada para restaurar.)
+    if (cerrarVentanaSiEsLaUltima && pestanas.length === 1 && ventanaPrincipal && !ventanaPrincipal.isDestroyed()) {
+        ventanaPrincipal.close();
+        return;
+    }
     const contenido = obtenerContenido(pestana);
     if (!contenido) { quitarPestana(id); return; }
     cierresSolicitados.add(id);
@@ -874,7 +881,8 @@ function separarPestana(id, posicion) {
         limites.y = Math.round(posicion.y - 20);
     }
     abrirVentanaApp(url, { soloMismoSitio: false, limites });
-    cerrarPestana(id);
+    // Al mover la única pestaña a otra ventana, la principal queda con una pestaña nueva.
+    cerrarPestana(id, { cerrarVentanaSiEsLaUltima: false });
 }
 
 function mostrarMenuPestana(id) {

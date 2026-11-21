@@ -19,6 +19,11 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
   - **Cartel con "Abrir"** al terminar, para abrir el PDF, la foto o lo que sea al toque.
   - "Limpiar lista" saca los nombres de la lista pero **no borra los archivos**: siguen en Descargas. Lo bajado en incógnito sale de la lista al cerrar la última pestaña de incógnito.
   - En la PC esto ya estaba (el panel de descargas). Ahora el celu hace lo mismo.
+- 🗂️ **Seguís donde lo dejaste.**
+  - **PC:** antes, si cerrabas la última pestaña con la ✕, Patagonia se quedaba abierto con una pestaña vacía, y si después lo cerrabas con la X de la ventana, la próxima vez arrancabas de cero. Ahora cerrar la última pestaña (con la ✕ o con Ctrl+W) **cierra Patagonia igual que la X de la ventana**: guarda dónde estabas y la próxima vez se abre en esa página. Si tenés una descarga en curso o un formulario a medio llenar, te pregunta antes, como la X.
+  - **Celular:** hasta ahora, si Android cerraba Patagonia para liberar memoria o la sacabas de las apps recientes, volvías a arrancar en el inicio y perdías las pestañas. Ahora, al volver a abrirla, **aparecen las pestañas que tenías** (hasta 15). Si la abrís desde un enlace, por ejemplo de WhatsApp, ese enlace queda adelante y las anteriores siguen ahí. En el celu, cerrar la última pestaña no cierra la app (en Android las apps no se cierran solas): te deja en el inicio, como Chrome.
+  - Lo de **incógnito nunca se guarda**: si lo último que tenías abierto era de incógnito, la próxima vez arranca en el inicio.
+  - Si preferís arrancar siempre en el inicio: **Configuración → "Recuperar pestañas al abrir Patagonia"** (ahora también en el celu).
 
 ### Corregido
 

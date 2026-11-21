@@ -45,6 +45,7 @@ Patagonia es **un solo navegador** en dos equipos. La regla es simple:
 | Descargas: ver progreso, abrir el archivo o la carpeta, cancelar | ✅ panel de descargas | ✅ próxima versión: Menú → Descargas + notificación con porcentaje + "Abrir" al terminar | Antes el celu solo mostraba un cartelito al empezar y al terminar |
 | Aviso en descargas peligrosas | ✅ 1.4.0 cuadro antes de bajar | ✅ 1.4.0 cuadro antes de guardar | Mismas listas (`descargasPeligrosas.js` / `DescargasPeligrosas.kt`) |
 | Modo incógnito | ✅ 1.4.0 pestañas de incógnito (Ctrl+Shift+N, botón 🕶️) | ✅ 1.4.0 Menú → Nueva pestaña de incógnito | En la PC no se puede mover a otra ventana (la ventana aparte usa la sesión normal) |
+| Seguir donde lo dejaste (recuperar pestañas al volver a abrir) | ✅ 1.4.1: cerrar la última pestaña cierra Patagonia como la X y guarda la sesión | ✅ 1.4.1: se guardan al salir de la app (hasta 15); Configuración → "Recuperar pestañas al abrir Patagonia" | En Android cerrar la última pestaña deja el inicio y no cierra la app (así funcionan las apps en Android). Incógnito nunca se guarda en ninguno de los dos |
 | Traductor como ícono en la barra de direcciones | ✅ 1.4.0 menú del ícono 文A | ✅ 1.4.0 hoja del ícono | |
 
 ## Lista de prueba antes de publicar
@@ -67,4 +68,5 @@ Hacerla **en la PC y en el celular** con la versión que se va a publicar:
 - [ ] **Descargas (lista)**: bajar un PDF → se ve el progreso (en el celu, Menú → Descargas y la notificación) → "Abrir" lo abre. Cancelar una descarga grande a la mitad → no queda archivo a medias.
 - [ ] **Incógnito**: abrir una pestaña de incógnito, entrar a Gmail, cerrarla y abrir otra: no queda la sesión abierta ni en el historial.
 - [ ] **Traductor**: no aparece ningún cartel; el ícono 文A traduce y muestra el original.
+- [ ] **Seguir donde lo dejaste**: PC → abrir una página, cerrar todas las pestañas con la ✕ (la última cierra Patagonia) y volver a abrir → aparece esa página. Celu → abrir dos páginas, sacar Patagonia de las apps recientes y volver a abrir → están las dos. Con una de incógnito: no vuelve.
 - [ ] Se instala **encima** de la versión anterior sin perder favoritos ni sesión.
