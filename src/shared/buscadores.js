@@ -43,6 +43,11 @@ function urlBusqueda(texto, id = actual) {
     return obtenerBuscador(id).busqueda + encodeURIComponent(String(texto || ""));
 }
 
+// Es una página de resultados de alguno de los buscadores de Patagonia.
+function esURLDeBusqueda(direccion) {
+    return typeof direccion === "string" && Object.values(BUSCADORES).some(b => direccion.startsWith(b.busqueda));
+}
+
 // Es la portada de algún buscador (sirve para no pisar una página de inicio propia).
 function esInicioDeBuscador(direccion) {
     return Object.values(BUSCADORES).some(b => b.inicio === direccion);
@@ -56,5 +61,6 @@ module.exports = {
     elegirBuscador,
     buscadorActual,
     urlBusqueda,
+    esURLDeBusqueda,
     esInicioDeBuscador
 };

@@ -7,13 +7,14 @@
     const actualizar = document.getElementById("actualizarAutomatico");
     const chicos = document.getElementById("modoChicos");
     const letra = document.getElementById("letraGrande");
+    const viento = document.getElementById("sonidoViento");
     const buscador = document.getElementById("buscador");
     const guardar = document.getElementById("guardarConfiguracion");
     const estado = document.getElementById("estadoConfiguracion");
     let ocupado = false;
     let bloqueada = false;
     function habilitar() {
-        for (const elemento of [buscador, inicio, restaurar, actualizar, chicos, letra, guardar]) elemento.disabled = ocupado || bloqueada;
+        for (const elemento of [buscador, inicio, restaurar, actualizar, chicos, letra, viento, guardar]) elemento.disabled = ocupado || bloqueada;
     }
     async function ejecutar(accion, guardando = false) {
         if (ocupado) return;
@@ -29,11 +30,13 @@
             actualizar.checked = configuracion.actualizar !== false;
             chicos.checked = configuracion.modoChicos === true;
             letra.checked = configuracion.letraGrande === true;
+            viento.checked = configuracion.sonidoViento !== false;
             buscador.value = configuracion.buscador || "brave";
             bloqueada = Boolean(configuracion.error);
             const avisos = {
                 chicos: configuracion.modoChicos ? "Modo chicos activado." : "Modo chicos desactivado.",
                 letra: configuracion.letraGrande ? "Letra grande activada." : "Letra grande desactivada.",
+                viento: configuracion.sonidoViento !== false ? "Sonido de viento activado." : "Sonido de viento desactivado.",
                 buscador: `Buscador: ${buscador.selectedOptions[0]?.textContent.replace(/\s*\(.*\)$/, "") || "Brave Search"}.`
             };
             estado.textContent = configuracion.error || avisos[guardando] || (guardando ? "Configuración guardada." : "");
@@ -63,7 +66,7 @@
             predeterminado.disabled = false;
         }
     });
-    const datosFormulario = () => ({ inicio: inicio.value.trim(), restaurar: restaurar.checked, actualizar: actualizar.checked, modoChicos: chicos.checked, letraGrande: letra.checked, buscador: buscador.value });
+    const datosFormulario = () => ({ inicio: inicio.value.trim(), restaurar: restaurar.checked, actualizar: actualizar.checked, modoChicos: chicos.checked, letraGrande: letra.checked, sonidoViento: viento.checked, buscador: buscador.value });
     formulario.addEventListener("submit", evento => {
         evento.preventDefault();
         ejecutar(() => window.patagonia.guardarConfiguracion(datosFormulario()), true);
@@ -81,7 +84,7 @@
         ejecutar(() => window.patagonia.guardarConfiguracion(datosFormulario()), "buscador");
     });
     // El tilde del modo chicos se guarda y aplica al instante.
-    for (const [casilla, aviso] of [[chicos, "chicos"], [letra, "letra"]]) {
+    for (const [casilla, aviso] of [[chicos, "chicos"], [letra, "letra"], [viento, "viento"]]) {
         casilla.addEventListener("change", () => {
             if (!formulario.reportValidity()) { casilla.checked = !casilla.checked; return; }
             ejecutar(() => window.patagonia.guardarConfiguracion(datosFormulario()), aviso);

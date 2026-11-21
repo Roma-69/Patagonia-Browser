@@ -384,6 +384,9 @@ class GeckoEngineInfo {
   static Future<void> setLargeText(bool enabled) =>
       _engine<void>('setLargeText', enabled);
 
+  /// Ráfaga corta de viento al buscar (mismo sonido que en la PC).
+  static Future<void> playWind() => _engine<void>('playWind');
+
   /// Hoja de compartir de Android. false si no se pudo abrir.
   static Future<bool> share(String text, {String? title}) async =>
       await _engine<bool>('share', {'text': text, 'title': title}) ?? false;
