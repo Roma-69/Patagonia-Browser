@@ -907,4 +907,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(gecko.views[gecko.lastId]!['url'], 'https://www.windguru.cz');
   });
+
+  testWidgets('buscar hace sonar el viento; abrir una dirección no', (tester) async {
+    await open(tester, 'clima sarmiento');
+    expect(
+      gecko.engineCalls.where((c) => c.method == 'playWind'),
+      hasLength(1),
+    );
+    await tester.enterText(find.byType(TextField).first, 'windguru.cz');
+    await tester.testTextInput.receiveAction(TextInputAction.go);
+    await tester.pumpAndSettle();
+    expect(
+      gecko.engineCalls.where((c) => c.method == 'playWind'),
+      hasLength(1),
+    );
+  });
+
+  testWidgets('con el sonido de viento apagado no suena', (tester) async {
+    await open(tester, 'clima sarmiento', preferences: {'windSound': false});
+    expect(gecko.engineCalls.map((c) => c.method), isNot(contains('playWind')));
+  });
+
+  testWidgets('recupera las pestañas de la última vez, sin repetir el inicio', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'openTabs': ['https://a.example/', 'https://b.example/'],
+      'openTabsActive': 1,
+    });
+    gecko.install(tester);
+    await tester.pumpWidget(const PatagoniaBrowserApp());
+    await tester.pumpAndSettle();
+    final urls = gecko.views.values.map((v) => v['url']).toList();
+    expect(urls, containsAll(['https://a.example/', 'https://b.example/']));
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      'https://b.example/',
+    );
+  });
 }

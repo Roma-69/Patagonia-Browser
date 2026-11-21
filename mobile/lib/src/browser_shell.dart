@@ -54,7 +54,8 @@ class BrowserShell extends StatefulWidget {
   State<BrowserShell> createState() => _BrowserShellState();
 }
 
-class _BrowserShellState extends State<BrowserShell> {
+class _BrowserShellState extends State<BrowserShell>
+    with WidgetsBindingObserver {
   final TextEditingController _address = TextEditingController();
   final FocusNode _addressFocus = FocusNode();
   final List<_BrowserTab> _tabs = [];
@@ -82,6 +83,8 @@ class _BrowserShellState extends State<BrowserShell> {
   SearchEngine _searchEngine = SearchEngine.fallback;
   bool _alwaysTranslate = false;
   bool _updateNotices = true;
+  bool _restoreTabs = true;
+  bool _windSound = true;
   final Set<String> _neverTranslateHosts = {};
   MobileRelease? _availableUpdate;
   bool _installingUpdate = false;
@@ -113,6 +116,7 @@ class _BrowserShellState extends State<BrowserShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabs.add(_BrowserTab(id: _nextTabId++));
     if (_gecko) {
       GeckoEngineInfo.listen(
@@ -135,7 +139,73 @@ class _BrowserShellState extends State<BrowserShell> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Al salir de Patagonia (o si Android la cierra) se guardan las pestañas
+    // abiertas: la próxima vez se abre donde estabas, igual que en la PC.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _saveOpenTabs();
+    }
+  }
+
+  /// Pestañas normales con una página web; las de incógnito nunca se guardan.
+  Future<void> _saveOpenTabs() async {
+    if (!_preferencesReady) return;
+    final urls = <String>[];
+    var active = 0;
+    for (final tab in _tabs) {
+      final url = tab.url;
+      if (tab.incognito || !NavigationInput.isWebUri(url)) continue;
+      if (identical(tab, _current)) active = urls.length;
+      urls.add(url.toString());
+      if (urls.length == _maxSavedTabs) break;
+    }
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setStringList(_openTabsKey, urls);
+      await preferences.setInt(_activeTabKey, active);
+    } catch (_) {
+      // Si no se pudo guardar, la próxima vez arranca en el inicio.
+    }
+  }
+
+  /// Vuelve a abrir las pestañas de la última vez. Si Patagonia se abrió con un
+  /// enlace (por ejemplo desde WhatsApp), ese enlace queda adelante.
+  void _restoreOpenTabs(List<String> saved, int active) {
+    final urls = saved
+        .map(Uri.tryParse)
+        .where(NavigationInput.isWebUri)
+        .cast<Uri>()
+        .take(_maxSavedTabs)
+        .toList();
+    if (urls.isEmpty) return;
+    final restored = [
+      for (final url in urls) _BrowserTab(id: _nextTabId++, url: url),
+    ];
+    final onlyStartPage = _tabs.length == 1 &&
+        _tabs.first.url == null &&
+        _tabs.first.windowId == null &&
+        _tabs.first.pendingLoad == null &&
+        !_tabs.first.incognito;
+    setState(() {
+      if (onlyStartPage) {
+        _tabs
+          ..clear()
+          ..addAll(restored);
+        _currentIndex = active >= 0 && active < restored.length ? active : 0;
+      } else {
+        _tabs.insertAll(0, restored);
+        _currentIndex += restored.length;
+      }
+      _syncAddress();
+    });
+    _syncActiveTab();
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     if (_gecko) {
       GeckoEngineInfo.stopListening();
       for (final tab in _tabs) {
@@ -170,10 +240,18 @@ class _BrowserShellState extends State<BrowserShell> {
         _largeText = preferences.getBool(_largeTextKey) ?? false;
         _alwaysTranslate = preferences.getBool(_alwaysTranslateKey) ?? false;
         _updateNotices = preferences.getBool(_updateNoticesKey) ?? true;
+        _restoreTabs = preferences.getBool(_restoreTabsKey) ?? true;
+        _windSound = preferences.getBool(_windSoundKey) ?? true;
         _neverTranslateHosts
           ..clear()
           ..addAll(preferences.getStringList(_neverTranslateKey) ?? const []);
       });
+      if (_restoreTabs) {
+        _restoreOpenTabs(
+          preferences.getStringList(_openTabsKey) ?? const [],
+          preferences.getInt(_activeTabKey) ?? 0,
+        );
+      }
       showProtectionNotice =
           _gecko &&
           _unprotectedHosts.isNotEmpty &&
@@ -213,6 +291,11 @@ class _BrowserShellState extends State<BrowserShell> {
   static const _largeTextKey = 'largeText';
   static const _alwaysTranslateKey = 'alwaysTranslate';
   static const _updateNoticesKey = 'updateNotices';
+  static const _restoreTabsKey = 'restoreTabs';
+  static const _windSoundKey = 'windSound';
+  static const _openTabsKey = 'openTabs';
+  static const _activeTabKey = 'openTabsActive';
+  static const _maxSavedTabs = 15;
   static const _neverTranslateKey = 'neverTranslateHosts';
   static const _lastUpdateCheckKey = 'lastUpdateCheck';
 
@@ -287,6 +370,15 @@ class _BrowserShellState extends State<BrowserShell> {
 
   Future<void> _navigate(String value) async {
     final uri = NavigationInput.resolve(value, engine: _searchEngine);
+    // Ráfaga de viento solo si se buscó algo (no al abrir una dirección).
+    final typed = value.trim();
+    if (_gecko &&
+        _windSound &&
+        typed.isNotEmpty &&
+        !typed.contains('://') &&
+        uri == _searchEngine.search(typed)) {
+      GeckoEngineInfo.playWind();
+    }
     final tab = _current;
     final shouldProtect = !_unprotectedHosts.contains(uri.host.toLowerCase());
     _addressFocus.unfocus();
@@ -1521,6 +1613,16 @@ class _BrowserShellState extends State<BrowserShell> {
     await _saveBool(_alwaysTranslateKey, enabled);
   }
 
+  Future<void> _setWindSound(bool enabled) async {
+    setState(() => _windSound = enabled);
+    await _saveBool(_windSoundKey, enabled);
+  }
+
+  Future<void> _setRestoreTabs(bool enabled) async {
+    setState(() => _restoreTabs = enabled);
+    await _saveBool(_restoreTabsKey, enabled);
+  }
+
   Future<void> _setUpdateNotices(bool enabled) async {
     setState(() {
       _updateNotices = enabled;
@@ -2229,6 +2331,30 @@ class _BrowserShellState extends State<BrowserShell> {
                         child: const Text('Borrar'),
                       ),
                     ),
+                  SwitchListTile(
+                    key: const ValueKey('windSound'),
+                    secondary: const Icon(Icons.air),
+                    title: const Text('Sonido de viento al buscar'),
+                    subtitle: const Text(
+                      'Una ráfaga cortita cada vez que buscás algo. No suena al abrir una dirección.',
+                      style: TextStyle(color: _muted),
+                    ),
+                    value: _windSound,
+                    activeThumbColor: _blue,
+                    onChanged: _gecko ? (value) => toggle(_setWindSound, value) : null,
+                  ),
+                  SwitchListTile(
+                    key: const ValueKey('restoreTabs'),
+                    secondary: const Icon(Icons.restore_page_outlined),
+                    title: const Text('Recuperar pestañas al abrir Patagonia'),
+                    subtitle: const Text(
+                      'Si la desactivás, Patagonia arranca en el inicio. Las de incógnito nunca se guardan.',
+                      style: TextStyle(color: _muted),
+                    ),
+                    value: _restoreTabs,
+                    activeThumbColor: _blue,
+                    onChanged: (value) => toggle(_setRestoreTabs, value),
+                  ),
                   SwitchListTile(
                     secondary: const Icon(Icons.system_update_outlined),
                     title: const Text('Avisar si hay versión nueva'),
