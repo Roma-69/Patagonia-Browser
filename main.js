@@ -40,6 +40,7 @@ const {
 } = require("./src/shared/constants");
 
 const {
+    prepararDireccion,
     navegar,
     atras,
     adelante,
@@ -55,6 +56,7 @@ const { pathToFileURL } = require("node:url");
 const { crearIPCInterfaz, protegerInterfaz } = require("./src/main/security");
 const { registrarAtajos } = require("./src/main/shortcuts");
 const { registrarConfiguracion } = require("./src/main/settings");
+const { registrarSonidoViento, esBusquedaEscrita } = require("./src/main/sonidoViento");
 const { registrarInstanciaUnica, registrarCierre, cerrarContenido } = require("./src/main/lifecycle");
 const { registrarAperturas, PREFERENCIAS_WEB } = require("./src/main/newWindows");
 const { crearEnlacesExternos } = require("./src/main/enlacesExternos");
@@ -82,7 +84,7 @@ const {
     crearVentanaApp
 } = require("./src/main/webApps");
 const { registrarMenuContextual } = require("./src/main/contextMenu");
-const { elegirBuscador, buscadorActual } = require("./src/shared/buscadores");
+const { elegirBuscador, buscadorActual, esURLDeBusqueda } = require("./src/shared/buscadores");
 const navegadorPredeterminado = require("./src/main/defaultBrowser");
 const zoom = require("./src/main/zoom");
 const { crearActualizador, instaladoConSquirrel } = require("./src/main/updater");
@@ -130,6 +132,11 @@ const ventanasApp = new Set();
 const pestañasCerradas = crearPestanasCerradas();
 const cierresSolicitados = new Set();
 const ipcInterfaz = crearIPCInterfaz(ipcMain, () => ventanaPrincipal);
+const sonidoViento = registrarSonidoViento({
+    ipcMain,
+    obtenerVentana: () => ventanaPrincipal,
+    activo: () => gestorConfiguracion?.estado().sonidoViento !== false
+});
 const RUTA_NUEVA_PESTANA = path.join(__dirname, "ui", "new-tab.html");
 const URL_NUEVA_PESTANA = pathToFileURL(RUTA_NUEVA_PESTANA).href;
 const RUTA_ICONO = path.join(__dirname, "assets", "patagonia-oficial.ico");
@@ -712,6 +719,11 @@ function crearPestana(
             if (esMarcoPrincipal) gestorProteccion?.reiniciarPestana(idContenido);
         }
     );
+
+    // Buscar desde el cuadro del inicio de Patagonia también hace sonar el viento.
+    vista.webContents.on("will-navigate", (_evento, destino) => {
+        if (esNuevaPestanaPatagonia(vista.webContents.getURL()) && esURLDeBusqueda(destino)) sonidoViento.sonar();
+    });
 
     vista.webContents.on(
         "did-start-loading",
@@ -1443,6 +1455,7 @@ ipcInterfaz.on("menu-pestana", (_evento, id) => mostrarMenuPestana(Number(id)));
 ipcInterfaz.on(
     "navegar",
     (_evento, direccion) => {
+        if (esBusquedaEscrita(direccion, prepararDireccion(direccion))) sonidoViento.sonar();
         navegar(
             obtenerPestanaActiva(),
             direccion

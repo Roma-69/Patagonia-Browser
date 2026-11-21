@@ -84,6 +84,7 @@ class _BrowserShellState extends State<BrowserShell>
   bool _alwaysTranslate = false;
   bool _updateNotices = true;
   bool _restoreTabs = true;
+  bool _windSound = true;
   final Set<String> _neverTranslateHosts = {};
   MobileRelease? _availableUpdate;
   bool _installingUpdate = false;
@@ -240,6 +241,7 @@ class _BrowserShellState extends State<BrowserShell>
         _alwaysTranslate = preferences.getBool(_alwaysTranslateKey) ?? false;
         _updateNotices = preferences.getBool(_updateNoticesKey) ?? true;
         _restoreTabs = preferences.getBool(_restoreTabsKey) ?? true;
+        _windSound = preferences.getBool(_windSoundKey) ?? true;
         _neverTranslateHosts
           ..clear()
           ..addAll(preferences.getStringList(_neverTranslateKey) ?? const []);
@@ -290,6 +292,7 @@ class _BrowserShellState extends State<BrowserShell>
   static const _alwaysTranslateKey = 'alwaysTranslate';
   static const _updateNoticesKey = 'updateNotices';
   static const _restoreTabsKey = 'restoreTabs';
+  static const _windSoundKey = 'windSound';
   static const _openTabsKey = 'openTabs';
   static const _activeTabKey = 'openTabsActive';
   static const _maxSavedTabs = 15;
@@ -367,6 +370,15 @@ class _BrowserShellState extends State<BrowserShell>
 
   Future<void> _navigate(String value) async {
     final uri = NavigationInput.resolve(value, engine: _searchEngine);
+    // Ráfaga de viento solo si se buscó algo (no al abrir una dirección).
+    final typed = value.trim();
+    if (_gecko &&
+        _windSound &&
+        typed.isNotEmpty &&
+        !typed.contains('://') &&
+        uri == _searchEngine.search(typed)) {
+      GeckoEngineInfo.playWind();
+    }
     final tab = _current;
     final shouldProtect = !_unprotectedHosts.contains(uri.host.toLowerCase());
     _addressFocus.unfocus();
@@ -1601,6 +1613,11 @@ class _BrowserShellState extends State<BrowserShell>
     await _saveBool(_alwaysTranslateKey, enabled);
   }
 
+  Future<void> _setWindSound(bool enabled) async {
+    setState(() => _windSound = enabled);
+    await _saveBool(_windSoundKey, enabled);
+  }
+
   Future<void> _setRestoreTabs(bool enabled) async {
     setState(() => _restoreTabs = enabled);
     await _saveBool(_restoreTabsKey, enabled);
@@ -2314,6 +2331,18 @@ class _BrowserShellState extends State<BrowserShell>
                         child: const Text('Borrar'),
                       ),
                     ),
+                  SwitchListTile(
+                    key: const ValueKey('windSound'),
+                    secondary: const Icon(Icons.air),
+                    title: const Text('Sonido de viento al buscar'),
+                    subtitle: const Text(
+                      'Una ráfaga cortita cada vez que buscás algo. No suena al abrir una dirección.',
+                      style: TextStyle(color: _muted),
+                    ),
+                    value: _windSound,
+                    activeThumbColor: _blue,
+                    onChanged: _gecko ? (value) => toggle(_setWindSound, value) : null,
+                  ),
                   SwitchListTile(
                     key: const ValueKey('restoreTabs'),
                     secondary: const Icon(Icons.restore_page_outlined),

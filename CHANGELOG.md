@@ -24,6 +24,7 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
   - **Celular:** hasta ahora, si Android cerraba Patagonia para liberar memoria o la sacabas de las apps recientes, volvías a arrancar en el inicio y perdías las pestañas. Ahora, al volver a abrirla, **aparecen las pestañas que tenías** (hasta 15). Si la abrís desde un enlace, por ejemplo de WhatsApp, ese enlace queda adelante y las anteriores siguen ahí. En el celu, cerrar la última pestaña no cierra la app (en Android las apps no se cierran solas): te deja en el inicio, como Chrome.
   - Lo de **incógnito nunca se guarda**: si lo último que tenías abierto era de incógnito, la próxima vez arranca en el inicio.
   - Si preferís arrancar siempre en el inicio: **Configuración → "Recuperar pestañas al abrir Patagonia"** (ahora también en el celu).
+- 🌬️ **Viento patagónico al buscar.** Cada vez que buscás algo desde la barra o desde el inicio suena una ráfaga cortita de viento: una grabación propia de Patagonia, no un sonido bajado de internet. Solo suena cuando buscás, no cuando abrís una dirección (por ejemplo windguru.cz). Si estás en la oficina o preferís silencio, lo apagás en **Configuración → "Sonido de viento al buscar"** (PC y celu).
 
 ### Corregido
 

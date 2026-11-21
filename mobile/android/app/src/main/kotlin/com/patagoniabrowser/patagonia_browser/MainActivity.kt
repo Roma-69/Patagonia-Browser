@@ -68,6 +68,10 @@ class MainActivity : FlutterActivity(), AndroidPermissionRequester {
                     val args = call.arguments as? Map<*, *>
                     result.success(share(args?.get("text") as? String, args?.get("title") as? String))
                 }
+                "playWind" -> {
+                    Viento.sonar(this)
+                    result.success(null)
+                }
                 "openWhatsApp" -> result.success(openWhatsApp())
                 "appVersion" -> result.success(appVersion())
                 "isDefaultBrowser" -> result.success(isDefaultBrowser())

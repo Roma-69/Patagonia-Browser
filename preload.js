@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld("patagonia", {
     menuTraduccion: posicion => ipcRenderer.send("traduccion-menu", posicion),
     obtenerConfiguracion: () => ipcRenderer.invoke("obtener-configuracion"),
     guardarConfiguracion: datos => ipcRenderer.invoke("guardar-configuracion", datos),
+    obtenerSonidoViento: () => ipcRenderer.invoke("obtener-sonido-viento"),
+    recibirSonidoViento: callback => suscribir("sonido-viento", callback),
     recibirEnfoqueDireccion: callback => suscribir("enfocar-direccion", callback),
     obtenerProteccion: () => ipcRenderer.invoke("obtener-proteccion"),
     alternarProteccionSitio: () => ipcRenderer.invoke("alternar-proteccion-sitio"),
