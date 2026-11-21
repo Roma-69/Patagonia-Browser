@@ -213,7 +213,8 @@ test('cerrar la última pestaña cierra Patagonia como la X y al volver abre la 
     const ventana = p.principal.ventana();
     assert.equal(ventana.isDestroyed(), false);
     p.principal.cerrarPestana(ultima);
-    for (let i = 0; i < 100 && !ventana.isDestroyed(); i++) await turno();
+    // Cerrar espera a que la sesión se escriba en el disco: se da margen de tiempo real.
+    for (let i = 0; i < 300 && !ventana.isDestroyed(); i++) await new Promise(r => setTimeout(r, 10));
     assert.equal(ventana.isDestroyed(), true, 'la última pestaña cierra la ventana');
     assert.deepEqual(JSON.parse(await fs.readFile(p.archivoSesion, 'utf8')).pestanas, [{ url: 'https://ultima.example/' }]);
     p.app.emit('activate'); await turno();
