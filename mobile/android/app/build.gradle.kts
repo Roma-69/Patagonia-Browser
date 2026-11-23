@@ -87,7 +87,7 @@ android {
 }
 
 dependencies {
-    implementation("org.mozilla.geckoview:geckoview:159.0.20261022150525")
+    implementation("org.mozilla.geckoview:geckoview:160.0.20261116130455")
 }
 
 kotlin {
