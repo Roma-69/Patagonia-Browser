@@ -33,6 +33,11 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
   - Si no tenés instalada esa aplicación, Patagonia te lo dice en vez de quedarse callado.
 - **Seguridad:** los enlaces que se usaron para atacar Windows y Android (`ms-msdt:`, `search-ms:`, `intent:` y parecidos) quedan bloqueados sin preguntar, y las páginas no pueden llenarte la pantalla de avisos.
 
+### Mantenimiento
+
+- 🛡️ **PC — motor al día.** Patagonia pasa a Electron 45.4.1, la última versión estable. Trae los arreglos de seguridad de Chromium de las últimas semanas. No cambia nada de lo que ves ni de cómo se usa.
+- 🔔 **Aviso automático de motor nuevo (PC y Android).** Ahora GitHub revisa todos los lunes si salió un motor nuevo (Electron en la PC, GeckoView en el celu) y, si salió, arma solo el PR para actualizarlo. Así Patagonia no se queda atrás en seguridad ni afuera de la Microsoft Store por tener el motor viejo.
+
 ---
 
 ## [1.4.0] - 17 nov 2026 (PC y Android) — "Patagonia te cuida"

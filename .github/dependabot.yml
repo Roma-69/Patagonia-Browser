@@ -1,0 +1,50 @@
+# Avisos automáticos de motor nuevo (PC y Android).
+#
+# Una vez por semana GitHub revisa si salió una versión nueva del motor
+# y, si salió, abre solo un PR para actualizarlo. Ese PR arma el EXE/APK
+# de prueba como cualquier otro: se prueba y recién ahí se mergea.
+#
+# - PC: Electron (Chromium). La Microsoft Store exige no quedar más de
+#   2 versiones atrás del último Chromium, y cada versión trae arreglos
+#   de seguridad.
+# - Android: GeckoView (motor de Firefox), por los mismos motivos.
+#
+# Solo vigila los motores; el resto de las dependencias se actualiza a mano.
+
+version: 2
+
+registries:
+  mozilla:
+    type: maven-repository
+    url: https://maven.mozilla.org/maven2
+
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Argentina/Catamarca
+    allow:
+      - dependency-name: electron
+    open-pull-requests-limit: 1
+    commit-message:
+      prefix: "Motor PC"
+    labels: []
+
+  - package-ecosystem: gradle
+    directory: "/mobile/android"
+    registries:
+      - mozilla
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Argentina/Catamarca
+    allow:
+      - dependency-name: "org.mozilla.geckoview:geckoview"
+    open-pull-requests-limit: 1
+    commit-message:
+      prefix: "Motor Android"
+    labels: []
