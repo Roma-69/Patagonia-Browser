@@ -21,7 +21,7 @@ Patagonia Browser es un navegador simple y privado, con pestañas, favoritos, hi
 
 Patagonia Browser ofrece una forma clara y agradable de navegar desde el iPhone. Su interfaz está inspirada en los paisajes de la Patagonia y concentra las funciones esenciales en un diseño sencillo.
 
-La aplicación permite navegar con varias pestañas, guardar favoritos, consultar el historial almacenado en el dispositivo y cambiar entre la versión móvil y de escritorio de los sitios. Patagonia AI puede resumir localmente el texto visible de la página y mostrar su título o dirección. Su Centro de Privacidad bloquea dominios publicitarios y rastreadores conocidos y permite controlar la protección de cada página.
+La aplicación permite navegar con varias pestañas, guardar favoritos, consultar el historial almacenado en el dispositivo y cambiar entre la versión móvil y de escritorio de los sitios. El botón "Tu IA" abre en una pestaña nueva la IA que use cada persona, sin mandarle nada de la página. Su Centro de Privacidad bloquea dominios publicitarios y rastreadores conocidos y permite controlar la protección de cada página.
 
 Patagonia Browser no requiere crear una cuenta y no incluye telemetría propia. Los permisos de cámara, micrófono y ubicación se consultan antes de concederse a un sitio.
 

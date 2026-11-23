@@ -1,5 +1,5 @@
 'use strict';
-// Solo responde cuando Patagonia lo pide (Patagonia AI o modo lectura). El texto queda en el teléfono.
+// Solo responde cuando Patagonia lo pide (modo lectura). El texto queda en el teléfono.
 (() => {
   let port;
   try {

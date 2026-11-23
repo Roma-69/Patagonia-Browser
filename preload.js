@@ -85,11 +85,7 @@ contextBridge.exposeInMainWorld("patagonia", {
     alternarBarraLateral: () =>
         ipcRenderer.send("alternar-barra-lateral"),
 
-    obtenerContextoPagina: () =>
-        ipcRenderer.invoke("obtener-contexto-pagina"),
-
-    procesarConsultaIA: (mensaje) =>
-        ipcRenderer.invoke("procesar-consulta-ia", mensaje),
+    abrirMiIA: () => ipcRenderer.invoke("abrir-mi-ia"),
 
     recibirURL: (callback) =>
         suscribir(

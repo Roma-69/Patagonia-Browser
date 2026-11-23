@@ -48,6 +48,7 @@ Patagonia es **un solo navegador** en dos equipos. La regla es simple:
 | Seguir donde lo dejaste (recuperar pestañas al volver a abrir) | ✅ 1.4.1: cerrar la última pestaña cierra Patagonia como la X y guarda la sesión | ✅ 1.4.1: se guardan al salir de la app (hasta 15); Configuración → "Recuperar pestañas al abrir Patagonia" | En Android cerrar la última pestaña deja el inicio y no cierra la app (así funcionan las apps en Android). Incógnito nunca se guarda en ninguno de los dos |
 | Sonido de viento al buscar (con tilde para apagarlo) | ✅ 1.4.1 barra y cuadro del inicio | ✅ 1.4.1 barra y cuadro del inicio | Mismo archivo (`assets/sonidos/viento.ogg` = `res/raw/viento.ogg`); no suena al abrir una dirección |
 | Traductor como ícono en la barra de direcciones | ✅ 1.4.0 menú del ícono 文A | ✅ 1.4.0 hoja del ícono | |
+| Tu IA (abre la IA de cada persona; reemplaza a "Patagonia AI") | ✅ 1.4.1 tarjeta en el Centro de privacidad | ✅ 1.4.1 botón ✨ arriba, Menú y Configuración | Misma lista (`src/shared/tuIA.js` = `mobile/lib/src/tu_ia.dart`). No lee la página ni le manda nada a la IA |
 
 ## Lista de prueba antes de publicar
 
@@ -71,4 +72,5 @@ Hacerla **en la PC y en el celular** con la versión que se va a publicar:
 - [ ] **Traductor**: no aparece ningún cartel; el ícono 文A traduce y muestra el original.
 - [ ] **Seguir donde lo dejaste**: PC → abrir una página, cerrar todas las pestañas con la ✕ (la última cierra Patagonia) y volver a abrir → aparece esa página. Celu → abrir dos páginas, sacar Patagonia de las apps recientes y volver a abrir → están las dos. Con una de incógnito: no vuelve.
 - [ ] **Viento**: buscar algo → suena la ráfaga; escribir windguru.cz → no suena; apagarlo en Configuración → no suena más.
+- [ ] **Tu IA**: PC → Centro de privacidad → elegir una IA → "Abrir mi IA" abre una pestaña nueva. Celu → ✨ → elegir → abre otra pestaña; la segunda vez abre directo. "Otra" con una dirección propia también abre.
 - [ ] Se instala **encima** de la versión anterior sin perder favoritos ni sesión.

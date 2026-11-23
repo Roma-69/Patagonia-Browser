@@ -22,7 +22,7 @@
 ## Patagonia Lector (propio)
 
 - Archivo: `android/app/src/main/assets/patagonia_lector/`. Extensión chiquita de Patagonia (licencia MIT)
-  que le pasa a Patagonia AI y al modo lectura el texto de la página abierta. No envía nada fuera del
+  que le pasa al modo lectura el texto de la página abierta. No envía nada fuera del
   teléfono.
 
 ## Readability 0.6.0 (Mozilla)

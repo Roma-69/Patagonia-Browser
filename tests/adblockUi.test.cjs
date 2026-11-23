@@ -25,7 +25,7 @@ test("el Centro de privacidad muestra conteos reales y permite cambiar la protec
         }
     };
     window.PatagoniaFavorites = { actualizarPagina() {} };
-    window.PatagoniaAssistant = { iniciar: () => true };
+    window.PatagoniaTuIA = { iniciar: () => true };
     window.eval(fs.readFileSync(path.join(__dirname, "../renderer.js"), "utf8"));
     await new Promise(resolve => setImmediate(resolve));
 

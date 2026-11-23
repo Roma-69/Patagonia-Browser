@@ -12,6 +12,9 @@
     const guardar = document.getElementById("guardarConfiguracion");
     const estado = document.getElementById("estadoConfiguracion");
     let ocupado = false;
+    // La IA elegida se cambia desde la tarjeta "Tu IA"; acá solo se conserva al guardar.
+    let iaGuardada = "";
+    window.addEventListener("patagonia:ia-cambiada", evento => { iaGuardada = evento.detail || ""; });
     let bloqueada = false;
     function habilitar() {
         for (const elemento of [buscador, inicio, restaurar, actualizar, chicos, letra, viento, guardar]) elemento.disabled = ocupado || bloqueada;
@@ -32,6 +35,7 @@
             letra.checked = configuracion.letraGrande === true;
             viento.checked = configuracion.sonidoViento !== false;
             buscador.value = configuracion.buscador || "brave";
+            iaGuardada = configuracion.ia || "";
             bloqueada = Boolean(configuracion.error);
             const avisos = {
                 chicos: configuracion.modoChicos ? "Modo chicos activado." : "Modo chicos desactivado.",
@@ -66,7 +70,7 @@
             predeterminado.disabled = false;
         }
     });
-    const datosFormulario = () => ({ inicio: inicio.value.trim(), restaurar: restaurar.checked, actualizar: actualizar.checked, modoChicos: chicos.checked, letraGrande: letra.checked, sonidoViento: viento.checked, buscador: buscador.value });
+    const datosFormulario = () => ({ inicio: inicio.value.trim(), restaurar: restaurar.checked, actualizar: actualizar.checked, modoChicos: chicos.checked, letraGrande: letra.checked, sonidoViento: viento.checked, buscador: buscador.value, ia: iaGuardada });
     formulario.addEventListener("submit", evento => {
         evento.preventDefault();
         ejecutar(() => window.patagonia.guardarConfiguracion(datosFormulario()), true);

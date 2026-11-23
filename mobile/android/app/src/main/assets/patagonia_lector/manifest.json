@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Patagonia Lector",
   "version": "1.2",
-  "description": "Le pasa a Patagonia el texto de la página abierta (Patagonia AI y modo lectura). No envía nada fuera del teléfono.",
+  "description": "Le pasa a Patagonia el texto de la página abierta (modo lectura). No envía nada fuera del teléfono.",
   "browser_specific_settings": {
     "gecko": { "id": "lector@patagoniabrowser.com" }
   },

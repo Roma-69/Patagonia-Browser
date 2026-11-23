@@ -77,8 +77,6 @@ async function entorno(t) {
         if (id === 'electron') return electron;
         if (id === 'electron-squirrel-startup') return false;
         if (id === './src/main/adblocker') return {};
-        if (id === './ui/modules/pageContext') return { crearContextoPagina: datos => datos };
-        if (id === './services/ai') return { procesarConsulta: () => assert.fail('no invocar IA') };
         return requireMain(id);
     };
     const extra = `

@@ -96,13 +96,7 @@ const {
     JSDOM
 } = require("jsdom");
 
-const {
-    crearContextoPagina
-} = require("./ui/modules/pageContext");
-
-const {
-    procesarConsulta
-} = require("./services/ai");
+const { resolverIA } = require("./src/shared/tuIA");
 
 let ventanaPrincipal;
 let pestanas = [];
@@ -464,61 +458,6 @@ function enviarURLActual() {
         );
 }
 }        
-async function obtenerContextoPestanaActiva() {
-    const pestanaActiva =
-        obtenerPestanaActiva();
-
-    if (!pestanaActiva) {
-        throw new Error(
-            "No hay una pestaña activa."
-        );
-    }
-
-    const contenido = obtenerContenido(pestanaActiva);
-    if (!contenido) {
-        throw new Error(
-            "La pestaña activa ya no está disponible."
-        );
-    }
-
-    const datosPagina = await obtenerHTMLPagina(contenido);
-    if (obtenerPestanaActiva() !== pestanaActiva) {
-        throw new Error("Cambiaste de pestaña durante la lectura. Volvé a intentarlo.");
-    }
-
-    const dom = new JSDOM(
-        datosPagina.html,
-        {
-            url: datosPagina.url
-        }
-    );
-
-    try {
-        const articulo =
-            new Readability(
-                dom.window.document,
-                { maxElemsToParse: MAX_ELEMENTOS }
-            ).parse();
-        const textoAlternativo =
-            dom.window.document.body
-                ?.textContent || "";
-
-        return crearContextoPagina({
-            titulo:
-                articulo?.title ||
-                datosPagina.titulo ||
-                "",
-            url:
-                datosPagina.url,
-            texto:
-                articulo?.textContent ||
-                textoAlternativo
-        });
-    } finally {
-        dom.window.close();
-    }
-}
-
 // Todo lo que necesita una sesión de páginas: permisos, compartir pantalla, fotos
 // limpias y el arreglo del login de Google (con el modo chicos).
 function prepararSesionPaginas(sesion) {
@@ -1538,72 +1477,14 @@ ipcInterfaz.handle("alternar-proteccion-sitio", async () => {
     }
 });
 
-ipcInterfaz.handle(
-    "obtener-contexto-pagina",
-    async () => {
-        try {
-            const contexto =
-                await obtenerContextoPestanaActiva();
-
-            return {
-                correcto: true,
-                contexto
-            };
-        } catch (error) {
-            console.error(
-                "No se pudo obtener el contexto de la página:",
-                error
-            );
-
-            return {
-                correcto: false,
-                error: error.message
-            };
-        }
-    }
-);
-
-ipcInterfaz.handle(
-    "procesar-consulta-ia",
-    async (_evento, mensaje) => {
-        try {
-            const texto =
-                String(
-                    mensaje || ""
-                ).trim();
-
-            if (!texto) {
-                throw new Error(
-                    "El mensaje está vacío."
-                );
-            }
-
-            const contexto =
-                await obtenerContextoPestanaActiva();
-
-            const resultado =
-                await procesarConsulta({
-                    mensaje: texto,
-                    contexto
-                });
-
-            return {
-                correcto: true,
-                resultado
-            };
-        } catch (error) {
-            console.error(
-                "No se pudo procesar la consulta de IA:",
-                error
-            );
-
-            return {
-                correcto: false,
-                error: error.message
-            };
-        }
-    }
-);
+// "Tu IA": abre en una pestaña nueva la IA que eligió la persona (ChatGPT, Claude…).
+// Patagonia no tiene IA propia ni le manda nada de la página: solo abre el sitio.
+ipcInterfaz.handle("abrir-mi-ia", async () => {
+    const url = resolverIA(gestorConfiguracion?.estado()?.ia);
+    if (!url) return { correcto: false, error: "Elegí primero qué IA usás." };
+    crearPestana(url);
+    return { correcto: true };
+});
 
 process.on(
     "uncaughtException",

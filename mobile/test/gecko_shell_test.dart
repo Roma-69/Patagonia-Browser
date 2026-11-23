@@ -415,25 +415,29 @@ void main() {
     expect(find.byTooltip('Menú'), findsOneWidget);
   });
 
-  testWidgets('Patagonia AI lee el texto con el lector de Gecko', (tester) async {
+  testWidgets('Tu IA: la primera vez pregunta cuál y la abre en otra pestaña, sin leer la página', (
+    tester,
+  ) async {
     final id = await open(tester, 'https://example.com');
     await loadPage(tester, id, 'https://example.com/', 'Ejemplo');
-    gecko.pageText = {
-      'title': 'Ejemplo',
-      'url': 'https://example.com/',
-      'text':
-          'La Patagonia es una región geográfica del extremo sur de América. Tiene lagos, montañas y glaciares enormes.',
-    };
-    await tester.tap(find.byTooltip('Patagonia AI'));
+    await tester.tap(find.byTooltip('Tu IA'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const ValueKey('assistant-input')),
-      'Resumí esta página',
-    );
-    await tester.tap(find.byTooltip('Enviar mensaje'));
+    await tester.tap(find.byKey(const ValueKey('myAi-claude')));
     await tester.pumpAndSettle();
-    expect(gecko.methods(id), contains('readPage'));
-    expect(find.textContaining('región geográfica'), findsOneWidget);
+    expect(gecko.lastId, isNot(id));
+    expect(gecko.views[gecko.lastId]!['url'], 'https://claude.ai/');
+    expect(gecko.methods(id), isNot(contains('readPage')));
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('myAi'), 'claude');
+  });
+
+  testWidgets('Tu IA: con una ya elegida la abre directo', (tester) async {
+    await open(tester, 'https://example.com', preferences: {'myAi': 'https://compu-colo.example.ts.net/'});
+    final antes = gecko.lastId;
+    await tester.tap(find.byTooltip('Tu IA'));
+    await tester.pumpAndSettle();
+    expect(gecko.lastId, isNot(antes));
+    expect(gecko.views[gecko.lastId]!['url'], 'https://compu-colo.example.ts.net/');
   });
 
   testWidgets('muestra licencias de uBlock Origin y GeckoView', (tester) async {

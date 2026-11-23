@@ -33,6 +33,10 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
   - Si no tenés instalada esa aplicación, Patagonia te lo dice en vez de quedarse callado.
 - **Seguridad:** los enlaces que se usaron para atacar Windows y Android (`ms-msdt:`, `search-ms:`, `intent:` y parecidos) quedan bloqueados sin preguntar, y las páginas no pueden llenarte la pantalla de avisos.
 
+- ✨ **"Tu IA" en lugar de "Patagonia AI".** El asistente "Patagonia AI" en realidad no era una IA: agarraba las primeras oraciones de la página y te las mostraba como resumen. No estaba a la altura y lo sacamos. En su lugar hay un botón **"Tu IA"**: elegís la que usás vos (ChatGPT, Claude, Gemini, Copilot, Perplexity, Le Chat u otra, pegando su dirección) y Patagonia la abre en una pestaña nueva. Patagonia no le manda nada de la página que estás viendo: solo te abre el sitio, como un favorito.
+  - **PC:** en el Centro de privacidad (el escudo), tarjeta "Tu IA".
+  - **Celular:** el botón ✨ de arriba, o Menú → Tu IA. Para cambiarla: Configuración → Tu IA.
+
 ### Mantenimiento
 
 - 🛡️ **PC — motor al día.** Patagonia pasa a Electron 45.4.1, la última versión estable. Trae los arreglos de seguridad de Chromium de las últimas semanas. No cambia nada de lo que ves ni de cómo se usa.

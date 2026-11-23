@@ -1,5 +1,5 @@
 const archivos = new Set(["bootstrap.js", "main.js", "preload.js", "renderer.js", "index.html", "package.json", "LICENSE"]);
-const carpetas = new Set(["assets", "services", "src", "ui", "node_modules"]);
+const carpetas = new Set(["assets", "src", "ui", "node_modules"]);
 
 function incluirEnPaquete(ruta) {
     const relativa = ruta.replace(/\\/g, "/").replace(/^\/+/, "");
