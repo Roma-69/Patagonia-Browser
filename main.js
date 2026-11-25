@@ -484,6 +484,12 @@ function prepararSesionPaginas(sesion) {
         type: "frame",
         filePath: path.join(__dirname, "src", "main", "fotosLimpias.js")
     });
+    // YouTube sin anuncios desde el primer video: los filtros entran antes que la página.
+    sesion.registerPreloadScript?.({
+        id: "patagonia-youtube",
+        type: "frame",
+        filePath: path.join(__dirname, "src", "main", "youtubePreload.js")
+    });
     require("./src/main/googleLogin").instalarLoginGoogle({
         app,
         sesion,
@@ -1458,6 +1464,19 @@ ipcInterfaz.handle("obtener-proteccion", () => {
             contenidoDisponible ? contenido.getURL() : pestana?.url || ""
         ) || { disponible: false, sitio: "", activa: false, permitida: false, anuncios: 0, rastreadores: 0, total: 0 }
     };
+});
+
+// Lo pide youtubePreload.js (sincrónico: la página espera, unos milisegundos).
+ipcMain.on("patagonia-scriptlets-youtube", (evento, direccion) => {
+    try {
+        const contenido = evento.sender;
+        const esPestana = pestanas.some(pestana => pestana.vista.webContents === contenido);
+        evento.returnValue = esPestana && evento.senderFrame === contenido.mainFrame && typeof direccion === "string"
+            ? gestorProteccion?.scriptletsYouTube(contenido.id, direccion) || ""
+            : "";
+    } catch {
+        evento.returnValue = "";
+    }
 });
 
 ipcInterfaz.handle("alternar-proteccion-sitio", async () => {

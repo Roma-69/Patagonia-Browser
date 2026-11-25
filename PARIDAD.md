@@ -20,7 +20,7 @@ Patagonia es **un solo navegador** en dos equipos. La regla es simple:
 
 | Función | PC (Windows) | Android | Nota |
 |---|---|---|---|
-| Bloqueo de anuncios y rastreadores (incluye YouTube) | ✅ Ghostery; 1.4.0: si se cuela un anuncio de YouTube, se saltea solo | ✅ uBlock Origin | Motor distinto, mismo resultado. La red de seguridad de YouTube es solo de la PC: en el celu uBlock Origin no la necesitó |
+| Bloqueo de anuncios y rastreadores (incluye YouTube) | ✅ Ghostery; 1.4.0: si se cuela un anuncio de YouTube, se saltea solo | ✅ uBlock Origin | Motor distinto, mismo resultado. La red de seguridad de YouTube es solo de la PC: en el celu uBlock Origin no la necesitó. 1.4.1: en la PC los filtros de YouTube entran antes que la página (primer video sin anuncios); en el celu uBlock Origin ya lo hacía |
 | Traductor privado (en el equipo) | ✅ 1.4.0: inglés incluido; 30 idiomas más se bajan la primera vez | ✅ todos los de Firefox | Mismo motor de Firefox |
 | "Mostrar original" desde el menú | ✅ 1.3.0 (clic derecho) | ✅ | |
 | Buscador: Brave Search por defecto, DuckDuckGo de respaldo | ✅ 1.3.0 Configuración → Buscador | ✅ 1.3.0 Configuración → Buscador | Sin depender de Google ni Microsoft para buscar |
@@ -56,7 +56,7 @@ Hacerla **en la PC y en el celular** con la versión que se va a publicar:
 
 - [ ] Abre rápido y muestra el inicio con el árbol bandera.
 - [ ] Entrar a la cuenta de Google y abrir **Gmail**.
-- [ ] **YouTube**: un video sin anuncios; en el celu, sigue sonando con la pantalla apagada y al pasar a otra pestaña.
+- [ ] **YouTube**: un video sin anuncios (en la PC, el **primer** video después de abrir Patagonia, entrando desde el inicio); en el celu, sigue sonando con la pantalla apagada y al pasar a otra pestaña.
 - [ ] **WhatsApp Web** (PC) / acceso a WhatsApp (celu).
 - [ ] **Google Meet**: se ve y se escucha (en la PC, también "Presentar ahora").
 - [ ] **Traductor**: una página en inglés y una en portugués; "Mostrar original".

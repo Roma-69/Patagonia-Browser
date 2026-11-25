@@ -3,6 +3,7 @@ const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { ElectronBlocker, Request } = require("@ghostery/adblocker-electron");
 const { LISTAS, ARCHIVO_MOTOR, ARCHIVOS_VIEJOS } = require("./listasProteccion");
+const { esYouTube } = require("./youtubeAnuncios");
 
 // Ghostery registra sus canales de IPC por cada sesión y Electron no deja
 // registrar dos veces el mismo canal. Con el modo incógnito hay dos sesiones
@@ -152,6 +153,8 @@ function crearProteccion({
     let inicioPendiente = null;
     let colaSitios = Promise.resolve();
     let descargaActiva = null;
+    // Pestañas de YouTube que ya recibieron los scriptlets desde youtubePreload.js.
+    const scriptletsServidos = new Map();
 
     function programarAviso() {
         if (cerrada || avisoPendiente) return;
@@ -230,13 +233,19 @@ function crearProteccion({
                     }
                 });
                 if (active === false) return;
+                // Si youtubePreload.js ya los aplicó al empezar la página, no se repiten.
+                let scriptsPendientes = scripts;
+                if (inicial && scriptletsServidos.get(contenido.id) === url) {
+                    scriptletsServidos.delete(contenido.id);
+                    scriptsPendientes = [];
+                }
 
                 // Un único envío al marco que pidió los filtros. A diferencia
                 // de webContents.executeJavaScript, no espera did-stop-loading
                 // por cada script ni termina ejecutándolo en una página posterior.
                 const trabajos = [];
-                if (scripts.length) trabajos.push(async () => {
-                    const fallos = await marco.executeJavaScript(crearLoteScriptlets(scripts));
+                if (scriptsPendientes.length) trabajos.push(async () => {
+                    const fallos = await marco.executeJavaScript(crearLoteScriptlets(scriptsPendientes));
                     if (Array.isArray(fallos) && fallos.length) {
                         console.error(`Protección: fallaron ${fallos.length} scriptlets en ${hostname}.`, fallos);
                     }
@@ -352,6 +361,29 @@ function crearProteccion({
         };
     }
 
+    // YouTube: los scriptlets se piden antes de que corran los scripts de la
+    // página (youtubePreload.js), para que el primer video ya salga sin anuncios.
+    function scriptletsYouTube(idContenido, url) {
+        try {
+            if (cerrada || !disponible || !bloqueador || !esYouTube(url) || permitidoPara(idContenido, url)) return "";
+            const { hostname, domain } = Request.fromRawDetails({ url });
+            const { active, scripts } = bloqueador.getCosmeticsFilters({
+                domain, hostname, url,
+                getBaseRules: false,
+                getInjectionRules: true,
+                getExtendedRules: false,
+                getRulesFromHostname: true,
+                getRulesFromDOM: false
+            });
+            if (active === false || !scripts.length) return "";
+            scriptletsServidos.set(idContenido, url);
+            return crearLoteScriptlets(scripts);
+        } catch (error) {
+            console.error("No se pudieron preparar los filtros de YouTube:", error.message);
+            return "";
+        }
+    }
+
     function reiniciarPestana(idContenido) {
         if (idContenido) contadores.set(idContenido, { anuncios: 0, rastreadores: 0 });
         notificar?.();
@@ -359,6 +391,7 @@ function crearProteccion({
 
     function olvidarPestana(idContenido) {
         contadores.delete(idContenido);
+        scriptletsServidos.delete(idContenido);
     }
 
     function alternarSitio(idContenido, url) {
@@ -426,7 +459,7 @@ function crearProteccion({
         disponible = false;
     }
 
-    return { iniciar, estado, reiniciarPestana, olvidarPestana, alternarSitio, actualizarSiHaceFalta, esperar, cerrar, agregarSesion };
+    return { iniciar, estado, reiniciarPestana, olvidarPestana, alternarSitio, actualizarSiHaceFalta, esperar, cerrar, agregarSesion, scriptletsYouTube };
 }
 
 module.exports = { crearProteccion, crearLoteScriptlets, dominioWeb, encontrarSitioPermitido, sitioEstaPermitido, clasificarBloqueo };
