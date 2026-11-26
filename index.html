@@ -414,184 +414,36 @@ button{
     background:#638aff;
 }
 
-/* ==========================
-   PANEL DEL ASISTENTE
-========================== */
-
-.panel-asistente{
-    display:none;
-    flex-direction:column;
-
-    height:430px;
-
-    margin-bottom:18px;
-
-    background:#11161f;
-
-    border:1px solid #30394a;
-    border-radius:13px;
-
-    overflow:hidden;
+.tarjeta-ia-etiqueta{
+    display:block;
+    margin-top:12px;
+    color:#c4cad4;
+    font-size:12px;
 }
 
-.panel-asistente.abierto{
-    display:flex;
-}
-
-.panel-asistente-header{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-
-    padding:13px 14px;
-
-    background:#1d2430;
-
-    border-bottom:1px solid #30394a;
-}
-
-.panel-asistente-titulo{
-    font-size:14px;
-    font-weight:600;
-}
-
-.panel-asistente-estado{
-    margin-top:2px;
-
-    color:#8f9bad;
-
-    font-size:11px;
-}
-
-.cerrar-asistente{
-    width:28px;
-    height:28px;
-
-    display:flex;
-    align-items:center;
-    justify-content:center;
-
-    background:transparent;
-
-    border-radius:7px;
-
-    font-size:18px;
-}
-
-.cerrar-asistente:hover{
-    background:#303846;
-}
-
-.mensajes-asistente{
-    flex:1;
-
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-
-    padding:14px;
-
-    overflow-y:auto;
-}
-
-.mensajes-asistente::-webkit-scrollbar{
-    width:6px;
-}
-
-.mensajes-asistente::-webkit-scrollbar-thumb{
-    background:#384253;
-    border-radius:10px;
-}
-
-.mensaje{
-    max-width:88%;
-
-    padding:10px 12px;
-
-    border-radius:11px;
-
-    font-size:13px;
-    line-height:1.4;
-
-    word-break:break-word;
-}
-
-.mensaje-ia{
-    align-self:flex-start;
-
-    background:#252d3a;
+.tarjeta-ia-select,
+.tarjeta-ia-direccion{
+    width:100%;
+    height:34px;
+    margin-top:6px;
+    padding:0 10px;
+    background:#1c222c;
     color:#e9edf4;
-
-    border-bottom-left-radius:4px;
-}
-
-.mensaje-usuario{
-    align-self:flex-end;
-
-    background:#4d79ff;
-    color:white;
-
-    border-bottom-right-radius:4px;
-}
-
-.formulario-asistente{
-    display:flex;
-    align-items:flex-end;
-    gap:8px;
-
-    padding:10px;
-
-    background:#181e28;
-
-    border-top:1px solid #30394a;
-}
-
-#entradaAsistente{
-    flex:1;
-
-    min-height:38px;
-    max-height:100px;
-
-    resize:none;
-
-    padding:9px 11px;
-
-    background:#252d3a;
-    color:white;
-
-    border:1px solid #3a4454;
-    border-radius:9px;
-
-    outline:none;
-
-    font-family:inherit;
+    border:1px solid #384253;
+    border-radius:8px;
     font-size:13px;
-    line-height:1.35;
 }
 
-#entradaAsistente::placeholder{
-    color:#8f9bad;
+.tarjeta-ia-boton:disabled{
+    opacity:.55;
+    cursor:default;
 }
 
-#entradaAsistente:focus{
-    border-color:#4d79ff;
-}
-
-.enviar-asistente{
-    width:38px;
-    height:38px;
-
-    flex-shrink:0;
-
-    background:#4d79ff;
-
-    border-radius:9px;
-
-    font-size:16px;
-}
-
-.enviar-asistente:hover{
-    background:#638aff;
+.tarjeta-ia-estado{
+    margin-top:8px;
+    min-height:1em;
+    color:#c4cad4;
+    font-size:12px;
 }
 
 /* ==========================
@@ -840,86 +692,37 @@ button{
             </ul>
         </section>
 
-        <section id="tarjetaIA" class="tarjeta-ia">
+        <section id="tarjetaIA" class="tarjeta-ia" aria-labelledby="tituloTuIA">
 
-            <div class="tarjeta-ia-titulo">
-                Patagonia AI
+            <div id="tituloTuIA" class="tarjeta-ia-titulo">
+                Tu IA
             </div>
 
             <p class="tarjeta-ia-texto">
-                Resumí páginas, explicá contenido y hacé preguntas
-                sobre lo que estás viendo.
+                Abrí la IA que usás vos en una pestaña nueva. Patagonia no tiene IA
+                propia y no le manda nada de la página que estás viendo.
             </p>
 
-            <button
-                id="abrirAsistente"
-                class="tarjeta-ia-boton"
-            >
-                Abrir asistente
+            <label class="tarjeta-ia-etiqueta" for="eleccionIA">¿Cuál usás?</label>
+            <select id="eleccionIA" class="tarjeta-ia-select">
+                <option value="">Elegí una…</option>
+                <option value="chatgpt">ChatGPT</option>
+                <option value="claude">Claude</option>
+                <option value="gemini">Gemini</option>
+                <option value="copilot">Copilot</option>
+                <option value="perplexity">Perplexity</option>
+                <option value="lechat">Le Chat (Mistral)</option>
+                <option value="otra">Otra (pegá la dirección)</option>
+            </select>
+
+            <input id="direccionIA" class="tarjeta-ia-direccion" type="url" maxlength="2048"
+                placeholder="https://…" aria-label="Dirección de tu IA" hidden>
+
+            <button id="abrirMiIA" class="tarjeta-ia-boton" type="button" disabled>
+                Abrir mi IA
             </button>
 
-        </section>
-
-        <section
-            id="panelAsistente"
-            class="panel-asistente"
-        >
-
-            <div class="panel-asistente-header">
-
-                <div>
-
-                    <div class="panel-asistente-titulo">
-                        Patagonia AI
-                    </div>
-
-                    <div class="panel-asistente-estado">
-                        Asistente local
-                    </div>
-
-                </div>
-
-                <button
-                    id="cerrarAsistente"
-                    class="cerrar-asistente"
-                    title="Cerrar asistente"
-                >
-                    ×
-                </button>
-
-            </div>
-
-            <div
-                id="mensajesAsistente"
-                class="mensajes-asistente"
-            >
-
-                <div class="mensaje mensaje-ia">
-                    Hola. ¿En qué puedo ayudarte con esta página?
-                </div>
-
-            </div>
-
-            <form
-                id="formularioAsistente"
-                class="formulario-asistente"
-            >
-
-                <textarea
-                    id="entradaAsistente"
-                    placeholder="Escribí un mensaje..."
-                    rows="1"
-                ></textarea>
-
-                <button
-                    type="submit"
-                    class="enviar-asistente"
-                    title="Enviar mensaje"
-                >
-                    ➤
-                </button>
-
-            </form>
+            <p id="estadoTuIA" class="tarjeta-ia-estado" role="status" aria-live="polite"></p>
 
         </section>
 
@@ -1262,7 +1065,7 @@ button{
 <script src="ui/modules/webApps.js"></script>
 <script src="ui/modules/zoom.js"></script>
 <script src="ui/modules/updates.js"></script>
-<script src="ui/modules/assistant.js"></script>
+<script src="ui/modules/tuIA.js"></script>
 <script src="renderer.js"></script>
 
 </body>

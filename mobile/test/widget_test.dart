@@ -39,19 +39,16 @@ void main() {
     expect(find.text('Política de privacidad'), findsOneWidget);
   });
 
-  testWidgets('abre Patagonia AI desde la barra superior', (tester) async {
+  testWidgets('Tu IA reemplaza al asistente propio', (tester) async {
     SharedPreferences.setMockInitialValues({});
 
     await tester.pumpWidget(const PatagoniaBrowserApp());
     await tester.pump(const Duration(milliseconds: 100));
-    await tester.tap(find.byTooltip('Patagonia AI'));
+    expect(find.byTooltip('Patagonia AI'), findsNothing);
+    await tester.tap(find.byTooltip('Tu IA'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Patagonia AI'), findsOneWidget);
-    expect(
-      find.text('Asistente privado • funciona en el teléfono'),
-      findsOneWidget,
-    );
-    expect(find.byKey(const ValueKey('assistant-input')), findsOneWidget);
+    expect(find.text('ChatGPT'), findsOneWidget);
+    expect(find.text('Otra (pegá la dirección)'), findsOneWidget);
   });
 }

@@ -96,13 +96,7 @@ const {
     JSDOM
 } = require("jsdom");
 
-const {
-    crearContextoPagina
-} = require("./ui/modules/pageContext");
-
-const {
-    procesarConsulta
-} = require("./services/ai");
+const { resolverIA } = require("./src/shared/tuIA");
 
 let ventanaPrincipal;
 let pestanas = [];
@@ -191,6 +185,26 @@ const gestorTraduccion = crearGestorTraduccion({
 function paginaInicio() {
     return gestorConfiguracion?.estado().inicio || PAGINA_INICIO;
 }
+
+// Login de Google: cómo se presenta Patagonia (ver googleLogin.js) y aviso claro
+// si Google igual no deja entrar, con la opción de abrirlo en otro navegador.
+const modoLoginGoogle = require("./src/main/googleLogin").modoLogin();
+ipcMain.on("patagonia-modo-login", evento => { evento.returnValue = modoLoginGoogle; });
+ipcMain.on("patagonia-ua-login", evento => { evento.returnValue = require("./src/main/googleLogin").userAgentElectron(); });
+const avisoLoginGoogle = process.platform === "win32"
+    ? require("./src/main/loginBloqueado").crearAvisoLoginBloqueado({
+        dialog,
+        obtenerVentana: () => ventanaPrincipal,
+        existe: ruta => { try { return fs.statSync(ruta).isFile(); } catch { return false; } },
+        abrirPrograma: (ruta, argumentos) => {
+            try {
+                require("node:child_process").spawn(ruta, argumentos, { detached: true, stdio: "ignore" }).unref();
+            } catch (error) {
+                console.error("No se pudo abrir el otro navegador:", error.message);
+            }
+        }
+    })
+    : null;
 
 // Enlaces que abren una aplicación del equipo (claude://, zoommtg://, mailto:…).
 const enlacesExternos = crearEnlacesExternos({
@@ -464,61 +478,6 @@ function enviarURLActual() {
         );
 }
 }        
-async function obtenerContextoPestanaActiva() {
-    const pestanaActiva =
-        obtenerPestanaActiva();
-
-    if (!pestanaActiva) {
-        throw new Error(
-            "No hay una pestaña activa."
-        );
-    }
-
-    const contenido = obtenerContenido(pestanaActiva);
-    if (!contenido) {
-        throw new Error(
-            "La pestaña activa ya no está disponible."
-        );
-    }
-
-    const datosPagina = await obtenerHTMLPagina(contenido);
-    if (obtenerPestanaActiva() !== pestanaActiva) {
-        throw new Error("Cambiaste de pestaña durante la lectura. Volvé a intentarlo.");
-    }
-
-    const dom = new JSDOM(
-        datosPagina.html,
-        {
-            url: datosPagina.url
-        }
-    );
-
-    try {
-        const articulo =
-            new Readability(
-                dom.window.document,
-                { maxElemsToParse: MAX_ELEMENTOS }
-            ).parse();
-        const textoAlternativo =
-            dom.window.document.body
-                ?.textContent || "";
-
-        return crearContextoPagina({
-            titulo:
-                articulo?.title ||
-                datosPagina.titulo ||
-                "",
-            url:
-                datosPagina.url,
-            texto:
-                articulo?.textContent ||
-                textoAlternativo
-        });
-    } finally {
-        dom.window.close();
-    }
-}
-
 // Todo lo que necesita una sesión de páginas: permisos, compartir pantalla, fotos
 // limpias y el arreglo del login de Google (con el modo chicos).
 function prepararSesionPaginas(sesion) {
@@ -545,11 +504,18 @@ function prepararSesionPaginas(sesion) {
         type: "frame",
         filePath: path.join(__dirname, "src", "main", "fotosLimpias.js")
     });
+    // YouTube sin anuncios desde el primer video: los filtros entran antes que la página.
+    sesion.registerPreloadScript?.({
+        id: "patagonia-youtube",
+        type: "frame",
+        filePath: path.join(__dirname, "src", "main", "youtubePreload.js")
+    });
     require("./src/main/googleLogin").instalarLoginGoogle({
         app,
         sesion,
         userAgentNormal: () => app.userAgentFallback,
-        extras: [modoChicos.ajustarCabeceras]
+        extras: [modoChicos.ajustarCabeceras],
+        modo: modoLoginGoogle
     });
     return permisos;
 }
@@ -747,6 +713,7 @@ function crearPestana(
             pestana.interna = esNuevaPestanaPatagonia(nuevaURL);
             pestana.url = pestana.interna ? "" : nuevaURL;
             aplicarLetraGrande(vista.webContents);
+            avisoLoginGoogle?.revisar(vista.webContents, nuevaURL, vista.webContents.getTitle());
 
             if (
                 pestana.id ===
@@ -786,6 +753,7 @@ function crearPestana(
             pestana.titulo =
                 titulo ||
                 "Nueva pestaña";
+            avisoLoginGoogle?.revisar(vista.webContents, vista.webContents.getURL(), titulo);
 
             enviarPestanas();
         }
@@ -1521,6 +1489,19 @@ ipcInterfaz.handle("obtener-proteccion", () => {
     };
 });
 
+// Lo pide youtubePreload.js (sincrónico: la página espera, unos milisegundos).
+ipcMain.on("patagonia-scriptlets-youtube", (evento, direccion) => {
+    try {
+        const contenido = evento.sender;
+        const esPestana = pestanas.some(pestana => pestana.vista.webContents === contenido);
+        evento.returnValue = esPestana && evento.senderFrame === contenido.mainFrame && typeof direccion === "string"
+            ? gestorProteccion?.scriptletsYouTube(contenido.id, direccion) || ""
+            : "";
+    } catch {
+        evento.returnValue = "";
+    }
+});
+
 ipcInterfaz.handle("alternar-proteccion-sitio", async () => {
     const pestana = obtenerPestanaActiva();
     const contenido = pestana?.vista?.webContents;
@@ -1538,72 +1519,14 @@ ipcInterfaz.handle("alternar-proteccion-sitio", async () => {
     }
 });
 
-ipcInterfaz.handle(
-    "obtener-contexto-pagina",
-    async () => {
-        try {
-            const contexto =
-                await obtenerContextoPestanaActiva();
-
-            return {
-                correcto: true,
-                contexto
-            };
-        } catch (error) {
-            console.error(
-                "No se pudo obtener el contexto de la página:",
-                error
-            );
-
-            return {
-                correcto: false,
-                error: error.message
-            };
-        }
-    }
-);
-
-ipcInterfaz.handle(
-    "procesar-consulta-ia",
-    async (_evento, mensaje) => {
-        try {
-            const texto =
-                String(
-                    mensaje || ""
-                ).trim();
-
-            if (!texto) {
-                throw new Error(
-                    "El mensaje está vacío."
-                );
-            }
-
-            const contexto =
-                await obtenerContextoPestanaActiva();
-
-            const resultado =
-                await procesarConsulta({
-                    mensaje: texto,
-                    contexto
-                });
-
-            return {
-                correcto: true,
-                resultado
-            };
-        } catch (error) {
-            console.error(
-                "No se pudo procesar la consulta de IA:",
-                error
-            );
-
-            return {
-                correcto: false,
-                error: error.message
-            };
-        }
-    }
-);
+// "Tu IA": abre en una pestaña nueva la IA que eligió la persona (ChatGPT, Claude…).
+// Patagonia no tiene IA propia ni le manda nada de la página: solo abre el sitio.
+ipcInterfaz.handle("abrir-mi-ia", async () => {
+    const url = resolverIA(gestorConfiguracion?.estado()?.ia);
+    if (!url) return { correcto: false, error: "Elegí primero qué IA usás." };
+    crearPestana(url);
+    return { correcto: true };
+});
 
 process.on(
     "uncaughtException",

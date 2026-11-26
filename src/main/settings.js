@@ -4,6 +4,7 @@ const { randomUUID } = require("node:crypto");
 const { PAGINA_INICIO } = require("../shared/constants");
 const { BUSCADORES, BUSCADOR_PREDETERMINADO, esBuscadorValido } = require("../shared/buscadores");
 const { crearIPCInterfaz } = require("./security");
+const { normalizarIA } = require("../shared/tuIA");
 
 function validarConfiguracion(valor) {
     if (!valor || typeof valor.inicio !== "string" || valor.inicio.length > 2048 ||
@@ -24,11 +25,13 @@ function validarConfiguracion(valor) {
     const vieja = !("buscador" in valor);
     const buscador = esBuscadorValido(valor.buscador) ? valor.buscador : BUSCADOR_PREDETERMINADO;
     const inicio = vieja && url.href === BUSCADORES.duckduckgo.inicio ? BUSCADORES.brave.inicio : url.href;
-    return { inicio, restaurar: valor.restaurar, actualizar, modoChicos, letraGrande, sonidoViento, buscador };
+    // "Tu IA" (desde la 1.4.1): vacío hasta que la persona elige una.
+    const ia = normalizarIA(valor.ia);
+    return { inicio, restaurar: valor.restaurar, actualizar, modoChicos, letraGrande, sonidoViento, buscador, ia };
 }
 
 function crearConfiguracion(archivo) {
-    let datos = { inicio: PAGINA_INICIO, restaurar: true, actualizar: true, modoChicos: false, letraGrande: false, sonidoViento: true, buscador: BUSCADOR_PREDETERMINADO };
+    let datos = { inicio: PAGINA_INICIO, restaurar: true, actualizar: true, modoChicos: false, letraGrande: false, sonidoViento: true, buscador: BUSCADOR_PREDETERMINADO, ia: "" };
     let errorLectura = "";
     let cola = Promise.resolve();
     const estado = () => ({ ...datos, error: errorLectura });

@@ -1,9 +1,12 @@
+// Sitios donde no se aplican los scriptlets (los filtros de red siguen activos).
+// YouTube estuvo acá desde la 1.0.4 (sept. 2026), cuando los scriptlets compartían
+// helpers y rompían el reproductor. Eso se arregló en adblocker.js (cada scriptlet
+// en su propio ámbito) y en la 1.4.1 YouTube vuelve a recibirlos: sin ellos el
+// anuncio del primer video arrancaba y solo lo salteaba la red de seguridad.
 const DOMINIOS_SIN_SCRIPTLETS = new Set([
     "chatgpt.com",
     "chat.openai.com",
-    "openai.com",
-    "youtube.com",
-    "youtu.be"
+    "openai.com"
 ]);
 
 function normalizarDominio(hostname) {
@@ -33,7 +36,7 @@ function instalarCompatibilidadGhostery(ElectronBlocker) {
 
         // Los filtros de red siguen activos. Sólo evitamos scriptlets de uBO/
         // EasyList en aplicaciones que dependen fuertemente de sus propios
-        // proxies de JavaScript (ChatGPT y YouTube).
+        // proxies de JavaScript (ChatGPT).
         return { ...resultado, scripts: [] };
     };
 

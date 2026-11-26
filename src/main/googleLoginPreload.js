@@ -1,8 +1,9 @@
-// Corre en cada página antes que sus scripts. En el login de Google, Patagonia
-// se presenta como Firefox: las cabeceras se cambian en googleLogin.js y acá se
-// cambia lo que lee la página (navigator.userAgent y compañía). Además se borran
-// huellas de Chrome que Firefox no tiene (navigator.userAgentData, NavigatorUAData,
-// window.chrome), también en los iframes del mismo origen. Si Google nota la contradicción responde "el navegador no es
+// Corre en cada página antes que sus scripts. En el login de Google cambia lo que lee
+// la página (navigator.userAgent y compañía) para que coincida con las cabeceras que
+// manda googleLogin.js. Por defecto (modo "electron", nov 2026) Patagonia dice lo que
+// es: Chrome con "Electron/x". Los otros modos (chrome, firefox) quedan para probar;
+// el de Firefox además borra huellas de Chrome (navigator.userAgentData, NavigatorUAData,
+// window.chrome), también en los iframes del mismo origen. Si Google nota una contradicción responde "el navegador no es
 // seguro". Fuera de las páginas de login no se toca nada.
 //
 // Ojo: NO usar webContents.setUserAgent para esto. Si se llama mientras una
@@ -16,6 +17,72 @@ function versionFirefox(ahora = Date.now()) {
     const base = Date.UTC(2025, 11, 9);
     const ciclos = Math.floor((ahora - base) / (28 * 24 * 60 * 60 * 1000));
     return Math.max(146, 146 + ciclos - 1);
+}
+
+// Modo "chrome": Patagonia es Chromium por dentro, así que lo único que le falta
+// para parecerse a Chrome es la marca "Google Chrome" en navigator.userAgentData
+// (la misma que va en las cabeceras sec-ch-ua, ver googleLogin.js).
+function marcaChrome() {
+    // Esta función se manda sola a la página: todo lo que usa va adentro.
+    // Sin la ventana "Elige una clave de paso" de golpe (ver disfrazFirefox).
+    function sinClavePaso() {
+        try {
+            if (window.PublicKeyCredential) {
+                Object.defineProperty(window.PublicKeyCredential, "isConditionalMediationAvailable", {
+                    configurable: true, writable: true, value: () => Promise.resolve(false)
+                });
+            }
+        } catch { /* sin cambios */ }
+    }
+    try {
+        const proto = window.NavigatorUAData && window.NavigatorUAData.prototype;
+        const original = proto && Object.getOwnPropertyDescriptor(proto, "brands");
+        if (original && original.get) {
+            const sumar = lista => {
+                if (!Array.isArray(lista) || lista.some(m => m && m.brand === "Google Chrome")) return lista;
+                const chromium = lista.find(m => m && m.brand === "Chromium");
+                return chromium ? [...lista, { brand: "Google Chrome", version: chromium.version }] : lista;
+            };
+            Object.defineProperty(proto, "brands", {
+                configurable: true,
+                enumerable: original.enumerable,
+                get() { return sumar(original.get.call(this)); }
+            });
+            const alta = proto.getHighEntropyValues;
+            if (typeof alta === "function") {
+                Object.defineProperty(proto, "getHighEntropyValues", {
+                    configurable: true,
+                    writable: true,
+                    value: function getHighEntropyValues(pistas) {
+                        return alta.call(this, pistas).then(valores => {
+                            if (valores && Array.isArray(valores.brands)) valores.brands = sumar(valores.brands);
+                            if (valores && Array.isArray(valores.fullVersionList)) valores.fullVersionList = sumar(valores.fullVersionList);
+                            return valores;
+                        });
+                    }
+                });
+            }
+        }
+    } catch { /* sin cambios */ }
+    sinClavePaso();
+}
+
+// Modo "electron": la página lee el mismo user agent honesto que va en las cabeceras
+// (googleLogin.js), para que no se contradigan.
+function userAgentHonesto(ua) {
+    try {
+        const proto = window.Navigator && window.Navigator.prototype;
+        Object.defineProperty(proto, "userAgent", { get: () => ua, configurable: true });
+        Object.defineProperty(proto, "appVersion", { get: () => ua.replace(/^Mozilla\//, ""), configurable: true });
+    } catch { /* sin cambios */ }
+    // Sin la ventana "Elige una clave de paso" de golpe (ver disfrazFirefox).
+    try {
+        if (window.PublicKeyCredential) {
+            Object.defineProperty(window.PublicKeyCredential, "isConditionalMediationAvailable", {
+                configurable: true, writable: true, value: () => Promise.resolve(false)
+            });
+        }
+    } catch { /* sin cambios */ }
 }
 
 function disfrazFirefox(version) {
@@ -44,7 +111,7 @@ function disfrazFirefox(version) {
     // paso). Chrome lo muestra como una sugerencia chiquita bajo el campo del mail, pero
     // Electron no la tiene y Windows tira la ventana "Elige una clave de paso" encima de
     // todo. Decimos que esa sugerencia no está: la clave de paso se sigue pudiendo usar
-    // cuando Google la pide después del mail.
+    // cuando Google la pide después del mail. (Va adentro: la función se manda sola a la página.)
     try {
         if (window.PublicKeyCredential) {
             Object.defineProperty(window.PublicKeyCredential, "isConditionalMediationAvailable", {
@@ -72,7 +139,17 @@ function disfrazFirefox(version) {
 }
 
 if (typeof location !== "undefined" && location.protocol === "https:" && DOMINIOS_LOGIN.includes(location.hostname)) {
-    require("electron").contextBridge.executeInMainWorld({ func: disfrazFirefox, args: [versionFirefox()] });
+    // El modo lo decide el proceso principal (ver modoLogin en googleLogin.js).
+    let modo = "electron";
+    const { contextBridge, ipcRenderer } = require("electron");
+    try { modo = ipcRenderer.sendSync("patagonia-modo-login") || "electron"; } catch { /* por defecto */ }
+    if (modo === "electron") {
+        let ua = "";
+        try { ua = ipcRenderer.sendSync("patagonia-ua-login") || ""; } catch { /* sin user agent */ }
+        if (ua) contextBridge.executeInMainWorld({ func: userAgentHonesto, args: [ua] });
+    } else if (modo === "firefox") contextBridge.executeInMainWorld({ func: disfrazFirefox, args: [versionFirefox()] });
+    else if (modo === "chrome") contextBridge.executeInMainWorld({ func: marcaChrome, args: [] });
+    // "chromium": no se toca nada.
 }
 
-if (typeof module !== "undefined") module.exports = { versionFirefox, disfrazFirefox };
+if (typeof module !== "undefined") module.exports = { versionFirefox, disfrazFirefox, marcaChrome, userAgentHonesto };

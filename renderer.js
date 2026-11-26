@@ -285,26 +285,9 @@ function mostrarPestanas(pestanas) {
     if (cambioActiva) vistaActiva?.elemento.scrollIntoView?.({ block: "nearest", inline: "nearest" });
 }
 
-function iniciarAsistente() {
-    if (
-        !window.PatagoniaAssistant ||
-        typeof window.PatagoniaAssistant.iniciar !==
-            "function"
-    ) {
-        console.error(
-            "No se encontró el módulo PatagoniaAssistant."
-        );
-
-        return;
-    }
-
-    const iniciado =
-        window.PatagoniaAssistant.iniciar();
-
-    if (!iniciado) {
-        console.error(
-            "Patagonia AI no pudo inicializarse."
-        );
+function iniciarTuIA() {
+    if (!window.PatagoniaTuIA?.iniciar?.()) {
+        console.error("No se pudo iniciar la tarjeta \"Tu IA\".");
     }
 }
 
@@ -425,4 +408,4 @@ window.patagonia
         }
     );
 
-iniciarAsistente();
+iniciarTuIA();

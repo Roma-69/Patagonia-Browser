@@ -23,7 +23,7 @@ function interfaz(t) {
         detener: () => acciones.push(["detener"])
     };
     window.PatagoniaFavorites = { actualizarPagina() {} };
-    window.PatagoniaAssistant = { iniciar: () => true };
+    window.PatagoniaTuIA = { iniciar: () => true };
     window.eval(fs.readFileSync(path.join(__dirname, "../renderer.js"), "utf8"));
     const tab = id => window.document.querySelector(`.tab[data-id="${id}"]`);
     return { window, document: window.document, recibir, tab, acciones, desplazamientos };

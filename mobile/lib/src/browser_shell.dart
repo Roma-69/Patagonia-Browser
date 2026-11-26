@@ -12,7 +12,7 @@ import 'descargas.dart';
 import 'gecko/gecko_view.dart';
 import 'navigation_input.dart';
 import 'favoritos_archivo.dart';
-import 'local_assistant.dart';
+import 'tu_ia.dart';
 import 'privacy_protection.dart';
 import 'protocolos_externos.dart';
 import 'reader_view.dart';
@@ -85,6 +85,8 @@ class _BrowserShellState extends State<BrowserShell>
   bool _updateNotices = true;
   bool _restoreTabs = true;
   bool _windSound = true;
+  /// "Tu IA": '' sin elegir, un id de TuIA.lista o una dirección propia.
+  String _myAi = '';
   final Set<String> _neverTranslateHosts = {};
   MobileRelease? _availableUpdate;
   bool _installingUpdate = false;
@@ -242,6 +244,7 @@ class _BrowserShellState extends State<BrowserShell>
         _updateNotices = preferences.getBool(_updateNoticesKey) ?? true;
         _restoreTabs = preferences.getBool(_restoreTabsKey) ?? true;
         _windSound = preferences.getBool(_windSoundKey) ?? true;
+        _myAi = TuIA.normalizar(preferences.getString(_myAiKey));
         _neverTranslateHosts
           ..clear()
           ..addAll(preferences.getStringList(_neverTranslateKey) ?? const []);
@@ -293,6 +296,7 @@ class _BrowserShellState extends State<BrowserShell>
   static const _updateNoticesKey = 'updateNotices';
   static const _restoreTabsKey = 'restoreTabs';
   static const _windSoundKey = 'windSound';
+  static const _myAiKey = 'myAi';
   static const _openTabsKey = 'openTabs';
   static const _activeTabKey = 'openTabsActive';
   static const _maxSavedTabs = 15;
@@ -710,68 +714,127 @@ class _BrowserShellState extends State<BrowserShell>
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<AssistantPageContext> _readAssistantContext() async {
-    final tab = _current;
-    if (_gecko) {
-      final gecko = tab.gecko;
-      if (tab.url == null || gecko == null) {
-        return const AssistantPageContext(title: '', url: '', text: '');
-      }
-      // La extensión "Patagonia Lector" lee el texto dentro del teléfono.
-      final page = await gecko.readPage();
-      return AssistantPageContext(
-        title: page == null || page.title.isEmpty ? tab.title : page.title,
-        url: page == null || page.url.isEmpty ? tab.url.toString() : page.url,
-        text: page?.text ?? '',
-      );
-    }
-    final controller = tab.controller;
-    if (tab.url == null || controller == null) {
-      return const AssistantPageContext(title: '', url: '', text: '');
-    }
+  // ---------------------------------------------------------------------------
+  // "Tu IA": Patagonia no tiene IA propia. Abre en una pestaña nueva la IA que
+  // usa cada persona (ChatGPT, Claude…), sin mandarle nada de la página.
+  // ---------------------------------------------------------------------------
 
-    try {
-      final raw = await controller.evaluateJavascript(
-        source: '''
-          (() => JSON.stringify({
-            title: document.title || '',
-            url: window.location.href || '',
-            text: (document.body?.innerText || '').slice(0, 30000)
-          }))()
-        ''',
-      );
-      final decoded = raw is String ? jsonDecode(raw) : raw;
-      if (decoded is Map) {
-        return AssistantPageContext(
-          title: decoded['title']?.toString() ?? tab.title,
-          url: decoded['url']?.toString() ?? tab.url.toString(),
-          text: decoded['text']?.toString() ?? '',
-        );
-      }
-    } catch (_) {
-      // Algunas páginas protegidas no permiten leer su texto. El asistente
-      // mantiene disponibles el título y la dirección en esos casos.
+  Future<void> _openMyAi() async {
+    var destination = TuIA.destino(_myAi);
+    if (destination == null) {
+      final chosen = await _chooseMyAi();
+      if (!chosen || !mounted) return;
+      destination = TuIA.destino(_myAi);
+      if (destination == null) return;
     }
-
-    return AssistantPageContext(
-      title: tab.title,
-      url: tab.url.toString(),
-      text: '',
-    );
+    _addTab(url: destination);
   }
 
-  void _showAssistant() {
-    showModalBottomSheet<void>(
+  /// Devuelve true si quedó elegida una IA.
+  Future<bool> _chooseMyAi() async {
+    final choice = await showModalBottomSheet<String>(
       context: context,
-      isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: _navy,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (sheetContext) =>
-          _AssistantSheet(loadContext: _readAssistantContext),
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(
+                title: Text(
+                  'Tu IA',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  'Elegí la IA que usás. Patagonia la abre en una pestaña nueva y no le manda nada de la página.',
+                  style: TextStyle(color: _muted),
+                ),
+              ),
+              for (final entry in TuIA.lista.entries)
+                ListTile(
+                  key: ValueKey('myAi-${entry.key}'),
+                  leading: Icon(
+                    _myAi == entry.key ? Icons.radio_button_checked : Icons.radio_button_off,
+                    color: _blue,
+                  ),
+                  title: Text(entry.value.nombre),
+                  onTap: () => Navigator.pop(sheetContext, entry.key),
+                ),
+              ListTile(
+                key: const ValueKey('myAi-otra'),
+                leading: Icon(
+                  _myAi.isNotEmpty && !TuIA.lista.containsKey(_myAi)
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: _blue,
+                ),
+                title: const Text('Otra (pegá la dirección)'),
+                onTap: () => Navigator.pop(sheetContext, 'otra'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+    if (choice == null || !mounted) return false;
+    if (choice != 'otra') {
+      await _setMyAi(choice);
+      return true;
+    }
+    final address = await _askCustomAi();
+    if (address == null || !mounted) return false;
+    final valid = TuIA.direccionPropia(address);
+    if (valid.isEmpty) {
+      _showMessage('Esa dirección no es válida. Escribila completa, por ejemplo https://chatgpt.com.');
+      return false;
+    }
+    await _setMyAi(valid);
+    return true;
+  }
+
+  Future<String?> _askCustomAi() {
+    final controller = TextEditingController(
+      text: TuIA.lista.containsKey(_myAi) ? '' : _myAi,
+    );
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Dirección de tu IA'),
+        content: TextField(
+          key: const ValueKey('myAi-direccion'),
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(hintText: 'https://…'),
+          onSubmitted: (value) => Navigator.pop(dialogContext, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    ).whenComplete(controller.dispose);
+  }
+
+  Future<void> _setMyAi(String value) async {
+    final ai = TuIA.normalizar(value);
+    setState(() => _myAi = ai);
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(_myAiKey, ai);
+    } catch (_) {
+      _showMessage('No pudimos guardar los cambios en el teléfono.');
+    }
   }
 
   Future<void> _setProtection(_BrowserTab tab, bool enabled) async {
@@ -993,8 +1056,8 @@ class _BrowserShellState extends State<BrowserShell>
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Patagonia AI',
-                  onPressed: _showAssistant,
+                  tooltip: 'Tu IA',
+                  onPressed: _openMyAi,
                   icon: const Icon(Icons.auto_awesome, color: _blue),
                 ),
                 IconButton(
@@ -1519,10 +1582,10 @@ class _BrowserShellState extends State<BrowserShell>
               ],
               _MenuTile(
                 icon: Icons.auto_awesome,
-                label: 'Patagonia AI',
+                label: 'Tu IA',
                 onTap: () {
                   Navigator.pop(sheetContext);
-                  _showAssistant();
+                  _openMyAi();
                 },
               ),
               _MenuTile(
@@ -2331,6 +2394,20 @@ class _BrowserShellState extends State<BrowserShell>
                         child: const Text('Borrar'),
                       ),
                     ),
+                  ListTile(
+                    key: const ValueKey('myAiSetting'),
+                    leading: const Icon(Icons.auto_awesome),
+                    title: const Text('Tu IA'),
+                    subtitle: Text(
+                      '${TuIA.nombre(_myAi)} · se abre en una pestaña nueva, sin mandarle nada de la página.',
+                      style: const TextStyle(color: _muted),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      await _chooseMyAi();
+                      if (sheetContext.mounted) setSheetState(() {});
+                    },
+                  ),
                   SwitchListTile(
                     key: const ValueKey('windSound'),
                     secondary: const Icon(Icons.air),
@@ -3453,234 +3530,6 @@ class _PageError extends StatelessWidget {
       ),
     );
   }
-}
-
-class _AssistantSheet extends StatefulWidget {
-  const _AssistantSheet({required this.loadContext});
-
-  final Future<AssistantPageContext> Function() loadContext;
-
-  @override
-  State<_AssistantSheet> createState() => _AssistantSheetState();
-}
-
-class _AssistantSheetState extends State<_AssistantSheet> {
-  final TextEditingController _input = TextEditingController();
-  final ScrollController _scroll = ScrollController();
-  final List<_AssistantMessage> _messages = const [
-    _AssistantMessage(
-      text: 'Hola, soy Patagonia AI. Puedo resumir la página abierta, mostrar su título o su dirección.',
-      fromUser: false,
-    ),
-  ].toList();
-  bool _working = false;
-
-  @override
-  void dispose() {
-    _input.dispose();
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  Future<void> _send() async {
-    final text = _input.text.trim();
-    if (text.isEmpty || _working) return;
-
-    setState(() {
-      _messages.add(_AssistantMessage(text: text, fromUser: true));
-      _input.clear();
-      _working = true;
-    });
-    _scrollToEnd();
-
-    final pageContext = await widget.loadContext();
-    final response = buildLocalAssistantResponse(
-      message: text,
-      context: pageContext,
-    );
-    if (!mounted) return;
-
-    setState(() {
-      _messages.add(_AssistantMessage(text: response, fromUser: false));
-      _working = false;
-    });
-    _scrollToEnd();
-  }
-
-  void _scrollToEnd() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) {
-        _scroll.animateTo(
-          _scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 180),
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * .86,
-        child: Column(
-          children: [
-            Container(
-              width: 42,
-              height: 4,
-              margin: const EdgeInsets.only(top: 10),
-              decoration: BoxDecoration(
-                color: const Color(0x667F9AAF),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 12, 8, 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0x333EA9E5),
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: const Icon(Icons.auto_awesome, color: _blue),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Patagonia AI',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Asistente privado • funciona en el teléfono',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: _muted, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Cerrar asistente',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: Color(0x3350A7D8)),
-            Expanded(
-              child: ListView.builder(
-                controller: _scroll,
-                padding: const EdgeInsets.fromLTRB(14, 16, 14, 10),
-                itemCount: _messages.length + (_working ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (_working && index == _messages.length) {
-                    return const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: _blue,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                  final message = _messages[index];
-                  return Align(
-                    alignment: message.fromUser
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 520),
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 11,
-                      ),
-                      decoration: BoxDecoration(
-                        color: message.fromUser
-                            ? const Color(0xFF286F9E)
-                            : _surface,
-                        borderRadius: BorderRadius.circular(17),
-                        border: Border.all(
-                          color: message.fromUser
-                              ? const Color(0x6650A7D8)
-                              : const Color(0x334E7894),
-                        ),
-                      ),
-                      child: Text(message.text),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const Divider(height: 1, color: Color(0x3350A7D8)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 10, 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      key: const ValueKey('assistant-input'),
-                      controller: _input,
-                      enabled: !_working,
-                      minLines: 1,
-                      maxLines: 4,
-                      textCapitalization: TextCapitalization.sentences,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _send(),
-                      decoration: InputDecoration(
-                        hintText: 'Preguntá sobre esta página',
-                        filled: true,
-                        fillColor: const Color(0xFF0A2134),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(22),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    tooltip: 'Enviar mensaje',
-                    onPressed: _working ? null : _send,
-                    style: IconButton.styleFrom(backgroundColor: _blue),
-                    icon: const Icon(Icons.arrow_upward, color: _navy),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AssistantMessage {
-  const _AssistantMessage({required this.text, required this.fromUser});
-
-  final String text;
-  final bool fromUser;
 }
 
 class _StartPage extends StatelessWidget {

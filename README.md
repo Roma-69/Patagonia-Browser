@@ -51,7 +51,7 @@ Para armar el instalador de Windows o los APK, seguí **[COMO-ARMAR.md](COMO-ARM
 - Cierre que espera los guardados pendientes de favoritos, historial, configuración y pestañas. Si falla el guardado de las pestañas, permite reintentar, volver al navegador o cerrar sin guardar.
 - Una sola instancia para evitar escrituras simultáneas sobre el mismo perfil.
 - Los permisos de sitios admitidos, como cámara, micrófono y ubicación, requieren una confirmación visible. Las decisiones duran hasta cerrar Patagonia. Los avisos aparecen de uno en uno y se cancelan al navegar o cambiar de pestaña; las solicitudes desconocidas, inseguras o de apertura de aplicaciones externas se bloquean.
-- Asistente local para extraer texto y resumir mediante reglas; todavía sin modelo de IA conectado.
+- "Tu IA": abre en una pestaña nueva la IA que usa cada persona (ChatGPT, Claude, Gemini, Copilot, Perplexity, Le Chat u otra). Patagonia no tiene IA propia ni le manda nada de la página.
 
 ## Usarlo en Windows
 

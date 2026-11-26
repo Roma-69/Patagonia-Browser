@@ -3,8 +3,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
-const { crearContextoPagina } = require('../ui/modules/pageContext');
-const { procesarConsulta } = require('../services/ai');
 const texto = archivo => fs.readFileSync(path.join(__dirname, '..', archivo), 'utf8');
 const turno = () => new Promise(resolve => setImmediate(resolve));
 
@@ -19,7 +17,7 @@ test('un error de protección permanece visible después de refrescar contadores
         obtenerProteccion: async () => ({ correcto: true, proteccion: estado }),
         alternarProteccionSitio: async () => ({ correcto: false, error: 'Disco lleno' })
     };
-    w.PatagoniaFavorites = { actualizarPagina() {} }; w.PatagoniaAssistant = { iniciar: () => true };
+    w.PatagoniaFavorites = { actualizarPagina() {} }; w.PatagoniaTuIA = { iniciar: () => true };
     w.eval(texto('renderer.js')); await turno();
     w.document.getElementById('alternarProteccionSitio').click(); await turno();
     recibir({ ...estado, total: 5 });
@@ -27,33 +25,6 @@ test('un error de protección permanece visible después de refrescar contadores
     assert.equal(w.document.getElementById('alternarProteccionSitio').disabled, false);
     recibir({ ...estado, sitio: 'otro.example' });
     assert.doesNotMatch(w.document.getElementById('detalleProteccion').textContent, /Disco lleno/);
-});
-
-test('el asistente conserva términos técnicos, paréntesis y oraciones cortas del artículo', async () => {
-    const original = 'Compartir\nLa política de privacidad permite compartir esta información. La presión cayó (etapa de separación). Bomba parada.';
-    const contexto = crearContextoPagina({ titulo: 'Operación', url: 'https://example.com/', texto: original });
-    assert.match(contexto.texto, /política de privacidad permite compartir/);
-    assert.doesNotMatch(contexto.texto, /^Compartir /);
-    const resultado = await procesarConsulta({ mensaje: 'Resumí esta página', contexto });
-    assert.match(resultado.respuesta, /\(etapa de separación\)/);
-    assert.match(resultado.respuesta, /Bomba parada\./);
-});
-
-test('cerrar el asistente durante una respuesta no roba después el foco; Enter en composición no envía', async t => {
-    const dom = new JSDOM(texto('index.html'), { runScripts: 'outside-only' });
-    t.after(() => dom.window.close());
-    const w = dom.window; let resolver; let llamadas = 0;
-    w.patagonia = { procesarConsultaIA: () => { llamadas++; return new Promise(r => { resolver = r; }); } };
-    w.eval(texto('ui/modules/assistant.js')); w.PatagoniaAssistant.iniciar(); w.PatagoniaAssistant.abrir();
-    const entrada = w.document.getElementById('entradaAsistente'); entrada.value = 'Consulta';
-    entrada.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }));
-    assert.equal(llamadas, 0);
-    const pendiente = w.PatagoniaAssistant.enviarMensaje();
-    w.PatagoniaAssistant.cerrar();
-    const direccion = w.document.getElementById('direccion'); direccion.focus();
-    resolver({ correcto: true, resultado: { respuesta: 'Respuesta local' } }); await pendiente;
-    await new Promise(r => setTimeout(r, 120));
-    assert.equal(w.document.activeElement, direccion);
 });
 
 function paginaNueva(t) {

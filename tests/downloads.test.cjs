@@ -179,7 +179,7 @@ test("toolbar shortcut opens the sidebar once and brings downloads into view", a
             recibirEstadoBarraLateral: fn => { estadoSidebar = fn; },
             alternarBarraLateral: () => { solicitudes++; }
         };
-        window.PatagoniaAssistant = { iniciar: () => true };
+        window.PatagoniaTuIA = { iniciar: () => true };
         const abrir = window.document.getElementById("abrirDescargas");
         abrir.scrollIntoView = () => { desplazamientos++; };
         window.eval(fs.readFileSync(path.join(__dirname, "../ui/modules/downloads.js"), "utf8"));

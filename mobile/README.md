@@ -6,13 +6,13 @@ Proyecto Flutter para Android y iPhone.
 
 - En **Android** las páginas se muestran con **GeckoView 159** (el motor de Mozilla) y los anuncios
   los bloquea **uBlock Origin 1.75.0**, incluido sin modificar. La interfaz es la misma de siempre
-  (pestañas, barra, favoritos, historial, modo escritorio, inicio, Patagonia AI), escrita en Flutter.
+  (pestañas, barra, favoritos, historial, modo escritorio, inicio, Tu IA), escrita en Flutter.
 - En **iPhone** no cambia nada: sigue con WebKit y las reglas propias de Patagonia.
 - Código del motor: `android/app/src/main/kotlin/.../gecko/` (vista nativa por pestaña, diálogos de
   las páginas, permisos, descargas, panel de uBO) y `lib/src/gecko/gecko_view.dart` (el lado Dart).
 - El escudo abre el panel de uBlock Origin: ahí se ve qué se bloqueó y se apaga la protección por sitio.
   La lista vieja de sitios sin protección se muestra una vez como aviso.
-- Patagonia AI lee el texto de la página con una extensión propia (`assets/patagonia_lector`).
+- El modo lectura arma la nota con una extensión propia (`assets/patagonia_lector`).
 - Requiere Android 8 o más y celulares de 64 bits (arm64). El APK pesa unos 100 MB.
 - Favoritos e historial siguen en el mismo lugar: se conservan al actualizar. Las sesiones de los
   sitios (Gmail, bancos) hay que iniciarlas otra vez una sola vez, porque GeckoView guarda sus cookies
@@ -22,7 +22,7 @@ Proyecto Flutter para Android y iPhone.
 
 ## Funciones
 
-Inicio y búsqueda; pestañas durante la sesión; atrás, adelante y recarga; favoritos e historial locales; asistente local para extraer un resumen, título o dirección; modo de escritorio; protección configurable por sitio.
+Inicio y búsqueda; pestañas durante la sesión; atrás, adelante y recarga; favoritos e historial locales; acceso "Tu IA" a la IA que use cada persona; modo de escritorio; protección configurable por sitio.
 
 ## Estado de YouTube en 1.0.5+8 (no resuelto)
 

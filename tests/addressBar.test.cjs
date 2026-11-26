@@ -17,7 +17,7 @@ function interfaz(t) {
         navegar: url => destinos.push(url)
     };
     window.PatagoniaFavorites = { actualizarPagina() {} };
-    window.PatagoniaAssistant = { iniciar: () => true };
+    window.PatagoniaTuIA = { iniciar: () => true };
     window.eval(fs.readFileSync(path.join(__dirname, "../renderer.js"), "utf8"));
     const entrada = window.document.getElementById("direccion");
     function activar(id, url) {
