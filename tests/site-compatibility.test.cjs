@@ -9,7 +9,7 @@ const {
 test("detecta dominios dinámicos con compatibilidad especial", () => {
     assert.equal(normalizarDominio("WWW.ChatGPT.com."), "chatgpt.com");
     assert.equal(requiereCompatibilidad("chatgpt.com"), true);
-    assert.equal(requiereCompatibilidad("www.youtube.com"), true);
+    assert.equal(requiereCompatibilidad("www.youtube.com"), false, "YouTube recibe los scriptlets (1.4.1)");
     assert.equal(requiereCompatibilidad("example.com"), false);
 });
 
@@ -21,10 +21,10 @@ test("desactiva sólo scriptlets y conserva filtros cosméticos", () => {
     FakeBlocker.prototype.getCosmeticsFilters = original;
 
     instalarCompatibilidadGhostery(FakeBlocker);
-    const youtube = new FakeBlocker().getCosmeticsFilters({ hostname: "youtube.com" });
+    const chatgpt = new FakeBlocker().getCosmeticsFilters({ hostname: "chatgpt.com" });
     const normal = new FakeBlocker().getCosmeticsFilters({ hostname: "example.com" });
 
-    assert.deepEqual(youtube.styles, [".ad{display:none}"]);
-    assert.deepEqual(youtube.scripts, []);
+    assert.deepEqual(chatgpt.styles, [".ad{display:none}"]);
+    assert.deepEqual(chatgpt.scripts, []);
     assert.deepEqual(normal.scripts, ["proxyScript"]);
 });

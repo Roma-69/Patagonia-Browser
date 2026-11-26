@@ -60,9 +60,75 @@ function cabecerasFirefox(cabeceras, ahora) {
     return nuevas;
 }
 
+// Cómo se presenta Patagonia en el login de Google.
+// Nov 2026: Google rechaza ("No se ha podido iniciar sesión. Es posible que el navegador
+// no sea seguro") a todo lo que se disfraza: tanto el disfraz de Firefox como el user
+// agent "limpio" de Chrome. Probado el 26/11/2026 con un correo inventado, en una
+// sesión nueva sin cookies: si el user agent dice la verdad ("... Chrome/156 Electron/45
+// ..."), Google pasa al paso siguiente; si dice Chrome o Firefox, rechaza en el acto.
+// - "electron" (por defecto): en las páginas de login, Patagonia dice lo que es.
+// - "chrome": como Chrome, con la marca "Google Chrome" (lo que se probó en la 1.4.1).
+// - "chromium": sin tocar nada (el user agent limpio de Chrome que usa todo Patagonia).
+// - "firefox": el disfraz anterior.
+// Para probar otra forma, se abre Patagonia con --login-google=chrome (o chromium, firefox).
+const MODOS_LOGIN = ["electron", "chrome", "chromium", "firefox"];
+
+function modoLogin(argv = process.argv) {
+    for (const argumento of argv || []) {
+        const encontrado = /^--login-google=(\w+)$/.exec(String(argumento));
+        if (encontrado && MODOS_LOGIN.includes(encontrado[1].toLowerCase())) return encontrado[1].toLowerCase();
+    }
+    return "electron";
+}
+
+// El user agent honesto: como el de Chrome, con "Electron/x" al final (sin el nombre
+// de la app, que Electron mete con un espacio y no es un formato estándar).
+function userAgentElectron(versiones = process.versions) {
+    return `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${versiones.chrome} Electron/${versiones.electron} Safari/537.36`;
+}
+
+// Solo cambia el user agent; las pistas del navegador (sec-ch-ua) quedan como las
+// manda el motor ("Chromium"), que es la verdad.
+function cabecerasElectron(cabeceras, ua = userAgentElectron()) {
+    const nuevas = {};
+    for (const [nombre, valor] of Object.entries(cabeceras || {})) {
+        if (nombre.toLowerCase() !== "user-agent") nuevas[nombre] = valor;
+    }
+    nuevas["User-Agent"] = ua;
+    return nuevas;
+}
+
+// Suma la marca "Google Chrome" a una lista de marcas (sec-ch-ua), si falta.
+// Ej.: '"Chromium";v="156", "Not_A Brand";v="24"' → '... , "Google Chrome";v="156"'.
+function conMarcaChrome(valor) {
+    const texto = String(valor || "");
+    if (!texto || /"Google Chrome"/.test(texto)) return texto;
+    const chromium = /"Chromium";v="([^"]+)"/.exec(texto);
+    if (!chromium) return texto;
+    return `${texto}, "Google Chrome";v="${chromium[1]}"`;
+}
+
+function cabecerasChrome(cabeceras) {
+    const nuevas = { ...(cabeceras || {}) };
+    for (const nombre of Object.keys(nuevas)) {
+        const minuscula = nombre.toLowerCase();
+        if (minuscula === "sec-ch-ua" || minuscula === "sec-ch-ua-full-version-list") {
+            nuevas[nombre] = conMarcaChrome(nuevas[nombre]);
+        }
+    }
+    return nuevas;
+}
+
+function cabecerasDelLogin(cabeceras, modo) {
+    if (modo === "electron") return cabecerasElectron(cabeceras);
+    if (modo === "firefox") return cabecerasFirefox(cabeceras);
+    if (modo === "chrome") return cabecerasChrome(cabeceras);
+    return cabeceras;
+}
+
 // Electron permite un solo onBeforeSendHeaders por sesión: los otros ajustes
 // de cabeceras (por ejemplo el modo chicos) se pasan en "extras".
-function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
+function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [], modo = modoLogin() }) {
     // Borra las huellas de Chrome que quedan en el login (ver googleLoginPreload.js).
     if (typeof sesion.registerPreloadScript === "function") {
         sesion.registerPreloadScript({
@@ -74,7 +140,7 @@ function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
 
     sesion.webRequest.onBeforeSendHeaders((detalles, responder) => {
         let cabeceras = pedidoDelLogin(detalles)
-            ? cabecerasFirefox(detalles.requestHeaders)
+            ? cabecerasDelLogin(detalles.requestHeaders, modo)
             : detalles.requestHeaders;
         for (const ajustar of extras) cabeceras = ajustar(detalles.url, cabeceras);
         responder({ requestHeaders: cabeceras });
@@ -82,4 +148,7 @@ function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
     // Lo que lee la página (navigator.userAgent, etc.) lo cambia googleLoginPreload.js.
 }
 
-module.exports = { esLoginGoogle, pedidoDelLogin, userAgentFirefox, versionFirefox, cabecerasFirefox, instalarLoginGoogle };
+module.exports = {
+    esLoginGoogle, pedidoDelLogin, userAgentFirefox, versionFirefox, cabecerasFirefox,
+    MODOS_LOGIN, modoLogin, userAgentElectron, cabecerasElectron, conMarcaChrome, cabecerasChrome, cabecerasDelLogin, instalarLoginGoogle
+};

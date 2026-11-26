@@ -27,7 +27,7 @@ const TIPOS_RASTREADOR = new Set(["script", "xhr", "ping", "webSocket", "cspRepo
 const INTERVALO_ACTUALIZACION = 7 * 24 * 60 * 60 * 1000;
 const LIMITE_DESCARGA_MS = 15000;
 
-function crearLoteScriptlets(scripts) {
+function crearLoteScriptlets(scripts, { unaVez = false } = {}) {
     // Ghostery 2.18.2 entrega helpers con nombres repetidos (proxyApplyFn,
     // safeSelf...). Cada script necesita su propio ámbito léxico: si se
     // declaran globalmente, los proxies anteriores usan el helper siguiente
@@ -41,7 +41,15 @@ function crearLoteScriptlets(scripts) {
             fallos.push({ indice: ${indice}, mensaje: String(error?.message || error) });
         }
     `);
-    return `(() => {
+    // unaVez: la misma página nunca recibe los filtros dos veces (en YouTube llegan
+    // por dos caminos: youtubePreload.js al empezar y Ghostery un instante después).
+    // Aplicarlos dos veces puede romper el reproductor. La marca vive en la página
+    // misma, así no depende de comparar direcciones.
+    const guardia = unaVez ? `
+        const marca = Symbol.for("patagonia.filtros");
+        if (globalThis[marca]) return [];
+        Object.defineProperty(globalThis, marca, { value: true });` : "";
+    return `(() => {${guardia}
         const fallos = [];
         ${bloques.join("\n")}
         return fallos;
@@ -153,8 +161,6 @@ function crearProteccion({
     let inicioPendiente = null;
     let colaSitios = Promise.resolve();
     let descargaActiva = null;
-    // Pestañas de YouTube que ya recibieron los scriptlets desde youtubePreload.js.
-    const scriptletsServidos = new Map();
 
     function programarAviso() {
         if (cerrada || avisoPendiente) return;
@@ -233,19 +239,17 @@ function crearProteccion({
                     }
                 });
                 if (active === false) return;
-                // Si youtubePreload.js ya los aplicó al empezar la página, no se repiten.
-                let scriptsPendientes = scripts;
-                if (inicial && scriptletsServidos.get(contenido.id) === url) {
-                    scriptletsServidos.delete(contenido.id);
-                    scriptsPendientes = [];
-                }
+                // En YouTube puede que youtubePreload.js ya los haya aplicado: el lote
+                // lleva una guardia para que la página no los reciba dos veces.
+                const scriptsPendientes = scripts;
+                const unaVez = esYouTube(url);
 
                 // Un único envío al marco que pidió los filtros. A diferencia
                 // de webContents.executeJavaScript, no espera did-stop-loading
                 // por cada script ni termina ejecutándolo en una página posterior.
                 const trabajos = [];
                 if (scriptsPendientes.length) trabajos.push(async () => {
-                    const fallos = await marco.executeJavaScript(crearLoteScriptlets(scriptsPendientes));
+                    const fallos = await marco.executeJavaScript(crearLoteScriptlets(scriptsPendientes, { unaVez }));
                     if (Array.isArray(fallos) && fallos.length) {
                         console.error(`Protección: fallaron ${fallos.length} scriptlets en ${hostname}.`, fallos);
                     }
@@ -376,8 +380,7 @@ function crearProteccion({
                 getRulesFromDOM: false
             });
             if (active === false || !scripts.length) return "";
-            scriptletsServidos.set(idContenido, url);
-            return crearLoteScriptlets(scripts);
+            return crearLoteScriptlets(scripts, { unaVez: true });
         } catch (error) {
             console.error("No se pudieron preparar los filtros de YouTube:", error.message);
             return "";
@@ -391,7 +394,6 @@ function crearProteccion({
 
     function olvidarPestana(idContenido) {
         contadores.delete(idContenido);
-        scriptletsServidos.delete(idContenido);
     }
 
     function alternarSitio(idContenido, url) {

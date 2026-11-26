@@ -39,6 +39,18 @@ test('YouTube recibe los scriptlets antes de cargar', async t => {
     assert.match(codigo, /fallos\.push/, 'cada scriptlet va en su propio bloque');
 });
 
+test('la misma página nunca recibe los filtros dos veces', async t => {
+    const { gestor } = await entorno(t);
+    const codigo = gestor.scriptletsYouTube(7, 'https://www.youtube.com/watch?v=abc');
+    assert.match(codigo, /Symbol\.for\("patagonia\.filtros"\)/);
+    // Simula la página: el lote corre dos veces sobre el mismo "window".
+    const vm = require('node:vm');
+    const pagina = vm.createContext({});
+    const lote = `(() => { const marca = Symbol.for("patagonia.filtros"); if (globalThis[marca]) return "repetido"; Object.defineProperty(globalThis, marca, { value: true }); return "aplicado"; })()`;
+    assert.equal(vm.runInContext(lote, pagina), 'aplicado');
+    assert.equal(vm.runInContext(lote, pagina), 'repetido');
+});
+
 test('fuera de YouTube no se entrega nada', async t => {
     const { gestor } = await entorno(t);
     assert.equal(gestor.scriptletsYouTube(7, 'https://www.example.com/'), '');
