@@ -20,7 +20,7 @@ Patagonia es **un solo navegador** en dos equipos. La regla es simple:
 
 | Función | PC (Windows) | Android | Nota |
 |---|---|---|---|
-| Bloqueo de anuncios y rastreadores (incluye YouTube) | ✅ Ghostery; 1.4.0: si se cuela un anuncio de YouTube, se saltea solo | ✅ uBlock Origin | Motor distinto, mismo resultado. La red de seguridad de YouTube es solo de la PC: en el celu uBlock Origin no la necesitó. 1.4.1: en la PC los filtros de YouTube entran antes que la página (primer video sin anuncios); en el celu uBlock Origin ya lo hacía |
+| Bloqueo de anuncios y rastreadores (incluye YouTube) | ✅ Ghostery; 1.4.0: si se cuela un anuncio de YouTube, se saltea solo | ✅ uBlock Origin | Motor distinto, mismo resultado. La red de seguridad de YouTube es solo de la PC: en el celu uBlock Origin no la necesitó. 1.4.1: en la PC los filtros de YouTube entran antes que la página (primer video sin anuncios) y vuelven los scriptlets en YouTube (estaban apagados desde la 1.0.4, ver `siteCompatibility.js`); en el celu uBlock Origin ya lo hacía |
 | Traductor privado (en el equipo) | ✅ 1.4.0: inglés incluido; 30 idiomas más se bajan la primera vez | ✅ todos los de Firefox | Mismo motor de Firefox |
 | "Mostrar original" desde el menú | ✅ 1.3.0 (clic derecho) | ✅ | |
 | Buscador: Brave Search por defecto, DuckDuckGo de respaldo | ✅ 1.3.0 Configuración → Buscador | ✅ 1.3.0 Configuración → Buscador | Sin depender de Google ni Microsoft para buscar |
@@ -31,7 +31,7 @@ Patagonia es **un solo navegador** en dos equipos. La regla es simple:
 | Pasar favoritos PC ↔ celu sin cuenta | ✅ 1.3.0 exportar / importar archivo | ✅ 1.3.0 exportar / importar archivo | Formato estándar de favoritos (HTML) |
 | Cámara y micrófono (Meet, videollamadas) | ✅ 1.3.0 | ✅ | Android: probar en la 1.3.0 |
 | Compartir pantalla | ✅ 1.3.0 | — | Pendiente de evaluar en Android |
-| Login de Google / Gmail | ⚠️ Nov 2026: Google bloquea el login en Electron. 1.4.1: se presenta como Chrome (`--login-google=chrome`, por defecto; `chromium` o `firefox` para probar) y, si Google igual no deja, avisa y ofrece abrirlo en otro navegador | ✅ (motor de Firefox, Google no lo bloquea) | En la PC depende de Google; la solución de fondo es un Chromium propio |
+| Login de Google / Gmail | ⚠️ Nov 2026: Google rechaza a los navegadores disfrazados. 1.4.1: en el login Patagonia dice que es Electron (`--login-google=electron`, por defecto; `chrome`, `chromium` o `firefox` para probar) y, si Google igual no deja, avisa y ofrece abrirlo en otro navegador | ✅ (motor de Firefox, Google no lo bloquea) | En la PC depende de Google; la solución de fondo es un Chromium propio |
 | Enlaces que abren otra app (Claude, Zoom, WhatsApp, correo) | ✅ 1.3.2 | ✅ 1.3.2 | Patagonia pregunta antes de abrirla |
 | Aviso de versión nueva | ✅ se actualiza sola | ✅ 1.3.1: tocás el aviso, baja el APK y abre "Instalar" (sin pasar por GitHub) | Android pide confirmar con "Instalar"; la primera vez, permitir instalar desde Patagonia |
 | Navegador predeterminado | ✅ Configuración → "Usar Patagonia como navegador predeterminado" | ✅ 1.3.1: Configuración → Navegador predeterminado | |
