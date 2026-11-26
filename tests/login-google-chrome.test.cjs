@@ -3,14 +3,15 @@
 // deja entrar, lo avisa claro y ofrece abrirlo en otro navegador.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { modoLogin, conMarcaChrome, cabecerasChrome, cabecerasDelLogin } = require('../src/main/googleLogin');
+const { modoLogin, conMarcaChrome, cabecerasChrome, cabecerasDelLogin, userAgentElectron, cabecerasElectron } = require('../src/main/googleLogin');
 const { esPaginaRechazo, destinoEnOtroNavegador, buscarOtroNavegador, crearAvisoLoginBloqueado } = require('../src/main/loginBloqueado');
 
-test('el modo del login sale de --login-google y por defecto es chrome', () => {
-    assert.equal(modoLogin([]), 'chrome');
+test('el modo del login sale de --login-google y por defecto es electron', () => {
+    assert.equal(modoLogin([]), 'electron');
+    assert.equal(modoLogin(['--login-google=chrome']), 'chrome');
     assert.equal(modoLogin(['patagonia.exe', '--login-google=firefox']), 'firefox');
     assert.equal(modoLogin(['--login-google=CHROMIUM']), 'chromium');
-    assert.equal(modoLogin(['--login-google=otro']), 'chrome');
+    assert.equal(modoLogin(['--login-google=otro']), 'electron');
 });
 
 test('se suma la marca Google Chrome una sola vez', () => {
@@ -72,4 +73,34 @@ test('el aviso sale una sola vez por pestaña y abre el otro navegador', async (
     assert.equal(abiertos.length, 1);
     assert.match(abiertos[0][0], /brave\.exe$/);
     assert.deepEqual(abiertos[0][1], ['https://accounts.google.com/']);
+});
+
+// 26/11/2026, probado con un correo inventado en una sesión limpia: Google rechaza el
+// user agent de Chrome "limpio" y el de Firefox, y deja seguir al que dice Electron.
+test('modo electron: el user agent dice la verdad y solo cambia esa cabecera', () => {
+    const ua = userAgentElectron({ chrome: '156.0.8078.100', electron: '45.4.1' });
+    assert.equal(ua, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.100 Electron/45.4.1 Safari/537.36');
+    const cab = { 'user-agent': 'Mozilla/5.0 Chrome/156.0.0.0', 'sec-ch-ua': '"Chromium";v="156"', Accept: '*/*' };
+    const nuevas = cabecerasElectron(cab, ua);
+    assert.equal(nuevas['User-Agent'], ua);
+    assert.equal('user-agent' in nuevas, false, 'no quedan dos user agents');
+    assert.equal(nuevas['sec-ch-ua'], '"Chromium";v="156"', 'sin la marca Google Chrome');
+    assert.equal(nuevas.Accept, '*/*');
+    assert.match(cabecerasDelLogin(cab, 'electron')['User-Agent'], / Electron\//);
+});
+
+test('modo electron: la página lee el mismo user agent que las cabeceras', () => {
+    const { userAgentHonesto } = require('../src/main/googleLoginPreload');
+    function Navigator() {}
+    Object.defineProperty(Navigator.prototype, 'userAgent', { get: () => 'viejo', configurable: true });
+    const anterior = globalThis.window;
+    globalThis.window = { Navigator };
+    try {
+        userAgentHonesto('Mozilla/5.0 (X) Chrome/156.0.8078.100 Electron/45.4.1 Safari/537.36');
+        const nav = new Navigator();
+        assert.equal(nav.userAgent, 'Mozilla/5.0 (X) Chrome/156.0.8078.100 Electron/45.4.1 Safari/537.36');
+        assert.equal(nav.appVersion, '5.0 (X) Chrome/156.0.8078.100 Electron/45.4.1 Safari/537.36');
+    } finally {
+        globalThis.window = anterior;
+    }
 });

@@ -190,6 +190,7 @@ function paginaInicio() {
 // si Google igual no deja entrar, con la opción de abrirlo en otro navegador.
 const modoLoginGoogle = require("./src/main/googleLogin").modoLogin();
 ipcMain.on("patagonia-modo-login", evento => { evento.returnValue = modoLoginGoogle; });
+ipcMain.on("patagonia-ua-login", evento => { evento.returnValue = require("./src/main/googleLogin").userAgentElectron(); });
 const avisoLoginGoogle = process.platform === "win32"
     ? require("./src/main/loginBloqueado").crearAvisoLoginBloqueado({
         dialog,

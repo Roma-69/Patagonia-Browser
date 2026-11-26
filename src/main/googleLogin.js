@@ -60,21 +60,42 @@ function cabecerasFirefox(cabeceras, ahora) {
     return nuevas;
 }
 
-// Cómo se presenta Patagonia en el login de Google (nov 2026: Google dejó de
-// aceptar el disfraz de Firefox; desde la 1.4.0 también daba "No puedes acceder").
-// - "chrome" (por defecto): como el Chrome que Patagonia tiene adentro, con la marca
-//   "Google Chrome" en las pistas del navegador, igual que Chrome de verdad.
-// - "chromium": sin tocar nada (lo que trae el motor tal cual).
+// Cómo se presenta Patagonia en el login de Google.
+// Nov 2026: Google rechaza ("No se ha podido iniciar sesión. Es posible que el navegador
+// no sea seguro") a todo lo que se disfraza: tanto el disfraz de Firefox como el user
+// agent "limpio" de Chrome. Probado el 26/11/2026 con un correo inventado, en una
+// sesión nueva sin cookies: si el user agent dice la verdad ("... Chrome/156 Electron/45
+// ..."), Google pasa al paso siguiente; si dice Chrome o Firefox, rechaza en el acto.
+// - "electron" (por defecto): en las páginas de login, Patagonia dice lo que es.
+// - "chrome": como Chrome, con la marca "Google Chrome" (lo que se probó en la 1.4.1).
+// - "chromium": sin tocar nada (el user agent limpio de Chrome que usa todo Patagonia).
 // - "firefox": el disfraz anterior.
-// Para probar otra forma, se abre Patagonia con --login-google=chromium (o firefox).
-const MODOS_LOGIN = ["chrome", "chromium", "firefox"];
+// Para probar otra forma, se abre Patagonia con --login-google=chrome (o chromium, firefox).
+const MODOS_LOGIN = ["electron", "chrome", "chromium", "firefox"];
 
 function modoLogin(argv = process.argv) {
     for (const argumento of argv || []) {
         const encontrado = /^--login-google=(\w+)$/.exec(String(argumento));
         if (encontrado && MODOS_LOGIN.includes(encontrado[1].toLowerCase())) return encontrado[1].toLowerCase();
     }
-    return "chrome";
+    return "electron";
+}
+
+// El user agent honesto: como el de Chrome, con "Electron/x" al final (sin el nombre
+// de la app, que Electron mete con un espacio y no es un formato estándar).
+function userAgentElectron(versiones = process.versions) {
+    return `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${versiones.chrome} Electron/${versiones.electron} Safari/537.36`;
+}
+
+// Solo cambia el user agent; las pistas del navegador (sec-ch-ua) quedan como las
+// manda el motor ("Chromium"), que es la verdad.
+function cabecerasElectron(cabeceras, ua = userAgentElectron()) {
+    const nuevas = {};
+    for (const [nombre, valor] of Object.entries(cabeceras || {})) {
+        if (nombre.toLowerCase() !== "user-agent") nuevas[nombre] = valor;
+    }
+    nuevas["User-Agent"] = ua;
+    return nuevas;
 }
 
 // Suma la marca "Google Chrome" a una lista de marcas (sec-ch-ua), si falta.
@@ -99,6 +120,7 @@ function cabecerasChrome(cabeceras) {
 }
 
 function cabecerasDelLogin(cabeceras, modo) {
+    if (modo === "electron") return cabecerasElectron(cabeceras);
     if (modo === "firefox") return cabecerasFirefox(cabeceras);
     if (modo === "chrome") return cabecerasChrome(cabeceras);
     return cabeceras;
@@ -128,5 +150,5 @@ function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [], modo =
 
 module.exports = {
     esLoginGoogle, pedidoDelLogin, userAgentFirefox, versionFirefox, cabecerasFirefox,
-    MODOS_LOGIN, modoLogin, conMarcaChrome, cabecerasChrome, cabecerasDelLogin, instalarLoginGoogle
+    MODOS_LOGIN, modoLogin, userAgentElectron, cabecerasElectron, conMarcaChrome, cabecerasChrome, cabecerasDelLogin, instalarLoginGoogle
 };
