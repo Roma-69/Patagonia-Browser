@@ -186,6 +186,25 @@ function paginaInicio() {
     return gestorConfiguracion?.estado().inicio || PAGINA_INICIO;
 }
 
+// Login de Google: cómo se presenta Patagonia (ver googleLogin.js) y aviso claro
+// si Google igual no deja entrar, con la opción de abrirlo en otro navegador.
+const modoLoginGoogle = require("./src/main/googleLogin").modoLogin();
+ipcMain.on("patagonia-modo-login", evento => { evento.returnValue = modoLoginGoogle; });
+const avisoLoginGoogle = process.platform === "win32"
+    ? require("./src/main/loginBloqueado").crearAvisoLoginBloqueado({
+        dialog,
+        obtenerVentana: () => ventanaPrincipal,
+        existe: ruta => { try { return fs.statSync(ruta).isFile(); } catch { return false; } },
+        abrirPrograma: (ruta, argumentos) => {
+            try {
+                require("node:child_process").spawn(ruta, argumentos, { detached: true, stdio: "ignore" }).unref();
+            } catch (error) {
+                console.error("No se pudo abrir el otro navegador:", error.message);
+            }
+        }
+    })
+    : null;
+
 // Enlaces que abren una aplicación del equipo (claude://, zoommtg://, mailto:…).
 const enlacesExternos = crearEnlacesExternos({
     shell,
@@ -494,7 +513,8 @@ function prepararSesionPaginas(sesion) {
         app,
         sesion,
         userAgentNormal: () => app.userAgentFallback,
-        extras: [modoChicos.ajustarCabeceras]
+        extras: [modoChicos.ajustarCabeceras],
+        modo: modoLoginGoogle
     });
     return permisos;
 }
@@ -692,6 +712,7 @@ function crearPestana(
             pestana.interna = esNuevaPestanaPatagonia(nuevaURL);
             pestana.url = pestana.interna ? "" : nuevaURL;
             aplicarLetraGrande(vista.webContents);
+            avisoLoginGoogle?.revisar(vista.webContents, nuevaURL, vista.webContents.getTitle());
 
             if (
                 pestana.id ===
@@ -731,6 +752,7 @@ function crearPestana(
             pestana.titulo =
                 titulo ||
                 "Nueva pestaña";
+            avisoLoginGoogle?.revisar(vista.webContents, vista.webContents.getURL(), titulo);
 
             enviarPestanas();
         }

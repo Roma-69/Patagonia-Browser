@@ -60,9 +60,53 @@ function cabecerasFirefox(cabeceras, ahora) {
     return nuevas;
 }
 
+// Cómo se presenta Patagonia en el login de Google (nov 2026: Google dejó de
+// aceptar el disfraz de Firefox; desde la 1.4.0 también daba "No puedes acceder").
+// - "chrome" (por defecto): como el Chrome que Patagonia tiene adentro, con la marca
+//   "Google Chrome" en las pistas del navegador, igual que Chrome de verdad.
+// - "chromium": sin tocar nada (lo que trae el motor tal cual).
+// - "firefox": el disfraz anterior.
+// Para probar otra forma, se abre Patagonia con --login-google=chromium (o firefox).
+const MODOS_LOGIN = ["chrome", "chromium", "firefox"];
+
+function modoLogin(argv = process.argv) {
+    for (const argumento of argv || []) {
+        const encontrado = /^--login-google=(\w+)$/.exec(String(argumento));
+        if (encontrado && MODOS_LOGIN.includes(encontrado[1].toLowerCase())) return encontrado[1].toLowerCase();
+    }
+    return "chrome";
+}
+
+// Suma la marca "Google Chrome" a una lista de marcas (sec-ch-ua), si falta.
+// Ej.: '"Chromium";v="156", "Not_A Brand";v="24"' → '... , "Google Chrome";v="156"'.
+function conMarcaChrome(valor) {
+    const texto = String(valor || "");
+    if (!texto || /"Google Chrome"/.test(texto)) return texto;
+    const chromium = /"Chromium";v="([^"]+)"/.exec(texto);
+    if (!chromium) return texto;
+    return `${texto}, "Google Chrome";v="${chromium[1]}"`;
+}
+
+function cabecerasChrome(cabeceras) {
+    const nuevas = { ...(cabeceras || {}) };
+    for (const nombre of Object.keys(nuevas)) {
+        const minuscula = nombre.toLowerCase();
+        if (minuscula === "sec-ch-ua" || minuscula === "sec-ch-ua-full-version-list") {
+            nuevas[nombre] = conMarcaChrome(nuevas[nombre]);
+        }
+    }
+    return nuevas;
+}
+
+function cabecerasDelLogin(cabeceras, modo) {
+    if (modo === "firefox") return cabecerasFirefox(cabeceras);
+    if (modo === "chrome") return cabecerasChrome(cabeceras);
+    return cabeceras;
+}
+
 // Electron permite un solo onBeforeSendHeaders por sesión: los otros ajustes
 // de cabeceras (por ejemplo el modo chicos) se pasan en "extras".
-function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
+function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [], modo = modoLogin() }) {
     // Borra las huellas de Chrome que quedan en el login (ver googleLoginPreload.js).
     if (typeof sesion.registerPreloadScript === "function") {
         sesion.registerPreloadScript({
@@ -74,7 +118,7 @@ function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
 
     sesion.webRequest.onBeforeSendHeaders((detalles, responder) => {
         let cabeceras = pedidoDelLogin(detalles)
-            ? cabecerasFirefox(detalles.requestHeaders)
+            ? cabecerasDelLogin(detalles.requestHeaders, modo)
             : detalles.requestHeaders;
         for (const ajustar of extras) cabeceras = ajustar(detalles.url, cabeceras);
         responder({ requestHeaders: cabeceras });
@@ -82,4 +126,7 @@ function instalarLoginGoogle({ app, sesion, userAgentNormal, extras = [] }) {
     // Lo que lee la página (navigator.userAgent, etc.) lo cambia googleLoginPreload.js.
 }
 
-module.exports = { esLoginGoogle, pedidoDelLogin, userAgentFirefox, versionFirefox, cabecerasFirefox, instalarLoginGoogle };
+module.exports = {
+    esLoginGoogle, pedidoDelLogin, userAgentFirefox, versionFirefox, cabecerasFirefox,
+    MODOS_LOGIN, modoLogin, conMarcaChrome, cabecerasChrome, cabecerasDelLogin, instalarLoginGoogle
+};
