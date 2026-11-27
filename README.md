@@ -69,7 +69,7 @@ npm run build:portable
 
 ## Compartir con la familia
 
-La última versión **publicada** es la **1.4.1**: Windows x64 el 26 de noviembre de 2026 y Android el 27 de noviembre de 2026. Desde la 1.0.6, Patagonia para Windows se actualiza solo. Descargá `Patagonia-Browser-Setup.exe` desde la [página de descargas](DOWNLOADS.md).
+La última versión **publicada** es la **1.4.1**: Windows x64 el 26 de noviembre de 2026 y Android el 27 de noviembre de 2026. Desde la 1.0.6, Patagonia para Windows se actualiza solo. Instalalo desde la [Microsoft Store](https://apps.microsoft.com/detail/9NWL1WDZFJMD) o descargá `Patagonia-Browser-Setup.exe` desde la [página de descargas](DOWNLOADS.md).
 
 El instalador está **sin firma de un proveedor reconocido** y Windows puede mostrar una advertencia o bloquear su ejecución. La publicación de Windows incluye el instalador y los paquetes de la actualización automática; no publica un ZIP portátil. La versión portátil puede generarse desde el código con el comando indicado arriba.
 

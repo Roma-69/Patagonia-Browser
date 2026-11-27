@@ -1,8 +1,16 @@
-# Descargas de Patagonia Browser para Windows
+# Descargas de Patagonia Browser
 
 Patagonia es un navegador de escritorio en desarrollo con navegación por pestañas, favoritos, historial local y bloqueo de anuncios y rastreadores.
 
 ## Windows x64
+
+### Microsoft Store (recomendado)
+
+- [Instalar Patagonia Browser desde Microsoft Store](https://apps.microsoft.com/detail/9NWL1WDZFJMD).
+
+Es la forma más simple: el paquete lo verifica Microsoft, Windows no muestra la advertencia de "aplicación sin firma" y las actualizaciones llegan solas desde la Store.
+
+### Instalador desde GitHub
 
 - [Descargar el instalador de Patagonia Browser 1.4.1](https://github.com/Roma-69/Patagonia-Browser/releases/download/v1.4.1/Patagonia-Browser-Setup.exe).
 - [Ver la publicación 1.4.1](https://github.com/Roma-69/Patagonia-Browser/releases/tag/v1.4.1).
