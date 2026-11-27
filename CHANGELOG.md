@@ -6,7 +6,7 @@ El formato está inspirado en "Keep a Changelog" y el proyecto seguirá Versiona
 
 ---
 
-## [1.4.1] - Sin publicar (PC y Android)
+## [1.4.1] - Publicada el 26/11/2026 (PC) y el 27/11/2026 (Android)
 
 ### ¿Por qué se actualiza?
 

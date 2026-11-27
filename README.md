@@ -69,9 +69,9 @@ npm run build:portable
 
 ## Compartir con la familia
 
-La última versión **publicada** para Windows x64 es **1.0.6** (6 de noviembre de 2026). Desde esta versión Patagonia se actualiza solo. Descargá `Patagonia-Browser-Setup.exe` desde la [página de descargas](DOWNLOADS.md).
+La última versión **publicada** es la **1.4.1**: Windows x64 el 26 de noviembre de 2026 y Android el 27 de noviembre de 2026. Desde la 1.0.6, Patagonia para Windows se actualiza solo. Descargá `Patagonia-Browser-Setup.exe` desde la [página de descargas](DOWNLOADS.md).
 
-El instalador está **sin firma de un proveedor reconocido** y Windows puede mostrar una advertencia o bloquear su ejecución. La publicación 1.0.6 incluye el instalador y los paquetes de la actualización automática; no publica un ZIP portátil. La versión portátil puede generarse desde el código con el comando indicado arriba.
+El instalador está **sin firma de un proveedor reconocido** y Windows puede mostrar una advertencia o bloquear su ejecución. La publicación de Windows incluye el instalador y los paquetes de la actualización automática; no publica un ZIP portátil. La versión portátil puede generarse desde el código con el comando indicado arriba.
 
 Para regenerar el instalador, ver [COMO-ARMAR.md](COMO-ARMAR.md) (`npm run make:windows`).
 
@@ -91,7 +91,7 @@ El código de la app móvil está en [`mobile/`](mobile/README.md) (Flutter 3.47
 
 Los pasos están en [COMO-ARMAR.md](COMO-ARMAR.md). Los artefactos móviles 1.0.0 viejos siguen en la [publicación v1.0.3](https://github.com/Roma-69/Patagonia-Browser/releases/tag/v1.0.3). La firma de Android es independiente de la firma de Windows y de SignPath. Consultá la [política de privacidad móvil](PRIVACY.md).
 
-**Android 1.1.0** usa el motor GeckoView (Firefox) con uBlock Origin. Descarga: [DOWNLOADS.md](DOWNLOADS.md). Detalles en [mobile/README.md](mobile/README.md).
+**Android** usa el motor GeckoView (Firefox) con uBlock Origin. Descarga: [DOWNLOADS.md](DOWNLOADS.md). Detalles en [mobile/README.md](mobile/README.md).
 
 ## Ejecutar
 
